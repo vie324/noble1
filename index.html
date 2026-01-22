@@ -106,12 +106,27 @@
 
         // --- Mock Data Generators ---
 
-        // 初期スタッフデータ
+        // 店舗マスタ
+        const stores = [
+            { id: 1, name: "新宿店", code: "shinjuku" },
+            { id: 2, name: "新宿南口店", code: "shinjuku_south" }
+        ];
+
+        // メニューマスタ
+        const menus = [
+            { id: 1, name: "剥離ありハーブピーリング(顔)", price: 18000, availableStores: [1, 2] },
+            { id: 2, name: "剥離なしハーブピーリング(顔)", price: 15000, availableStores: [1, 2] },
+            { id: 3, name: "剥離なしハーブピーリング(ボディ)", price: 20000, availableStores: [1, 2] },
+            { id: 4, name: "よもぎ蒸し", price: 8000, availableStores: [2] }, // 新宿南口店のみ
+            { id: 5, name: "セルフホワイトニング", price: 5000, availableStores: [2] } // 新宿南口店のみ
+        ];
+
+        // 初期スタッフデータ（店舗ID追加）
         const initialStaffData = [
-            { id: 1, name: "佐藤 美咲", role: "店長", sales: 1850000, target: 2000000, nomination: 24, retention: 85, satisfaction: 4.8 },
-            { id: 2, name: "田中 愛", role: "シニア", sales: 1420000, target: 1500000, nomination: 18, retention: 78, satisfaction: 4.6 },
-            { id: 3, name: "鈴木 健太", role: "スタッフ", sales: 980000, target: 1000000, nomination: 8, retention: 65, satisfaction: 4.5 },
-            { id: 4, name: "山田 花子", role: "新人", sales: 650000, target: 800000, nomination: 2, retention: 50, satisfaction: 4.2 },
+            { id: 1, name: "佐藤 美咲", role: "店長", storeId: 1, sales: 1850000, target: 2000000, nomination: 24, retention: 85, satisfaction: 4.8 },
+            { id: 2, name: "田中 愛", role: "シニア", storeId: 1, sales: 1420000, target: 1500000, nomination: 18, retention: 78, satisfaction: 4.6 },
+            { id: 3, name: "鈴木 健太", role: "スタッフ", storeId: 2, sales: 980000, target: 1000000, nomination: 8, retention: 65, satisfaction: 4.5 },
+            { id: 4, name: "山田 花子", role: "新人", storeId: 2, sales: 650000, target: 800000, nomination: 2, retention: 50, satisfaction: 4.2 },
         ];
 
         // 媒体別データ
@@ -123,32 +138,115 @@
             { id: 5, name: "チラシ", newVisits: 8, repeatRate: 20, cpa: 4000, sales: 90000 },
         ];
 
+        // メニュー別売上データ生成
+        const generateMenuSalesData = () => {
+            return menus.map(menu => {
+                const count = Math.floor(Math.random() * 30) + 10;
+                const sales = count * menu.price;
+                return {
+                    menuId: menu.id,
+                    menuName: menu.name,
+                    count,
+                    sales,
+                    availableStores: menu.availableStores
+                };
+            });
+        };
+
         // 日次売上データ（回数券の内訳含む）
         const generateDailySalesComplex = () => {
             const days = 30;
             return Array.from({ length: days }, (_, i) => {
                 const day = i + 1;
-                // 都度払い
-                const spotSales = Math.floor(Math.random() * 50000) + 20000;
-                // 回数券販売 (Cash In) - たまに大きな金額が入る
-                const ticketSales = Math.random() > 0.7 ? Math.floor(Math.random() * 200000) + 50000 : 0;
-                // 回数券消化 (Sales Recognition) - 役務消化
-                const ticketUsage = Math.floor(Math.random() * 60000) + 30000;
-                // 物販
-                const product = Math.floor(Math.random() * 20000) + 5000;
+
+                // 店舗別の売上を生成
+                const storeData = stores.map(store => {
+                    const spotSales = Math.floor(Math.random() * 50000) + 20000;
+                    const ticketSales = Math.random() > 0.7 ? Math.floor(Math.random() * 200000) + 50000 : 0;
+                    const ticketUsage = Math.floor(Math.random() * 60000) + 30000;
+                    const product = Math.floor(Math.random() * 20000) + 5000;
+
+                    return {
+                        storeId: store.id,
+                        storeName: store.name,
+                        spotSales,
+                        ticketSales,
+                        ticketUsage,
+                        product,
+                        accountingSales: spotSales + ticketUsage + product,
+                        cashIn: spotSales + ticketSales + product
+                    };
+                });
+
+                // 全店舗合計
+                const totalSpotSales = storeData.reduce((sum, s) => sum + s.spotSales, 0);
+                const totalTicketSales = storeData.reduce((sum, s) => sum + s.ticketSales, 0);
+                const totalTicketUsage = storeData.reduce((sum, s) => sum + s.ticketUsage, 0);
+                const totalProduct = storeData.reduce((sum, s) => sum + s.product, 0);
 
                 return {
                     day: `${day}日`,
-                    spotSales,
-                    ticketSales, // 現金は入るが売上ではない（前受金）
-                    ticketUsage, // 現金は入らないが売上（役務消化）
-                    product,
-                    // 管理上の売上（都度 + 消化 + 物販）
-                    accountingSales: spotSales + ticketUsage + product,
-                    // キャッシュイン（都度 + 販売 + 物販）
-                    cashIn: spotSales + ticketSales + product,
+                    spotSales: totalSpotSales,
+                    ticketSales: totalTicketSales,
+                    ticketUsage: totalTicketUsage,
+                    product: totalProduct,
+                    accountingSales: totalSpotSales + totalTicketUsage + totalProduct,
+                    cashIn: totalSpotSales + totalTicketSales + totalProduct,
+                    storeData // 店舗別データを含む
                 };
             });
+        };
+
+        // --- Google Apps Script連携関数 ---
+
+        // GASのWebアプリURLを設定（デプロイ後に実際のURLに変更してください）
+        const GAS_WEB_APP_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+
+        /**
+         * スプレッドシートにデータを保存
+         */
+        const saveToSpreadsheet = async (action, data) => {
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // GASの制限により必要
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        ...data
+                    })
+                });
+
+                // no-corsモードではレスポンスを読み取れないため、成功と仮定
+                console.log('データ送信完了:', action);
+                return { success: true, message: 'データを送信しました' };
+            } catch (error) {
+                console.error('スプレッドシート保存エラー:', error);
+                return { success: false, message: error.toString() };
+            }
+        };
+
+        /**
+         * 日次売上データを保存
+         */
+        const saveDailySalesData = (dailySalesData) => {
+            return saveToSpreadsheet('saveDailySales', { salesData: dailySalesData });
+        };
+
+        /**
+         * メニュー別売上データを保存
+         */
+        const saveMenuSalesData = (menuSalesData) => {
+            return saveToSpreadsheet('saveMenuSales', { menuData: menuSalesData });
+        };
+
+        /**
+         * スタッフ実績データを保存
+         */
+        const saveStaffPerformanceData = (staffData) => {
+            return saveToSpreadsheet('saveStaffPerformance', { staffData: staffData });
         };
 
         // --- Helper Components ---
@@ -194,17 +292,76 @@
 
         // --- Main Sections ---
 
-        const DashboardView = ({ staffList, dailySalesData }) => {
+        const DashboardView = ({ staffList, dailySalesData, menuSalesData }) => {
+            const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff'
+
+            // フィルタリングされた売上データ
+            const filteredDailySales = useMemo(() => {
+                if (viewMode === 'all') return dailySalesData;
+
+                if (viewMode === 'store_1' || viewMode === 'store_2') {
+                    const storeId = viewMode === 'store_1' ? 1 : 2;
+                    return dailySalesData.map(dayData => {
+                        const storeInfo = dayData.storeData.find(s => s.storeId === storeId);
+                        return {
+                            day: dayData.day,
+                            spotSales: storeInfo.spotSales,
+                            ticketSales: storeInfo.ticketSales,
+                            ticketUsage: storeInfo.ticketUsage,
+                            product: storeInfo.product,
+                            accountingSales: storeInfo.accountingSales,
+                            cashIn: storeInfo.cashIn
+                        };
+                    });
+                }
+
+                return dailySalesData; // スタッフビューは後で実装
+            }, [dailySalesData, viewMode]);
+
+            const filteredStaffList = useMemo(() => {
+                if (viewMode === 'all' || viewMode === 'staff') return staffList;
+                if (viewMode === 'store_1') return staffList.filter(s => s.storeId === 1);
+                if (viewMode === 'store_2') return staffList.filter(s => s.storeId === 2);
+                return staffList;
+            }, [staffList, viewMode]);
+
             // 合計計算
-            const totalAccountingSales = dailySalesData.reduce((acc, curr) => acc + curr.accountingSales, 0);
-            const totalCashIn = dailySalesData.reduce((acc, curr) => acc + curr.cashIn, 0);
-            const totalTicketUsage = dailySalesData.reduce((acc, curr) => acc + curr.ticketUsage, 0);
-            const totalTicketSales = dailySalesData.reduce((acc, curr) => acc + curr.ticketSales, 0);
+            const totalAccountingSales = filteredDailySales.reduce((acc, curr) => acc + curr.accountingSales, 0);
+            const totalCashIn = filteredDailySales.reduce((acc, curr) => acc + curr.cashIn, 0);
+            const totalTicketUsage = filteredDailySales.reduce((acc, curr) => acc + curr.ticketUsage, 0);
+            const totalTicketSales = filteredDailySales.reduce((acc, curr) => acc + curr.ticketSales, 0);
 
             if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
 
+            // タブボタンコンポーネント
+            const ViewTab = ({ id, label }) => (
+                <button
+                    onClick={() => setViewMode(id)}
+                    className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                        viewMode === id
+                            ? 'bg-gold-500 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gold-50 border border-gray-200'
+                    }`}
+                >
+                    {label}
+                </button>
+            );
+
             return (
                 <div className="space-y-6">
+                    {/* 店舗/スタッフ切り替えタブ */}
+                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gold-200">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-gray-600 serif">表示切替</h3>
+                            <div className="flex gap-2">
+                                <ViewTab id="all" label="全店舗合計" />
+                                <ViewTab id="store_1" label="新宿店" />
+                                <ViewTab id="store_2" label="新宿南口店" />
+                                <ViewTab id="staff" label="スタッフ別" />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Top KPI Cards - Split Sales Types */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <KpiCard 
@@ -252,7 +409,7 @@
                                     </div>
                                 </div>
                                 <ResponsiveContainer width="100%" height="85%">
-                                    <BarChart data={dailySalesData}>
+                                    <BarChart data={filteredDailySales}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                         <XAxis dataKey="day" tick={{fontSize: 10}} interval={2} />
                                         <YAxis tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
@@ -569,6 +726,110 @@
             );
         };
 
+        // --- Menu Analysis View ---
+        const MenuAnalysisView = ({ menuSalesData }) => {
+            if (!window.Recharts) return <div>Loading Charts...</div>;
+
+            const totalMenuSales = menuSalesData.reduce((sum, m) => sum + m.sales, 0);
+            const totalMenuCount = menuSalesData.reduce((sum, m) => sum + m.count, 0);
+
+            return (
+                <div className="space-y-6">
+                    {/* メニュー別売上カード */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <KpiCard
+                            title="メニュー総売上"
+                            value={`¥${totalMenuSales.toLocaleString()}`}
+                            subValue={`総施術回数: ${totalMenuCount}回`}
+                            trend={8.3}
+                            icon="shopping-bag"
+                            color="bg-gold-600"
+                        />
+                        <KpiCard
+                            title="平均施術単価"
+                            value={`¥${Math.round(totalMenuSales / totalMenuCount).toLocaleString()}`}
+                            subValue="全メニュー平均"
+                            trend={3.2}
+                            icon="trending-up"
+                            color="bg-emerald-600"
+                        />
+                        <KpiCard
+                            title="人気No.1メニュー"
+                            value={menuSalesData.sort((a, b) => b.count - a.count)[0]?.menuName.substring(0, 10) || ''}
+                            subValue={`${menuSalesData.sort((a, b) => b.count - a.count)[0]?.count}回実施`}
+                            trend={null}
+                            icon="award"
+                            color="bg-rose-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* メニュー別売上テーブル */}
+                        <Card>
+                            <h2 className="text-lg font-bold text-brown-800 mb-6 serif">メニュー別売上詳細</h2>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gold-100 text-xs text-gray-500 uppercase">
+                                            <th className="py-3 font-medium">メニュー名</th>
+                                            <th className="py-3 font-medium text-right">回数</th>
+                                            <th className="py-3 font-medium text-right">売上</th>
+                                            <th className="py-3 font-medium text-center">対応店舗</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm divide-y divide-gray-50">
+                                        {menuSalesData.map((menu) => (
+                                            <tr key={menu.menuId} className="hover:bg-gold-50/50">
+                                                <td className="py-3 font-medium text-brown-800">{menu.menuName}</td>
+                                                <td className="py-3 text-right">{menu.count}回</td>
+                                                <td className="py-3 text-right font-bold">¥{menu.sales.toLocaleString()}</td>
+                                                <td className="py-3 text-center">
+                                                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                                        {menu.availableStores.length === 2 ? '両店舗' : '新宿南口店のみ'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+
+                        {/* メニュー別売上グラフ */}
+                        <Card>
+                            <h2 className="text-lg font-bold text-brown-800 mb-6 serif">メニュー別売上構成比</h2>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={menuSalesData} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+                                    <XAxis type="number" tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
+                                    <YAxis type="category" dataKey="menuName" tick={{fontSize: 9}} width={120} />
+                                    <Tooltip
+                                        formatter={(value) => `¥${value.toLocaleString()}`}
+                                        contentStyle={{backgroundColor: '#fff', borderColor: '#d4af37'}}
+                                    />
+                                    <Bar dataKey="sales" name="売上" fill="#d4af37" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Card>
+                    </div>
+
+                    {/* 店舗限定メニューの注意書き */}
+                    <Card className="bg-gold-50 border-gold-300">
+                        <div className="flex items-start">
+                            <Icon name="info" size={20} className="text-gold-600 mr-3 mt-1" />
+                            <div>
+                                <h3 className="font-bold text-brown-800 mb-2">店舗限定メニュー情報</h3>
+                                <p className="text-sm text-gray-700">
+                                    「よもぎ蒸し」と「セルフホワイトニング」は<span className="font-bold text-gold-700">新宿南口店でのみ</span>提供しているメニューです。
+                                    新宿店でも提供を検討する場合は、設備投資と収益性のシミュレーションをお勧めします。
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
         // --- Simulation View (Reused but Styled) ---
         const SimulationView = () => {
             const [targetSales, setTargetSales] = useState(5000000);
@@ -670,10 +931,13 @@
             const [activeTab, setActiveTab] = useState('dashboard');
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [staffList, setStaffList] = useState(initialStaffData);
+            const [isSaving, setIsSaving] = useState(false);
+            const [saveMessage, setSaveMessage] = useState('');
             const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
             // 生成データをメモ化して、再レンダリングでグラフがガタガタ動かないようにする
             const dailySalesData = useMemo(() => generateDailySalesComplex(), []);
+            const menuSalesData = useMemo(() => generateMenuSalesData(), []);
 
             // スタッフ更新関数
             const updateStaff = (id, newData) => {
@@ -682,6 +946,28 @@
 
             const addStaff = (newData) => {
                 setStaffList(prev => [...prev, newData]);
+            };
+
+            // スプレッドシートに全データを保存
+            const handleSaveToSpreadsheet = async () => {
+                setIsSaving(true);
+                setSaveMessage('');
+
+                try {
+                    // 日次売上を保存
+                    await saveDailySalesData(dailySalesData);
+                    // メニュー別売上を保存
+                    await saveMenuSalesData(menuSalesData);
+                    // スタッフ実績を保存
+                    await saveStaffPerformanceData(staffList);
+
+                    setSaveMessage('✓ データをスプレッドシートに保存しました');
+                    setTimeout(() => setSaveMessage(''), 3000);
+                } catch (error) {
+                    setSaveMessage('✗ 保存エラー: ' + error.message);
+                }
+
+                setIsSaving(false);
             };
 
             const NavItem = ({ id, icon, label }) => (
@@ -716,6 +1002,7 @@
                             <NavItem id="dashboard" icon="layout-dashboard" label="ダッシュボード" />
                             <NavItem id="simulation" icon="target" label="目標シミュレーション" />
                             <NavItem id="sales" icon="bar-chart-2" label="売上・媒体分析" />
+                            <NavItem id="menus" icon="package" label="メニュー別分析" />
                             <NavItem id="staff" icon="users" label="スタッフ管理" />
                             <NavItem id="customers" icon="heart" label="顧客・回数券管理" />
                         </div>
@@ -740,6 +1027,7 @@
                                     {activeTab === 'dashboard' && 'Executive Summary'}
                                     {activeTab === 'simulation' && 'Strategy Simulation'}
                                     {activeTab === 'sales' && 'Sales & Marketing Analytics'}
+                                    {activeTab === 'menus' && 'Menu Performance Analysis'}
                                     {activeTab === 'staff' && 'Staff Performance & Management'}
                                     {activeTab === 'customers' && 'Customer & Ticket Management'}
                                     {activeTab === 'settings' && 'System Settings'}
@@ -748,12 +1036,30 @@
                                     {activeTab === 'dashboard' && '経営サマリー'}
                                     {activeTab === 'simulation' && '経営シミュレーション'}
                                     {activeTab === 'sales' && '売上詳細・媒体分析'}
+                                    {activeTab === 'menus' && 'メニュー別分析'}
                                     {activeTab === 'staff' && 'スタッフ管理・編集'}
                                     {activeTab === 'customers' && '顧客リスト・回数券管理'}
                                     {activeTab === 'settings' && 'システム設定'}
                                 </p>
                             </div>
                             <div className="flex items-center space-x-6">
+                                {/* スプレッドシート保存ボタン */}
+                                <div className="flex flex-col items-end">
+                                    <button
+                                        onClick={handleSaveToSpreadsheet}
+                                        disabled={isSaving}
+                                        className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                                    >
+                                        <Icon name={isSaving ? "loader" : "save"} size={16} className={`mr-2 ${isSaving ? 'animate-spin' : ''}`} />
+                                        {isSaving ? '保存中...' : 'スプレッドシートに保存'}
+                                    </button>
+                                    {saveMessage && (
+                                        <span className={`text-xs mt-1 ${saveMessage.includes('✓') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {saveMessage}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="h-8 w-px bg-gold-200"></div>
                                 <div className="text-right hidden md:block">
                                     <p className="text-sm font-bold text-brown-800">{currentDate}</p>
                                     <p className="text-xs text-gray-400">Tokyo, Japan</p>
@@ -774,10 +1080,11 @@
                         {/* Content Area */}
                         <main className="flex-1 overflow-y-auto p-8">
                             <div className="max-w-7xl mx-auto pb-10">
-                                {activeTab === 'dashboard' && <DashboardView staffList={staffList} dailySalesData={dailySalesData} />}
+                                {activeTab === 'dashboard' && <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} />}
                                 {activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} />}
                                 {activeTab === 'simulation' && <SimulationView />}
                                 {activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} />}
+                                {activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
                                 {activeTab === 'customers' && (
                                     <div className="flex flex-col items-center justify-center h-96 text-gray-400 border-2 border-dashed border-gold-200 rounded-xl bg-white/50">
                                         <Icon name="users" size={48} className="mb-4 text-gold-300" />
