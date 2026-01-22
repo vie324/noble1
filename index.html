@@ -121,29 +121,153 @@
             { id: 5, name: "セルフホワイトニング", price: 5000, availableStores: [2] } // 新宿南口店のみ
         ];
 
-        // 初期スタッフデータ（空 - 実データを入力）
-        const initialStaffData = [];
-        // スタッフデータ構造: { id, name, role, storeId, sales, target, nomination, retention, reviewScore }
+        // 全角数字を半角数字に変換するヘルパー関数
+        const convertToHalfWidth = (str) => {
+            if (!str) return str;
+            return str.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+        };
 
-        // 回数券マスターデータ
-        const initialTicketMasterData = [];
+        // 数値入力用の変換ハンドラー
+        const normalizeNumberInput = (value) => {
+            const halfWidth = convertToHalfWidth(String(value));
+            return halfWidth.replace(/[^0-9.-]/g, ''); // 数字、マイナス、小数点のみ許可
+        };
+
+        // 初期スタッフデータ（仮データ - 自由に編集可能）
+        const initialStaffData = [
+            {
+                id: 1,
+                name: '田中美咲',
+                employmentType: '正社員',
+                role: '店長',
+                storeId: 1,
+                availableMenus: [1, 2, 3],
+                sales: 850000,
+                target: 1000000,
+                nomination: 25,
+                retention: 75,
+                reviewScore: 4.8
+            },
+            {
+                id: 2,
+                name: '佐藤花子',
+                employmentType: '正社員',
+                role: 'スタッフ',
+                storeId: 1,
+                availableMenus: [1, 2],
+                sales: 620000,
+                target: 800000,
+                nomination: 18,
+                retention: 68,
+                reviewScore: 4.5
+            },
+            {
+                id: 3,
+                name: '鈴木彩香',
+                employmentType: 'アルバイト',
+                role: 'スタッフ',
+                storeId: 2,
+                availableMenus: [2, 4, 5],
+                sales: 480000,
+                target: 600000,
+                nomination: 12,
+                retention: 65,
+                reviewScore: 4.3
+            }
+        ];
+        // スタッフデータ構造: { id, name, employmentType, role, storeId, availableMenus, sales, target, nomination, retention, reviewScore }
+
+        // 回数券マスターデータ（仮データ - 自由に編集可能）
+        const initialTicketMasterData = [
+            { id: 1, name: '5回券', sessions: 5, price: 85000, validMonths: 6, description: 'お得な5回セット' },
+            { id: 2, name: '10回券', sessions: 10, price: 160000, validMonths: 12, description: '10回セット・1年間有効' }
+        ];
         // 回数券マスター構造: { id, name, sessions, price, validMonths, description }
 
-        // 顧客データ（回数券購入者）
-        const initialCustomerData = [];
+        // 顧客データ（仮データ - 自由に編集可能）
+        const initialCustomerData = [
+            {
+                id: 1,
+                name: '山田太郎',
+                phone: '090-1234-5678',
+                email: 'yamada@example.com',
+                purchaseDate: '2025-12-01',
+                ticketMasterId: 1,
+                remainingSessions: 3,
+                expiryDate: '2026-06-01',
+                storeId: 1
+            },
+            {
+                id: 2,
+                name: '高橋愛',
+                phone: '080-9876-5432',
+                email: 'takahashi@example.com',
+                purchaseDate: '2025-11-15',
+                ticketMasterId: 2,
+                remainingSessions: 7,
+                expiryDate: '2026-11-15',
+                storeId: 1
+            }
+        ];
         // 顧客データ構造: { id, name, phone, email, purchaseDate, ticketMasterId, remainingSessions, expiryDate, storeId }
 
-        // 媒体別データ（空 - 実データを入力）
-        const initialMediaSourcesData = [];
+        // 媒体別データ（仮データ - 自由に編集可能）
+        const initialMediaSourcesData = [
+            { id: 1, name: 'ホットペッパー', newVisits: 45, repeatRate: 35, cpa: 8500, sales: 680000 },
+            { id: 2, name: 'Instagram', newVisits: 28, repeatRate: 52, cpa: 3200, sales: 420000 },
+            { id: 3, name: '紹介', newVisits: 15, repeatRate: 78, cpa: 0, sales: 320000 }
+        ];
         // 媒体データ構造: { id, name, newVisits, repeatRate, cpa, sales }
 
-        // 日次売上データ（空 - 実データを入力）
-        const initialDailySalesData = [];
-        // 日次売上構造: { date, storeId, storeName, spotSales, ticketSales, ticketUsage, product, accountingSales, cashIn }
+        // 日次売上データ（仮データ - 自由に編集可能）
+        const initialDailySalesData = [
+            {
+                date: '2026-01-15',
+                storeId: 1,
+                staffId: 1,
+                storeName: '新宿店',
+                spotSales: 120000,
+                ticketSales: 85000,
+                ticketUsage: 54000,
+                product: 28000,
+                accountingSales: 287000,
+                cashIn: 233000
+            },
+            {
+                date: '2026-01-16',
+                storeId: 1,
+                staffId: 2,
+                storeName: '新宿店',
+                spotSales: 95000,
+                ticketSales: 0,
+                ticketUsage: 72000,
+                product: 15000,
+                accountingSales: 182000,
+                cashIn: 110000
+            },
+            {
+                date: '2026-01-15',
+                storeId: 2,
+                staffId: 3,
+                storeName: '新宿南口店',
+                spotSales: 78000,
+                ticketSales: 160000,
+                ticketUsage: 40000,
+                product: 22000,
+                accountingSales: 300000,
+                cashIn: 260000
+            }
+        ];
+        // 日次売上構造: { date, storeId, staffId, storeName, spotSales, ticketSales, ticketUsage, product, accountingSales, cashIn }
 
-        // メニュー別売上データ（空 - 実データを入力）
-        const initialMenuSalesData = [];
-        // メニュー売上構造: { menuId, menuName, count, sales, date, storeId }
+        // メニュー別売上データ（仮データ - 自由に編集可能）
+        const initialMenuSalesData = [
+            { menuId: 1, menuName: '剥離ありハーブピーリング(顔)', count: 8, sales: 144000, date: '2026-01-15', storeId: 1, staffId: 1 },
+            { menuId: 2, menuName: '剥離なしハーブピーリング(顔)', count: 12, sales: 180000, date: '2026-01-15', storeId: 1, staffId: 2 },
+            { menuId: 4, menuName: 'よもぎ蒸し', count: 6, sales: 48000, date: '2026-01-15', storeId: 2, staffId: 3 },
+            { menuId: 5, menuName: 'セルフホワイトニング', count: 10, sales: 50000, date: '2026-01-16', storeId: 2, staffId: 3 }
+        ];
+        // メニュー売上構造: { menuId, menuName, count, sales, date, storeId, staffId }
 
         // --- Google Apps Script連携関数 ---
 
@@ -590,20 +714,41 @@
 
             // Form State
             const [formData, setFormData] = useState({
-                name: '', role: '', storeId: 1, sales: 0, target: 0, nomination: 0, retention: 0, reviewScore: 0
+                name: '',
+                employmentType: '正社員', // 雇用形態
+                role: 'スタッフ',
+                storeId: 1,
+                availableMenus: [], // 施術可能なメニュー（メニューIDの配列）
+                sales: 0,
+                target: 0,
+                nomination: 0,
+                retention: 0,
+                reviewScore: 0
             });
 
             const handleEditClick = (staff) => {
                 setIsEditing(true);
                 setEditingId(staff.id);
-                setFormData({ ...staff });
+                setFormData({
+                    ...staff,
+                    availableMenus: staff.availableMenus || []
+                });
             };
 
             const handleAddClick = () => {
                 setIsEditing(true);
                 setEditingId(null); // New
                 setFormData({
-                    name: '', role: 'スタッフ', storeId: 1, sales: 0, target: 1000000, nomination: 0, retention: 0, reviewScore: 0
+                    name: '',
+                    employmentType: '正社員',
+                    role: 'スタッフ',
+                    storeId: 1,
+                    availableMenus: [],
+                    sales: 0,
+                    target: 0,
+                    nomination: 0,
+                    retention: 0,
+                    reviewScore: 0
                 });
             };
 
@@ -630,9 +775,14 @@
 
             const handleChange = (e) => {
                 const { name, value } = e.target;
+                const isTextField = ['name', 'role', 'employmentType'].includes(name);
+                const isSelectNumber = name === 'storeId';
+                const processedValue = isTextField ? value : normalizeNumberInput(value);
                 setFormData(prev => ({
                     ...prev,
-                    [name]: ['name', 'role'].includes(name) ? value : Number(value)
+                    [name]: isTextField ? processedValue :
+                            isSelectNumber ? Number(value) :
+                            (processedValue === '' ? 0 : Number(processedValue))
                 }));
             };
 
@@ -749,10 +899,19 @@
                                     {editingId ? 'スタッフ情報編集' : '新規スタッフ登録'}
                                 </h3>
                                 <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">氏名</label>
+                                        <input name="name" value={formData.name} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" placeholder="氏名" />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">氏名</label>
-                                            <input name="name" value={formData.name} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" placeholder="氏名" />
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">雇用形態</label>
+                                            <select name="employmentType" value={formData.employmentType} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none">
+                                                <option value="正社員">正社員</option>
+                                                <option value="契約社員">契約社員</option>
+                                                <option value="アルバイト">アルバイト</option>
+                                                <option value="業務委託">業務委託</option>
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">役職</label>
@@ -773,25 +932,24 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1">今月の売上目標</label>
-                                        <input type="number" name="target" value={formData.target} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">現在売上</label>
-                                            <input type="number" name="sales" value={formData.sales} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">指名数</label>
-                                            <input type="number" name="nomination" value={formData.nomination} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">リピート率(%)</label>
-                                            <input type="number" name="retention" value={formData.retention} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">口コミ評価(5.0)</label>
-                                            <input type="number" step="0.1" name="reviewScore" value={formData.reviewScore} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                        <label className="block text-xs font-bold text-gray-500 mb-2">施術可能なメニュー</label>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded p-3 bg-gray-50">
+                                            {menus.filter(m => m.availableStores.includes(formData.storeId)).map(menu => (
+                                                <label key={menu.id} className="flex items-center cursor-pointer hover:bg-white px-2 py-1 rounded transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.availableMenus.includes(menu.id)}
+                                                        onChange={(e) => {
+                                                            const newMenus = e.target.checked
+                                                                ? [...formData.availableMenus, menu.id]
+                                                                : formData.availableMenus.filter(id => id !== menu.id);
+                                                            setFormData(prev => ({ ...prev, availableMenus: newMenus }));
+                                                        }}
+                                                        className="mr-2 accent-gold-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700">{menu.name}</span>
+                                                </label>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
@@ -930,17 +1088,21 @@
 
             const handleTicketFormChange = (e) => {
                 const { name, value } = e.target;
+                const isTextField = ['name', 'description'].includes(name);
+                const processedValue = isTextField ? value : normalizeNumberInput(value);
                 setTicketFormData(prev => ({
                     ...prev,
-                    [name]: ['name', 'description'].includes(name) ? value : Number(value)
+                    [name]: isTextField ? processedValue : (processedValue === '' ? 0 : Number(processedValue))
                 }));
             };
 
             const handleCustomerFormChange = (e) => {
                 const { name, value } = e.target;
+                const isTextField = ['name', 'phone', 'email', 'purchaseDate', 'expiryDate'].includes(name);
+                const processedValue = isTextField ? value : normalizeNumberInput(value);
                 setCustomerFormData(prev => ({
                     ...prev,
-                    [name]: ['name', 'phone', 'email', 'purchaseDate', 'expiryDate'].includes(name) ? value : Number(value)
+                    [name]: isTextField ? processedValue : (processedValue === '' ? 0 : Number(processedValue))
                 }));
             };
 
@@ -1120,15 +1282,15 @@
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">回数</label>
-                                            <input type="number" inputMode="numeric" name="sessions" value={ticketFormData.sessions} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="text" inputMode="numeric" name="sessions" value={ticketFormData.sessions} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">価格(円)</label>
-                                            <input type="number" inputMode="numeric" name="price" value={ticketFormData.price} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="text" inputMode="numeric" name="price" value={ticketFormData.price} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">有効(月)</label>
-                                            <input type="number" inputMode="numeric" name="validMonths" value={ticketFormData.validMonths} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="text" inputMode="numeric" name="validMonths" value={ticketFormData.validMonths} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                     </div>
                                     <div>
@@ -1189,7 +1351,7 @@
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">残回数</label>
-                                            <input name="remainingSessions" type="number" value={customerFormData.remainingSessions} onChange={handleCustomerFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input name="remainingSessions" type="text" inputMode="numeric" value={customerFormData.remainingSessions} onChange={handleCustomerFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                     </div>
                                 </div>
@@ -1340,13 +1502,14 @@
         };
 
         // --- Performance Input View ---
-        const PerformanceInputView = ({ dailySalesData, setDailySalesData, menuSalesData, setMenuSalesData }) => {
+        const PerformanceInputView = ({ dailySalesData, setDailySalesData, menuSalesData, setMenuSalesData, staffList }) => {
             const [activeInputTab, setActiveInputTab] = useState('daily'); // 'daily' or 'menu'
 
             // 日次売上入力フォーム
             const [dailyForm, setDailyForm] = useState({
                 date: new Date().toISOString().split('T')[0],
                 storeId: 1,
+                staffId: null, // スタッフ選択（オプション）
                 spotSales: 0,
                 ticketSales: 0,
                 ticketUsage: 0,
@@ -1358,22 +1521,35 @@
                 date: new Date().toISOString().split('T')[0],
                 menuId: 1,
                 storeId: 1,
+                staffId: null, // スタッフ選択（オプション）
                 count: 0
             });
 
             const handleDailyFormChange = (e) => {
                 const { name, value } = e.target;
+                const isTextField = ['date'].includes(name);
+                const isOptionalNumber = name === 'staffId' || name === 'storeId' || name === 'menuId';
+                const processedValue = isTextField ? value : normalizeNumberInput(value);
                 setDailyForm(prev => ({
                     ...prev,
-                    [name]: ['date'].includes(name) ? value : Number(value)
+                    [name]: isTextField ? processedValue :
+                            (name === 'staffId' && value === '') ? null :
+                            isOptionalNumber ? Number(value) :
+                            (processedValue === '' ? 0 : Number(processedValue))
                 }));
             };
 
             const handleMenuFormChange = (e) => {
                 const { name, value } = e.target;
+                const isTextField = ['date'].includes(name);
+                const isOptionalNumber = name === 'staffId' || name === 'storeId' || name === 'menuId';
+                const processedValue = isTextField ? value : normalizeNumberInput(value);
                 setMenuForm(prev => ({
                     ...prev,
-                    [name]: ['date'].includes(name) ? value : Number(value)
+                    [name]: isTextField ? processedValue :
+                            (name === 'staffId' && value === '') ? null :
+                            isOptionalNumber ? Number(value) :
+                            (processedValue === '' ? 0 : Number(processedValue))
                 }));
             };
 
@@ -1499,9 +1675,24 @@
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">スタッフ（任意）</label>
+                                    <select
+                                        name="staffId"
+                                        value={dailyForm.staffId || ''}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    >
+                                        <option value="">全体（スタッフ指定なし）</option>
+                                        {staffList.filter(s => s.storeId === dailyForm.storeId).map(staff => (
+                                            <option key={staff.id} value={staff.id}>{staff.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">都度払い売上 (円)</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="spotSales"
                                         value={dailyForm.spotSales}
                                         onChange={handleDailyFormChange}
@@ -1512,7 +1703,8 @@
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">回数券販売 (円)</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="ticketSales"
                                         value={dailyForm.ticketSales}
                                         onChange={handleDailyFormChange}
@@ -1523,7 +1715,8 @@
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">回数券消化 (円)</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="ticketUsage"
                                         value={dailyForm.ticketUsage}
                                         onChange={handleDailyFormChange}
@@ -1534,7 +1727,8 @@
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">物販売上 (円)</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="product"
                                         value={dailyForm.product}
                                         onChange={handleDailyFormChange}
@@ -1598,9 +1792,24 @@
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">スタッフ（任意）</label>
+                                    <select
+                                        name="staffId"
+                                        value={menuForm.staffId || ''}
+                                        onChange={handleMenuFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    >
+                                        <option value="">全体（スタッフ指定なし）</option>
+                                        {staffList.filter(s => s.storeId === menuForm.storeId).map(staff => (
+                                            <option key={staff.id} value={staff.id}>{staff.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">施術回数</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="count"
                                         value={menuForm.count}
                                         onChange={handleMenuFormChange}
@@ -1740,9 +1949,10 @@
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
                                         <input
-                                            type="number"
+                                            type="text"
+                                            inputMode="numeric"
                                             value={manualTarget || targetSales}
-                                            onChange={(e) => setManualTarget(e.target.value)}
+                                            onChange={(e) => setManualTarget(normalizeNumberInput(e.target.value))}
                                             className="w-full pl-8 pr-4 py-2 text-xl font-bold text-brown-800 bg-gold-50 border border-gold-200 rounded-lg focus:border-gold-500 outline-none"
                                         />
                                     </div>
@@ -1753,11 +1963,11 @@
                                     <div className="space-y-3">
                                         <div>
                                             <label className="text-xs text-gray-600">新規人数</label>
-                                            <input type="number" value={newCustomers} onChange={(e) => setNewCustomers(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={newCustomers} onChange={(e) => setNewCustomers(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="text-xs text-gray-600">新規単価</label>
-                                            <input type="number" value={newCustomerPrice} onChange={(e) => setNewCustomerPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={newCustomerPrice} onChange={(e) => setNewCustomerPrice(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
                                         </div>
                                         <div className="pt-2 border-t border-blue-200 text-sm font-bold text-blue-900">
                                             売上: ¥{newCustomerSales.toLocaleString()}
@@ -1770,11 +1980,11 @@
                                     <div className="space-y-3">
                                         <div>
                                             <label className="text-xs text-gray-600">リピート人数</label>
-                                            <input type="number" value={repeatCustomers} onChange={(e) => setRepeatCustomers(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={repeatCustomers} onChange={(e) => setRepeatCustomers(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="text-xs text-gray-600">リピート単価</label>
-                                            <input type="number" value={repeatCustomerPrice} onChange={(e) => setRepeatCustomerPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={repeatCustomerPrice} onChange={(e) => setRepeatCustomerPrice(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
                                         </div>
                                         <div className="pt-2 border-t border-emerald-200 text-sm font-bold text-emerald-900">
                                             売上: ¥{repeatCustomerSales.toLocaleString()}
@@ -1797,7 +2007,7 @@
                                         </div>
                                         <div>
                                             <label className="text-xs text-gray-600">回数券平均価格</label>
-                                            <input type="number" value={ticketAvgPrice} onChange={(e) => setTicketAvgPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={ticketAvgPrice} onChange={(e) => setTicketAvgPrice(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
                                         </div>
                                         <div className="text-xs text-gray-500">
                                             予想購入件数: {ticketPurchaseCount}件
@@ -1820,7 +2030,7 @@
                                         </div>
                                         <div>
                                             <label className="text-xs text-gray-600">オプション平均価格</label>
-                                            <input type="number" value={optionAvgPrice} onChange={(e) => setOptionAvgPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-amber-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={optionAvgPrice} onChange={(e) => setOptionAvgPrice(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-amber-500 outline-none" />
                                         </div>
                                         <div className="text-xs text-gray-500">
                                             予想追加件数: {optionCount}件
@@ -1836,7 +2046,7 @@
                                     <div className="space-y-3">
                                         <div>
                                             <label className="text-xs text-gray-600">月間物販売上</label>
-                                            <input type="number" value={productSalesPerMonth} onChange={(e) => setProductSalesPerMonth(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-rose-500 outline-none" />
+                                            <input type="text" inputMode="numeric" value={productSalesPerMonth} onChange={(e) => setProductSalesPerMonth(Number(normalizeNumberInput(e.target.value)) || 0)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-rose-500 outline-none" />
                                         </div>
                                         <div className="pt-2 border-t border-rose-200 text-sm font-bold text-rose-900">
                                             売上: ¥{productSalesPerMonth.toLocaleString()}
@@ -2268,6 +2478,7 @@
                                     setDailySalesData={setDailySalesData}
                                     menuSalesData={menuSalesData}
                                     setMenuSalesData={setMenuSalesData}
+                                    staffList={staffList}
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
                                 {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
