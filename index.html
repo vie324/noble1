@@ -1250,89 +1250,224 @@
         // --- Simulation View (Reused but Styled) ---
         const SimulationView = () => {
             const [targetSales, setTargetSales] = useState(5000000);
-            const [unitPrice, setUnitPrice] = useState(12800);
-            const [visitors, setVisitors] = useState(300);
-            const projectedSales = unitPrice * visitors;
-            const progress = Math.min(100, (projectedSales / targetSales) * 100);
-            const diff = projectedSales - targetSales;
-            const requiredVisitors = Math.ceil(targetSales / unitPrice);
-            const requiredPrice = Math.ceil(targetSales / visitors);
+            const [manualTarget, setManualTarget] = useState('');
+
+            // 新規・リピート関連
+            const [newCustomers, setNewCustomers] = useState(80);
+            const [repeatCustomers, setRepeatCustomers] = useState(150);
+            const [newCustomerPrice, setNewCustomerPrice] = useState(15000);
+            const [repeatCustomerPrice, setRepeatCustomerPrice] = useState(12000);
+
+            // 回数券関連
+            const [ticketPurchaseRate, setTicketPurchaseRate] = useState(30); // %
+            const [ticketAvgPrice, setTicketAvgPrice] = useState(100000);
+
+            // オプション・物販
+            const [optionRate, setOptionRate] = useState(40); // %
+            const [optionAvgPrice, setOptionAvgPrice] = useState(5000);
+            const [productSalesPerMonth, setProductSalesPerMonth] = useState(200000);
+
+            // 計算
+            const totalCustomers = newCustomers + repeatCustomers;
+            const ticketPurchaseCount = Math.round((newCustomers * ticketPurchaseRate) / 100);
+            const optionCount = Math.round((totalCustomers * optionRate) / 100);
+
+            const newCustomerSales = newCustomers * newCustomerPrice;
+            const repeatCustomerSales = repeatCustomers * repeatCustomerPrice;
+            const ticketSales = ticketPurchaseCount * ticketAvgPrice;
+            const optionSales = optionCount * optionAvgPrice;
+
+            const projectedSales = newCustomerSales + repeatCustomerSales + optionSales + productSalesPerMonth;
+            const displayTarget = manualTarget ? Number(manualTarget) : targetSales;
+            const progress = Math.min(100, (projectedSales / displayTarget) * 100);
+            const diff = projectedSales - displayTarget;
 
             return (
                 <div className="space-y-6">
                     <Card>
-                        <h2 className="text-xl font-bold text-brown-800 mb-2 serif">目標達成シミュレーション</h2>
-                        <p className="text-sm text-gray-500 mb-8">パラメータを操作して、目標達成に必要な単価と集客数を算出します。</p>
+                        <h2 className="text-xl font-bold text-brown-800 mb-2 serif">詳細売上シミュレーション</h2>
+                        <p className="text-sm text-gray-500 mb-8">新規・リピート・回数券・オプション・物販を含めた詳細な売上予測</p>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                            <div className="space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* 左カラム: 目標設定 */}
+                            <div className="space-y-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">月間目標売上</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">月間目標売上（手入力可）</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
-                                        <input 
-                                            type="number" 
-                                            value={targetSales}
-                                            onChange={(e) => setTargetSales(Number(e.target.value))}
-                                            className="w-full pl-8 pr-4 py-3 text-2xl font-bold text-brown-800 bg-gold-50 border border-gold-200 rounded-lg focus:border-gold-500 outline-none font-ui"
+                                        <input
+                                            type="number"
+                                            value={manualTarget || targetSales}
+                                            onChange={(e) => setManualTarget(e.target.value)}
+                                            className="w-full pl-8 pr-4 py-2 text-xl font-bold text-brown-800 bg-gold-50 border border-gold-200 rounded-lg focus:border-gold-500 outline-none"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-700">平均客単価</label>
-                                            <span className="text-lg font-bold text-gold-600">¥{unitPrice.toLocaleString()}</span>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-sm text-blue-900 mb-3">新規顧客</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-xs text-gray-600">新規人数</label>
+                                            <input type="number" value={newCustomers} onChange={(e) => setNewCustomers(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
                                         </div>
-                                        <input 
-                                            type="range" min="5000" max="30000" step="100" value={unitPrice}
-                                            onChange={(e) => setUnitPrice(Number(e.target.value))}
-                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gold-500"
-                                        />
+                                        <div>
+                                            <label className="text-xs text-gray-600">新規単価</label>
+                                            <input type="number" value={newCustomerPrice} onChange={(e) => setNewCustomerPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 outline-none" />
+                                        </div>
+                                        <div className="pt-2 border-t border-blue-200 text-sm font-bold text-blue-900">
+                                            売上: ¥{newCustomerSales.toLocaleString()}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-700">月間来客数</label>
-                                            <span className="text-lg font-bold text-blue-600">{visitors}人</span>
+                                </div>
+
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-sm text-emerald-900 mb-3">リピート顧客</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-xs text-gray-600">リピート人数</label>
+                                            <input type="number" value={repeatCustomers} onChange={(e) => setRepeatCustomers(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
                                         </div>
-                                        <input 
-                                            type="range" min="50" max="1000" step="10" value={visitors}
-                                            onChange={(e) => setVisitors(Number(e.target.value))}
-                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                                        />
+                                        <div>
+                                            <label className="text-xs text-gray-600">リピート単価</label>
+                                            <input type="number" value={repeatCustomerPrice} onChange={(e) => setRepeatCustomerPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-emerald-500 outline-none" />
+                                        </div>
+                                        <div className="pt-2 border-t border-emerald-200 text-sm font-bold text-emerald-900">
+                                            売上: ¥{repeatCustomerSales.toLocaleString()}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="relative bg-gradient-to-br from-brown-900 to-brown-800 rounded-xl p-8 text-white overflow-hidden flex flex-col justify-center">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500 opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                                <div className="relative z-10 text-center">
-                                    <h3 className="text-gold-200 font-medium mb-1 serif">予測月間売上</h3>
-                                    <div className="text-5xl font-bold font-ui mb-6">¥{projectedSales.toLocaleString()}</div>
-                                    
-                                    <div className="w-full bg-white/20 rounded-full h-2 mb-6">
-                                        <div 
-                                            className={`h-full rounded-full transition-all duration-500 ${diff >= 0 ? 'bg-gold-400' : 'bg-white/50'}`}
-                                            style={{width: `${progress}%`}}
-                                        ></div>
+                            {/* 中央カラム: 回数券・オプション */}
+                            <div className="space-y-6">
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-sm text-purple-900 mb-3">回数券販売</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-xs text-gray-600">購入率（新規の%）</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="range" min="0" max="100" value={ticketPurchaseRate} onChange={(e) => setTicketPurchaseRate(Number(e.target.value))} className="flex-1 accent-purple-500" />
+                                                <span className="text-sm font-bold text-purple-900 w-12">{ticketPurchaseRate}%</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-600">回数券平均価格</label>
+                                            <input type="number" value={ticketAvgPrice} onChange={(e) => setTicketAvgPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            予想購入件数: {ticketPurchaseCount}件
+                                        </div>
+                                        <div className="pt-2 border-t border-purple-200 text-sm font-bold text-purple-900">
+                                            売上: ¥{ticketSales.toLocaleString()}
+                                        </div>
                                     </div>
+                                </div>
 
-                                    {diff < 0 ? (
-                                        <div className="bg-white/10 backdrop-blur rounded p-4 border border-white/10 text-left">
-                                            <p className="text-sm font-bold text-rose-300 mb-1 flex items-center"><Icon name="alert-triangle" size={16} className="mr-2"/> 目標未達成</p>
-                                            <p className="text-xs text-gray-300">不足額: ¥{Math.abs(diff).toLocaleString()}</p>
-                                            <p className="text-xs text-gray-300 mt-2 pt-2 border-t border-white/10">
-                                                対策: 単価を <span className="text-gold-300 font-bold">¥{requiredPrice.toLocaleString()}</span> に上げるか、
-                                                集客を <span className="text-blue-300 font-bold">{requiredVisitors}人</span> に増やしてください。
-                                            </p>
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-sm text-amber-900 mb-3">オプション追加</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-xs text-gray-600">追加率（全体の%）</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="range" min="0" max="100" value={optionRate} onChange={(e) => setOptionRate(Number(e.target.value))} className="flex-1 accent-amber-500" />
+                                                <span className="text-sm font-bold text-amber-900 w-12">{optionRate}%</span>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="bg-white/10 backdrop-blur rounded p-4 border border-white/10 text-left">
-                                            <p className="text-sm font-bold text-emerald-300 mb-1 flex items-center"><Icon name="check" size={16} className="mr-2"/> 目標達成圏内</p>
-                                            <p className="text-xs text-gray-300">余剰予測: +¥{diff.toLocaleString()}</p>
+                                        <div>
+                                            <label className="text-xs text-gray-600">オプション平均価格</label>
+                                            <input type="number" value={optionAvgPrice} onChange={(e) => setOptionAvgPrice(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-amber-500 outline-none" />
                                         </div>
-                                    )}
+                                        <div className="text-xs text-gray-500">
+                                            予想追加件数: {optionCount}件
+                                        </div>
+                                        <div className="pt-2 border-t border-amber-200 text-sm font-bold text-amber-900">
+                                            売上: ¥{optionSales.toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-sm text-rose-900 mb-3">物販売上</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-xs text-gray-600">月間物販売上</label>
+                                            <input type="number" value={productSalesPerMonth} onChange={(e) => setProductSalesPerMonth(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm focus:border-rose-500 outline-none" />
+                                        </div>
+                                        <div className="pt-2 border-t border-rose-200 text-sm font-bold text-rose-900">
+                                            売上: ¥{productSalesPerMonth.toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 右カラム: 結果表示 */}
+                            <div className="space-y-6">
+                                <div className="relative bg-gradient-to-br from-brown-900 to-brown-800 rounded-xl p-6 text-white overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-48 h-48 bg-gold-500 opacity-10 rounded-full blur-3xl -mr-12 -mt-12"></div>
+                                    <div className="relative z-10">
+                                        <h3 className="text-gold-200 font-medium mb-1 text-sm">予測月間売上</h3>
+                                        <div className="text-4xl font-bold mb-4">¥{projectedSales.toLocaleString()}</div>
+
+                                        <div className="w-full bg-white/20 rounded-full h-2 mb-4">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${diff >= 0 ? 'bg-gold-400' : 'bg-white/50'}`}
+                                                style={{width: `${progress}%`}}
+                                            ></div>
+                                        </div>
+
+                                        {diff < 0 ? (
+                                            <div className="bg-white/10 backdrop-blur rounded p-3 border border-white/10">
+                                                <p className="text-sm font-bold text-rose-300 mb-1 flex items-center"><Icon name="alert-triangle" size={14} className="mr-2"/> 目標未達成</p>
+                                                <p className="text-xs text-gray-300">不足額: ¥{Math.abs(diff).toLocaleString()}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-white/10 backdrop-blur rounded p-3 border border-white/10">
+                                                <p className="text-sm font-bold text-emerald-300 mb-1 flex items-center"><Icon name="check" size={14} className="mr-2"/> 目標達成</p>
+                                                <p className="text-xs text-gray-300">余剰: +¥{diff.toLocaleString()}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border border-gold-200 rounded-xl p-5">
+                                    <h4 className="font-bold text-brown-800 mb-4 text-sm">売上内訳</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">新規顧客売上</span>
+                                            <span className="font-bold text-blue-700">¥{newCustomerSales.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">リピート売上</span>
+                                            <span className="font-bold text-emerald-700">¥{repeatCustomerSales.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">回数券売上</span>
+                                            <span className="font-bold text-purple-700">¥{ticketSales.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">オプション売上</span>
+                                            <span className="font-bold text-amber-700">¥{optionSales.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">物販売上</span>
+                                            <span className="font-bold text-rose-700">¥{productSalesPerMonth.toLocaleString()}</span>
+                                        </div>
+                                        <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between items-center">
+                                            <span className="font-bold text-brown-800">合計</span>
+                                            <span className="font-bold text-xl text-gold-600">¥{projectedSales.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gold-50 border border-gold-200 rounded-lg p-4">
+                                    <h4 className="font-bold text-brown-800 mb-3 text-sm">サマリー</h4>
+                                    <div className="space-y-1 text-xs text-gray-700">
+                                        <p>• 総来客予測: {totalCustomers}人</p>
+                                        <p>• 客単価平均: ¥{Math.round(projectedSales / totalCustomers).toLocaleString()}</p>
+                                        <p>• 回数券購入予測: {ticketPurchaseCount}件</p>
+                                        <p>• オプション追加予測: {optionCount}件</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1403,12 +1538,13 @@
                 setSaveMessage('');
 
                 try {
-                    // 日次売上を保存
-                    await saveDailySalesData(dailySalesData);
-                    // メニュー別売上を保存
-                    await saveMenuSalesData(menuSalesData);
-                    // スタッフ実績を保存
-                    await saveStaffPerformanceData(staffList);
+                    await saveToSpreadsheet('saveAllData', {
+                        staffData: staffList,
+                        ticketData: ticketMasterList,
+                        customerData: customerList,
+                        dailySalesData: dailySalesData,
+                        menuSalesData: menuSalesData
+                    });
 
                     setSaveMessage('✓ データをスプレッドシートに保存しました');
                     setTimeout(() => setSaveMessage(''), 3000);
@@ -1417,6 +1553,45 @@
                 }
 
                 setIsSaving(false);
+            };
+
+            // スプレッドシートから全データを読み込み
+            const handleLoadFromSpreadsheet = async () => {
+                setIsLoading(true);
+                setSaveMessage('');
+
+                try {
+                    const response = await fetch(GAS_WEB_APP_URL + '?action=getAllData', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ action: 'getAllData' })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success && result.data) {
+                        if (result.data.staff) {
+                            setStaffList(result.data.staff);
+                        }
+                        if (result.data.ticketMasters) {
+                            setTicketMasterList(result.data.ticketMasters);
+                        }
+                        if (result.data.customers) {
+                            setCustomerList(result.data.customers);
+                        }
+
+                        setSaveMessage('✓ データをスプレッドシートから読み込みました');
+                        setTimeout(() => setSaveMessage(''), 3000);
+                    } else {
+                        setSaveMessage('✗ データの読み込みに失敗しました');
+                    }
+                } catch (error) {
+                    setSaveMessage('✗ 読み込みエラー: ' + error.message);
+                }
+
+                setIsLoading(false);
             };
 
             const NavItem = ({ id, icon, label }) => (
@@ -1492,16 +1667,26 @@
                                 </p>
                             </div>
                             <div className="flex items-center space-x-6">
-                                {/* スプレッドシート保存ボタン */}
+                                {/* スプレッドシート保存・読み込みボタン */}
                                 <div className="flex flex-col items-end">
-                                    <button
-                                        onClick={handleSaveToSpreadsheet}
-                                        disabled={isSaving}
-                                        className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
-                                    >
-                                        <Icon name={isSaving ? "loader" : "save"} size={16} className={`mr-2 ${isSaving ? 'animate-spin' : ''}`} />
-                                        {isSaving ? '保存中...' : 'スプレッドシートに保存'}
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleLoadFromSpreadsheet}
+                                            disabled={isLoading}
+                                            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                                        >
+                                            <Icon name={isLoading ? "loader" : "download"} size={16} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                                            {isLoading ? '読込中...' : '読み込み'}
+                                        </button>
+                                        <button
+                                            onClick={handleSaveToSpreadsheet}
+                                            disabled={isSaving}
+                                            className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                                        >
+                                            <Icon name={isSaving ? "loader" : "save"} size={16} className={`mr-2 ${isSaving ? 'animate-spin' : ''}`} />
+                                            {isSaving ? '保存中...' : '保存'}
+                                        </button>
+                                    </div>
                                     {saveMessage && (
                                         <span className={`text-xs mt-1 ${saveMessage.includes('✓') ? 'text-emerald-600' : 'text-rose-600'}`}>
                                             {saveMessage}

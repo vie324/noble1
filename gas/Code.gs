@@ -28,6 +28,14 @@ function doPost(e) {
         return saveMenuSales(data.menuData);
       case 'saveStaffPerformance':
         return saveStaffPerformance(data.staffData);
+      case 'saveTicketMasters':
+        return saveTicketMasters(data.ticketData);
+      case 'saveCustomers':
+        return saveCustomers(data.customerData);
+      case 'saveAllData':
+        return saveAllData(data);
+      case 'getAllData':
+        return getAllData();
       case 'getDailySales':
         return getDailySales(data.startDate, data.endDate);
       default:
@@ -250,10 +258,199 @@ function setupSpreadsheet() {
 }
 
 /**
+ * 回数券マスターデータを保存
+ */
+function saveTicketMasters(ticketData) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName('回数券マスター');
+
+    if (!sheet) {
+      sheet = ss.insertSheet('回数券マスター');
+      sheet.appendRow(['ID', '回数券名', '回数', '価格', '有効期限(月)', '説明', '登録日時']);
+    }
+
+    // 既存データをクリア（ヘッダーは残す）
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 7).clearContent();
+    }
+
+    // 新しいデータを追加
+    const timestamp = new Date();
+    ticketData.forEach(ticket => {
+      sheet.appendRow([
+        ticket.id,
+        ticket.name,
+        ticket.sessions,
+        ticket.price,
+        ticket.validMonths,
+        ticket.description,
+        timestamp
+      ]);
+    });
+
+    return createResponse(true, '回数券マスターを保存しました', { rowsAdded: ticketData.length });
+  } catch (error) {
+    return createResponse(false, '保存エラー: ' + error.toString());
+  }
+}
+
+/**
+ * 顧客データを保存
+ */
+function saveCustomers(customerData) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName('顧客管理');
+
+    if (!sheet) {
+      sheet = ss.insertSheet('顧客管理');
+      sheet.appendRow([
+        'ID', '氏名', '電話番号', 'メールアドレス', '購入日',
+        '回数券ID', '残回数', '有効期限', '店舗ID', '登録日時'
+      ]);
+    }
+
+    // 既存データをクリア
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 10).clearContent();
+    }
+
+    // 新しいデータを追加
+    const timestamp = new Date();
+    customerData.forEach(customer => {
+      sheet.appendRow([
+        customer.id,
+        customer.name,
+        customer.phone,
+        customer.email,
+        customer.purchaseDate,
+        customer.ticketMasterId,
+        customer.remainingSessions,
+        customer.expiryDate,
+        customer.storeId,
+        timestamp
+      ]);
+    });
+
+    return createResponse(true, '顧客データを保存しました', { rowsAdded: customerData.length });
+  } catch (error) {
+    return createResponse(false, '保存エラー: ' + error.toString());
+  }
+}
+
+/**
+ * 全データを一括保存
+ */
+function saveAllData(data) {
+  try {
+    const results = {};
+
+    if (data.staffData && data.staffData.length > 0) {
+      saveStaffPerformance(data.staffData);
+      results.staff = data.staffData.length;
+    }
+
+    if (data.ticketData && data.ticketData.length > 0) {
+      saveTicketMasters(data.ticketData);
+      results.tickets = data.ticketData.length;
+    }
+
+    if (data.customerData && data.customerData.length > 0) {
+      saveCustomers(data.customerData);
+      results.customers = data.customerData.length;
+    }
+
+    if (data.dailySalesData && data.dailySalesData.length > 0) {
+      saveDailySales(data.dailySalesData);
+      results.dailySales = data.dailySalesData.length;
+    }
+
+    if (data.menuSalesData && data.menuSalesData.length > 0) {
+      saveMenuSales(data.menuSalesData);
+      results.menuSales = data.menuSalesData.length;
+    }
+
+    return createResponse(true, '全データを保存しました', results);
+  } catch (error) {
+    return createResponse(false, '保存エラー: ' + error.toString());
+  }
+}
+
+/**
+ * 全データを取得
+ */
+function getAllData() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const result = {};
+
+    // スタッフデータ取得
+    const staffSheet = ss.getSheetByName('スタッフ実績');
+    if (staffSheet) {
+      const staffData = staffSheet.getDataRange().getValues();
+      if (staffData.length > 1) {
+        result.staff = staffData.slice(1).map(row => ({
+          id: row[0],
+          name: row[1],
+          role: row[2],
+          storeId: row[3],
+          sales: row[4],
+          target: row[5],
+          nomination: row[7],
+          retention: row[8],
+          reviewScore: row[9]
+        }));
+      }
+    }
+
+    // 回数券マスター取得
+    const ticketSheet = ss.getSheetByName('回数券マスター');
+    if (ticketSheet) {
+      const ticketData = ticketSheet.getDataRange().getValues();
+      if (ticketData.length > 1) {
+        result.ticketMasters = ticketData.slice(1).map(row => ({
+          id: row[0],
+          name: row[1],
+          sessions: row[2],
+          price: row[3],
+          validMonths: row[4],
+          description: row[5]
+        }));
+      }
+    }
+
+    // 顧客データ取得
+    const customerSheet = ss.getSheetByName('顧客管理');
+    if (customerSheet) {
+      const customerData = customerSheet.getDataRange().getValues();
+      if (customerData.length > 1) {
+        result.customers = customerData.slice(1).map(row => ({
+          id: row[0],
+          name: row[1],
+          phone: row[2],
+          email: row[3],
+          purchaseDate: row[4],
+          ticketMasterId: row[5],
+          remainingSessions: row[6],
+          expiryDate: row[7],
+          storeId: row[8]
+        }));
+      }
+    }
+
+    return createResponse(true, 'データを取得しました', result);
+  } catch (error) {
+    return createResponse(false, '取得エラー: ' + error.toString());
+  }
+}
+
+/**
  * テストデータを生成してスプレッドシートに保存
  */
 function generateTestData() {
-  // テスト用の日次売上データ
   const testSalesData = [
     {
       day: '1日',
