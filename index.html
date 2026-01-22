@@ -1120,15 +1120,15 @@
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">回数</label>
-                                            <input type="number" name="sessions" value={ticketFormData.sessions} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="number" inputMode="numeric" name="sessions" value={ticketFormData.sessions} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">価格(円)</label>
-                                            <input type="number" name="price" value={ticketFormData.price} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="number" inputMode="numeric" name="price" value={ticketFormData.price} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">有効(月)</label>
-                                            <input type="number" name="validMonths" value={ticketFormData.validMonths} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                            <input type="number" inputMode="numeric" name="validMonths" value={ticketFormData.validMonths} onChange={handleTicketFormChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
                                         </div>
                                     </div>
                                     <div>
@@ -2046,6 +2046,14 @@
 
                 setIsLoading(false);
             };
+
+            // スタッフモードの場合、初回ロード時にデータを自動取得
+            useEffect(() => {
+                // GAS URLが設定されていて、スタッフモードで、まだデータが読み込まれていない場合
+                if (isStaffMode && GAS_WEB_APP_URL && GAS_WEB_APP_URL !== 'YOUR_GAS_WEB_APP_URL_HERE' && staffList.length === 0) {
+                    handleLoadFromSpreadsheet();
+                }
+            }, []); // 初回マウント時のみ実行
 
             const NavItem = ({ id, icon, label }) => (
                 <button
