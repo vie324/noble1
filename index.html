@@ -207,6 +207,28 @@
                 remainingSessions: 7,
                 expiryDate: '2026-11-15',
                 storeId: 1
+            },
+            {
+                id: 3,
+                name: '佐藤健',
+                phone: '090-5555-1234',
+                email: 'sato@example.com',
+                purchaseDate: '2025-12-20',
+                ticketMasterId: 1,
+                remainingSessions: 1,
+                expiryDate: '2026-02-15', // 有効期限間近
+                storeId: 2
+            },
+            {
+                id: 4,
+                name: '田中美香',
+                phone: '080-7777-9999',
+                email: 'tanaka@example.com',
+                purchaseDate: '2025-12-25',
+                ticketMasterId: 1,
+                remainingSessions: 4,
+                expiryDate: '2026-01-31', // 有効期限間近
+                storeId: 1
             }
         ];
         // 顧客データ構造: { id, name, phone, email, purchaseDate, ticketMasterId, remainingSessions, expiryDate, storeId }
@@ -364,8 +386,9 @@
 
         // --- Main Sections ---
 
-        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [] }) => {
-            const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff'
+        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [] }) => {
+            const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff_{id}'
+            const [selectedStaffId, setSelectedStaffId] = useState(null);
 
             // フィルタリングされた売上データ
             const filteredDailySales = useMemo(() => {
@@ -374,22 +397,15 @@
 
                 if (viewMode === 'store_1' || viewMode === 'store_2') {
                     const storeId = viewMode === 'store_1' ? 1 : 2;
-                    return dailySalesData.map(dayData => {
-                        const storeInfo = dayData.storeData?.find(s => s.storeId === storeId) || {};
-                        return {
-                            day: dayData.day,
-                            spotSales: storeInfo.spotSales || 0,
-                            ticketSales: storeInfo.ticketSales || 0,
-                            ticketUsage: storeInfo.ticketUsage || 0,
-                            product: storeInfo.product || 0,
-                            accountingSales: storeInfo.accountingSales || 0,
-                            cashIn: storeInfo.cashIn || 0
-                        };
-                    });
+                    return dailySalesData.filter(d => d.storeId === storeId);
                 }
 
-                return dailySalesData; // スタッフビューは後で実装
-            }, [dailySalesData, viewMode]);
+                if (viewMode === 'staff' && selectedStaffId) {
+                    return dailySalesData.filter(d => d.staffId === selectedStaffId);
+                }
+
+                return dailySalesData;
+            }, [dailySalesData, viewMode, selectedStaffId]);
 
             const filteredStaffList = useMemo(() => {
                 if (viewMode === 'all' || viewMode === 'staff') return staffList;
@@ -403,6 +419,18 @@
             const totalCashIn = filteredDailySales.reduce((acc, curr) => acc + (curr.cashIn || 0), 0);
             const totalTicketUsage = filteredDailySales.reduce((acc, curr) => acc + (curr.ticketUsage || 0), 0);
             const totalTicketSales = filteredDailySales.reduce((acc, curr) => acc + (curr.ticketSales || 0), 0);
+
+            // 有効期限が近い顧客を計算（30日以内）
+            const expiringCustomers = useMemo(() => {
+                const today = new Date();
+                const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+                return customerList.filter(customer => {
+                    if (!customer.expiryDate) return false;
+                    const expiryDate = new Date(customer.expiryDate);
+                    return expiryDate >= today && expiryDate <= thirtyDaysLater && customer.remainingSessions > 0;
+                });
+            }, [customerList]);
 
             if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
 
@@ -470,13 +498,25 @@
                 <div className="space-y-6">
                     {/* 店舗/スタッフ切り替えタブ */}
                     <div className="bg-white rounded-lg p-4 shadow-sm border border-gold-200">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
                             <h3 className="text-sm font-bold text-gray-600 serif">表示切替</h3>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 <ViewTab id="all" label="全店舗合計" />
                                 <ViewTab id="store_1" label="新宿店" />
                                 <ViewTab id="store_2" label="新宿南口店" />
                                 <ViewTab id="staff" label="スタッフ別" />
+                                {viewMode === 'staff' && (
+                                    <select
+                                        value={selectedStaffId || ''}
+                                        onChange={(e) => setSelectedStaffId(Number(e.target.value))}
+                                        className="ml-2 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-gold-500 outline-none bg-white"
+                                    >
+                                        <option value="">スタッフを選択</option>
+                                        {staffList.map(staff => (
+                                            <option key={staff.id} value={staff.id}>{staff.name} ({stores.find(s => s.id === staff.storeId)?.name})</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -577,17 +617,30 @@
                             </Card>
 
                             {/* Ticket Alert */}
-                            <div className="bg-gradient-to-br from-brown-800 to-brown-900 text-gold-100 p-6 rounded-lg shadow-lg">
+                            <div className={`p-6 rounded-lg shadow-lg ${expiringCustomers.length > 0 ? 'bg-gradient-to-br from-rose-600 to-rose-700' : 'bg-gradient-to-br from-emerald-600 to-emerald-700'} text-white`}>
                                 <div className="flex items-center mb-3">
-                                    <Icon name="alert-circle" size={20} className="text-gold-400 mr-2" />
+                                    <Icon name={expiringCustomers.length > 0 ? "alert-circle" : "check-circle"} size={20} className="text-white mr-2" />
                                     <h3 className="font-bold serif">有効期限アラート</h3>
                                 </div>
-                                <p className="text-sm opacity-90 mb-4">
-                                    今月末で有効期限が切れる回数券を持つ顧客が <span className="font-bold text-white text-lg">12名</span> います。
-                                </p>
-                                <button className="w-full bg-gold-500 hover:bg-gold-600 text-white text-sm font-bold py-2 rounded transition-colors">
-                                    対象顧客リストを表示
-                                </button>
+                                {expiringCustomers.length > 0 ? (
+                                    <>
+                                        <p className="text-sm opacity-90 mb-4">
+                                            30日以内に有効期限が切れる回数券を持つ顧客が <span className="font-bold text-white text-lg">{expiringCustomers.length}名</span> います。
+                                        </p>
+                                        <div className="bg-white/20 rounded p-3 mb-4 max-h-32 overflow-y-auto">
+                                            {expiringCustomers.map(customer => (
+                                                <div key={customer.id} className="text-xs mb-2 last:mb-0 flex justify-between items-center">
+                                                    <span>{customer.name}</span>
+                                                    <span className="opacity-75">{customer.expiryDate} (残{customer.remainingSessions}回)</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-sm opacity-90 mb-4">
+                                        現在、30日以内に有効期限が切れる回数券はありません。
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -2502,7 +2555,7 @@
                                             </div>
                                         </div>
                                     ) : (
-                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} mediaSourcesData={mediaSourcesList} />
+                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} mediaSourcesData={mediaSourcesList} customerList={customerList} />
                                     )
                                 )}
                                 {activeTab === 'input' && <PerformanceInputView
