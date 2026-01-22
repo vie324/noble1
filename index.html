@@ -785,12 +785,15 @@
                 const { name, value } = e.target;
                 const isTextField = ['name', 'role', 'employmentType'].includes(name);
                 const isSelectNumber = name === 'storeId';
-                const processedValue = isTextField ? value : normalizeNumberInput(value);
+
                 setFormData(prev => ({
                     ...prev,
-                    [name]: isTextField ? processedValue :
+                    [name]: isTextField ? value :
                             isSelectNumber ? Number(value) :
-                            (processedValue === '' ? 0 : Number(processedValue))
+                            (() => {
+                                const processedValue = normalizeNumberInput(value);
+                                return processedValue === '' ? 0 : Number(processedValue);
+                            })()
                 }));
             };
 
@@ -1108,10 +1111,16 @@
             const handleCustomerFormChange = (e) => {
                 const { name, value } = e.target;
                 const isTextField = ['name', 'phone', 'email', 'purchaseDate', 'expiryDate'].includes(name);
-                const processedValue = isTextField ? value : normalizeNumberInput(value);
+                const isSelectNumber = ['ticketMasterId', 'storeId'].includes(name);
+
                 setCustomerFormData(prev => ({
                     ...prev,
-                    [name]: isTextField ? processedValue : (processedValue === '' ? 0 : Number(processedValue))
+                    [name]: isTextField ? value :
+                            isSelectNumber ? Number(value) :
+                            (() => {
+                                const processedValue = normalizeNumberInput(value);
+                                return processedValue === '' ? 0 : Number(processedValue);
+                            })()
                 }));
             };
 
@@ -1537,28 +1546,34 @@
             const handleDailyFormChange = (e) => {
                 const { name, value } = e.target;
                 const isTextField = ['date'].includes(name);
-                const isOptionalNumber = name === 'staffId' || name === 'storeId' || name === 'menuId';
-                const processedValue = isTextField ? value : normalizeNumberInput(value);
+                const isSelectNumber = ['staffId', 'storeId', 'menuId'].includes(name);
+
                 setDailyForm(prev => ({
                     ...prev,
-                    [name]: isTextField ? processedValue :
+                    [name]: isTextField ? value :
                             (name === 'staffId' && value === '') ? null :
-                            isOptionalNumber ? Number(value) :
-                            (processedValue === '' ? 0 : Number(processedValue))
+                            isSelectNumber ? (value === '' ? null : Number(value)) :
+                            (() => {
+                                const processedValue = normalizeNumberInput(value);
+                                return processedValue === '' ? 0 : Number(processedValue);
+                            })()
                 }));
             };
 
             const handleMenuFormChange = (e) => {
                 const { name, value } = e.target;
                 const isTextField = ['date'].includes(name);
-                const isOptionalNumber = name === 'staffId' || name === 'storeId' || name === 'menuId';
-                const processedValue = isTextField ? value : normalizeNumberInput(value);
+                const isSelectNumber = ['staffId', 'storeId', 'menuId'].includes(name);
+
                 setMenuForm(prev => ({
                     ...prev,
-                    [name]: isTextField ? processedValue :
+                    [name]: isTextField ? value :
                             (name === 'staffId' && value === '') ? null :
-                            isOptionalNumber ? Number(value) :
-                            (processedValue === '' ? 0 : Number(processedValue))
+                            isSelectNumber ? (value === '' ? null : Number(value)) :
+                            (() => {
+                                const processedValue = normalizeNumberInput(value);
+                                return processedValue === '' ? 0 : Number(processedValue);
+                            })()
                 }));
             };
 
