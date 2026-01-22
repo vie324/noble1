@@ -364,7 +364,7 @@
 
         // --- Main Sections ---
 
-        const DashboardView = ({ staffList, dailySalesData, menuSalesData }) => {
+        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [] }) => {
             const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff'
 
             // フィルタリングされた売上データ
@@ -652,19 +652,27 @@
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm divide-y divide-gray-50">
-                                        {mediaSourcesData.map((media) => (
-                                            <tr key={media.id} className="hover:bg-gold-50/50">
-                                                <td className="py-3 font-medium text-brown-800">{media.name}</td>
-                                                <td className="py-3 text-right">{media.newVisits}</td>
-                                                <td className="py-3 text-right">¥{media.cpa.toLocaleString()}</td>
-                                                <td className="py-3 text-right">
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${media.repeatRate >= 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                        {media.repeatRate}%
-                                                    </span>
+                                        {mediaSourcesData && mediaSourcesData.length > 0 ? (
+                                            mediaSourcesData.map((media) => (
+                                                <tr key={media.id} className="hover:bg-gold-50/50">
+                                                    <td className="py-3 font-medium text-brown-800">{media.name}</td>
+                                                    <td className="py-3 text-right">{media.newVisits}</td>
+                                                    <td className="py-3 text-right">¥{media.cpa.toLocaleString()}</td>
+                                                    <td className="py-3 text-right">
+                                                        <span className={`px-2 py-1 rounded-full text-xs ${media.repeatRate >= 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                            {media.repeatRate}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 text-right font-medium">¥{media.sales.toLocaleString()}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="5" className="py-6 text-center text-gray-400 text-sm">
+                                                    媒体データがありません
                                                 </td>
-                                                <td className="py-3 text-right font-medium">¥{media.sales.toLocaleString()}</td>
                                             </tr>
-                                        ))}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -2494,7 +2502,7 @@
                                             </div>
                                         </div>
                                     ) : (
-                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} />
+                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} mediaSourcesData={mediaSourcesList} />
                                     )
                                 )}
                                 {activeTab === 'input' && <PerformanceInputView
