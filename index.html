@@ -649,11 +649,20 @@
         };
 
         // --- Media Analysis Section (New) ---
-        const SalesAnalysisView = ({ dailySalesData }) => {
+        const SalesAnalysisView = ({ dailySalesData, mediaSourcesData = [] }) => {
              if (!window.Recharts) return <div>Loading Charts...</div>;
 
             // 空データチェック
-            const hasData = dailySalesData && dailySalesData.length > 0;
+            const hasData = (dailySalesData && dailySalesData.length > 0) || (mediaSourcesData && mediaSourcesData.length > 0);
+
+            // データを整形（dayフィールドを追加）
+            const formattedDailySalesData = useMemo(() => {
+                if (!dailySalesData || dailySalesData.length === 0) return [];
+                return dailySalesData.map(entry => ({
+                    ...entry,
+                    day: entry.day || (entry.date ? new Date(entry.date).getDate() + '日' : '')
+                }));
+            }, [dailySalesData]);
 
             if (!hasData) {
                 return (
@@ -738,7 +747,7 @@
                          <Card className="col-span-1">
                             <h2 className="text-lg font-bold text-brown-800 mb-6 serif">売上推移（キャッシュイン vs 役務消化）</h2>
                              <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={dailySalesData}>
+                                <AreaChart data={formattedDailySalesData}>
                                     <defs>
                                         <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
@@ -1469,9 +1478,36 @@
             if (!window.Recharts) return <div>Loading Charts...</div>;
 
             const hasData = menuSalesData && menuSalesData.length > 0;
+
+            // メニューIDごとにデータを集約
+            const aggregatedMenuData = useMemo(() => {
+                if (!hasData) return [];
+
+                const menuMap = {};
+                menuSalesData.forEach(entry => {
+                    if (!menuMap[entry.menuId]) {
+                        menuMap[entry.menuId] = {
+                            menuId: entry.menuId,
+                            menuName: entry.menuName,
+                            count: 0,
+                            sales: 0,
+                            storeIds: new Set()
+                        };
+                    }
+                    menuMap[entry.menuId].count += entry.count || 0;
+                    menuMap[entry.menuId].sales += entry.sales || 0;
+                    menuMap[entry.menuId].storeIds.add(entry.storeId);
+                });
+
+                return Object.values(menuMap).map(menu => ({
+                    ...menu,
+                    storeIds: Array.from(menu.storeIds)
+                }));
+            }, [menuSalesData, hasData]);
+
             const totalMenuSales = hasData ? menuSalesData.reduce((sum, m) => sum + (m.sales || 0), 0) : 0;
             const totalMenuCount = hasData ? menuSalesData.reduce((sum, m) => sum + (m.count || 0), 0) : 0;
-            const topMenu = hasData ? [...menuSalesData].sort((a, b) => (b.count || 0) - (a.count || 0))[0] : null;
+            const topMenu = aggregatedMenuData.length > 0 ? [...aggregatedMenuData].sort((a, b) => (b.count || 0) - (a.count || 0))[0] : null;
 
             if (!hasData) {
                 return (
@@ -1528,14 +1564,14 @@
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm divide-y divide-gray-50">
-                                        {menuSalesData.map((menu) => (
+                                        {aggregatedMenuData.map((menu) => (
                                             <tr key={menu.menuId} className="hover:bg-gold-50/50">
                                                 <td className="py-3 font-medium text-brown-800">{menu.menuName}</td>
                                                 <td className="py-3 text-right">{menu.count}回</td>
                                                 <td className="py-3 text-right font-bold">¥{menu.sales.toLocaleString()}</td>
                                                 <td className="py-3 text-center">
                                                     <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                                        {menu.availableStores.length === 2 ? '両店舗' : '新宿南口店のみ'}
+                                                        {menu.storeIds.length === 2 ? '両店舗' : menu.storeIds.includes(1) ? '新宿店のみ' : '新宿南口店のみ'}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -1549,7 +1585,7 @@
                         <Card>
                             <h2 className="text-lg font-bold text-brown-800 mb-6 serif">メニュー別売上構成比</h2>
                             <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={menuSalesData} layout="vertical">
+                                <BarChart data={aggregatedMenuData} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
                                     <XAxis type="number" tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
                                     <YAxis type="category" dataKey="menuName" tick={{fontSize: 9}} width={120} />
@@ -2567,7 +2603,7 @@
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
                                 {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
-                                {!isStaffMode && activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} />}
+                                {!isStaffMode && activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} mediaSourcesData={mediaSourcesList} />}
                                 {!isStaffMode && activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
                                 {!isStaffMode && activeTab === 'customers' && (
                                     <CustomerTicketManagementView
