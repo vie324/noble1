@@ -282,6 +282,52 @@
 
             if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
 
+            // データが空の場合の表示
+            const hasData = (staffList && staffList.length > 0) || (dailySalesData && dailySalesData.length > 0);
+
+            if (!hasData) {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="bg-white rounded-xl p-12 shadow-lg border border-gold-200 text-center max-w-2xl">
+                            <div className="w-20 h-20 bg-gold-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Icon name="sparkles" size={40} className="text-gold-600" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-brown-800 mb-4 serif">エステサロンダッシュボードへようこそ！</h2>
+                            <p className="text-gray-600 mb-8 leading-relaxed">
+                                まだデータが登録されていません。<br/>
+                                以下の手順でダッシュボードを使い始めましょう。
+                            </p>
+                            <div className="text-left space-y-4 bg-gold-50 rounded-lg p-6 mb-8">
+                                <div className="flex items-start">
+                                    <span className="bg-gold-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">1</span>
+                                    <div>
+                                        <p className="font-bold text-brown-800">スタッフを登録</p>
+                                        <p className="text-sm text-gray-600">左メニューの「スタッフ管理」から登録してください</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start">
+                                    <span className="bg-gold-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">2</span>
+                                    <div>
+                                        <p className="font-bold text-brown-800">回数券マスターを設定</p>
+                                        <p className="text-sm text-gray-600">「顧客・回数券管理」から回数券を登録してください</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start">
+                                    <span className="bg-gold-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">3</span>
+                                    <div>
+                                        <p className="font-bold text-brown-800">データを保存</p>
+                                        <p className="text-sm text-gray-600">右上の「保存」ボタンでスプレッドシートに保存できます</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                💡 ヒント: スプレッドシートにデータがある場合は、右上の「読み込み」ボタンで取得できます
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
             // タブボタンコンポーネント
             const ViewTab = ({ id, label }) => (
                 <button
