@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuxeMetrics - 高級エステサロン経営ダッシュボード</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Recharts Dependencies -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <!-- Recharts (Chart Library) - Pinned version for stability -->
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Config for Tailwind (Luxury Gold Theme) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            50: '#fbf9f1',
+                            100: '#f5f0db',
+                            200: '#ede0b3',
+                            300: '#e3cc83',
+                            400: '#d9b656',
+                            500: '#d4af37', // Brand Primary
+                            600: '#b48e26',
+                            700: '#906d1f',
+                            800: '#775820',
+                            900: '#624920',
+                        },
+                        brown: {
+                            50: '#f7f5f3',
+                            800: '#4a3b32', // Brand Text
+                            900: '#2d241e',
+                        },
+                        accent: {
+                            500: '#c084fc', // Subtle accent for charts
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Yu Mincho"', '"Hiragino Mincho ProN"', '"MS PMincho"', 'serif'], // Serif for luxury feel
+                        ui: ['"Helvetica Neue"', 'Arial', 'sans-serif'], // UI font
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f7f5f3; /* brown-50 */
+            color: #4a3b32; /* brown-800 */
+            font-family: "Helvetica Neue", Arial, sans-serif;
+        }
+        h1, h2, h3, .serif {
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4af37; 
+            border-radius: 4px;
+        }
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+        }
+        input[type=range]:focus {
+            outline: none; 
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        // Recharts might be undefined if script fails, handle gracefully
+        const RechartsLib = window.Recharts || {};
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } = RechartsLib;
+
+        // --- Mock Data Generators ---
+
+        // 初期スタッフデータ
+        const initialStaffData = [
+            { id: 1, name: "佐藤 美咲", role: "店長", sales: 1850000, target: 2000000, nomination: 24, retention: 85, satisfaction: 4.8 },
+            { id: 2, name: "田中 愛", role: "シニア", sales: 1420000, target: 1500000, nomination: 18, retention: 78, satisfaction: 4.6 },
+            { id: 3, name: "鈴木 健太", role: "スタッフ", sales: 980000, target: 1000000, nomination: 8, retention: 65, satisfaction: 4.5 },
+            { id: 4, name: "山田 花子", role: "新人", sales: 650000, target: 800000, nomination: 2, retention: 50, satisfaction: 4.2 },
+        ];
+
+        // 媒体別データ
+        const mediaSourcesData = [
+            { id: 1, name: "ホットペッパー", newVisits: 45, repeatRate: 35, cpa: 2500, sales: 580000 },
+            { id: 2, name: "Instagram広告", newVisits: 28, repeatRate: 45, cpa: 1800, sales: 420000 },
+            { id: 3, name: "Googleマップ", newVisits: 15, repeatRate: 40, cpa: 0, sales: 180000 },
+            { id: 4, name: "紹介・口コミ", newVisits: 12, repeatRate: 85, cpa: 500, sales: 350000 },
+            { id: 5, name: "チラシ", newVisits: 8, repeatRate: 20, cpa: 4000, sales: 90000 },
+        ];
+
+        // 日次売上データ（回数券の内訳含む）
+        const generateDailySalesComplex = () => {
+            const days = 30;
+            return Array.from({ length: days }, (_, i) => {
+                const day = i + 1;
+                // 都度払い
+                const spotSales = Math.floor(Math.random() * 50000) + 20000;
+                // 回数券販売 (Cash In) - たまに大きな金額が入る
+                const ticketSales = Math.random() > 0.7 ? Math.floor(Math.random() * 200000) + 50000 : 0;
+                // 回数券消化 (Sales Recognition) - 役務消化
+                const ticketUsage = Math.floor(Math.random() * 60000) + 30000;
+                // 物販
+                const product = Math.floor(Math.random() * 20000) + 5000;
+
+                return {
+                    day: `${day}日`,
+                    spotSales,
+                    ticketSales, // 現金は入るが売上ではない（前受金）
+                    ticketUsage, // 現金は入らないが売上（役務消化）
+                    product,
+                    // 管理上の売上（都度 + 消化 + 物販）
+                    accountingSales: spotSales + ticketUsage + product,
+                    // キャッシュイン（都度 + 販売 + 物販）
+                    cashIn: spotSales + ticketSales + product,
+                };
+            });
+        };
+
+        // --- Helper Components ---
+
+        const Icon = ({ name, size = 20, color = "currentColor", className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} width={size} height={size} stroke={color} className={className}></i>;
+        };
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-lg shadow-sm border border-gold-200 p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const KpiCard = ({ title, value, subValue, trend, icon, color = "bg-gold-500" }) => (
+            <Card className="hover:shadow-md transition-shadow relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Icon name={icon} size={64} className="text-gold-900" />
+                </div>
+                <div className="flex justify-between items-start mb-4 relative z-10">
+                    <div className={`p-3 rounded-lg ${color} text-white shadow-md`}>
+                        <Icon name={icon} size={24} />
+                    </div>
+                    {trend && (
+                        <span className={`text-sm font-medium ${trend > 0 ? 'text-emerald-600' : 'text-rose-500'} flex items-center bg-white/80 px-2 py-1 rounded-full`}>
+                            {trend > 0 ? '+' : ''}{trend}% 
+                            <Icon name={trend > 0 ? 'trending-up' : 'trending-down'} size={14} className="ml-1" />
+                        </span>
+                    )}
+                </div>
+                <h3 className="text-gray-500 text-sm font-medium serif relative z-10">{title}</h3>
+                <div className="flex items-baseline mt-1 relative z-10">
+                    <span className="text-2xl font-bold text-brown-800 font-ui">{value}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1 relative z-10">{subValue}</p>
+            </Card>
+        );
+
+        // --- Main Sections ---
+
+        const DashboardView = ({ staffList, dailySalesData }) => {
+            // 合計計算
+            const totalAccountingSales = dailySalesData.reduce((acc, curr) => acc + curr.accountingSales, 0);
+            const totalCashIn = dailySalesData.reduce((acc, curr) => acc + curr.cashIn, 0);
+            const totalTicketUsage = dailySalesData.reduce((acc, curr) => acc + curr.ticketUsage, 0);
+            const totalTicketSales = dailySalesData.reduce((acc, curr) => acc + curr.ticketSales, 0);
+
+            if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
+
+            return (
+                <div className="space-y-6">
+                    {/* Top KPI Cards - Split Sales Types */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard 
+                            title="会計上売上 (役務消化込)" 
+                            value={`¥${totalAccountingSales.toLocaleString()}`} 
+                            subValue={`消化額: ¥${totalTicketUsage.toLocaleString()}`}
+                            trend={5.2} 
+                            icon="file-text" 
+                            color="bg-gold-600"
+                        />
+                        <KpiCard 
+                            title="キャッシュイン (入金総額)" 
+                            value={`¥${totalCashIn.toLocaleString()}`} 
+                            subValue={`回数券販売: ¥${totalTicketSales.toLocaleString()}`}
+                            trend={12.8} 
+                            icon="coins" 
+                            color="bg-emerald-600"
+                        />
+                        <KpiCard 
+                            title="回数券未消化残高" 
+                            value="¥4,250,000" 
+                            subValue="前月比 +¥50,000 (負債増)"
+                            trend={-1.2} 
+                            icon="layers" 
+                            color="bg-brown-800"
+                        />
+                        <KpiCard 
+                            title="平均リピート率" 
+                            value="72.4%" 
+                            subValue="新規定着率: 45%"
+                            trend={2.1} 
+                            icon="repeat" 
+                            color="bg-rose-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Main Chart: Sales Breakdown */}
+                        <div className="lg:col-span-2">
+                            <Card className="h-96">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-brown-800 serif">売上構造分析</h2>
+                                        <p className="text-xs text-gray-500">キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
+                                    </div>
+                                </div>
+                                <ResponsiveContainer width="100%" height="85%">
+                                    <BarChart data={dailySalesData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                        <XAxis dataKey="day" tick={{fontSize: 10}} interval={2} />
+                                        <YAxis tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
+                                        <Tooltip 
+                                            formatter={(value) => `¥${value.toLocaleString()}`}
+                                            contentStyle={{backgroundColor: '#fff', borderColor: '#d4af37'}}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="spotSales" name="都度払い" stackId="a" fill="#d4af37" />
+                                        <Bar dataKey="product" name="物販" stackId="a" fill="#b48e26" />
+                                        <Bar dataKey="ticketUsage" name="回数券消化(売上)" stackId="a" fill="#4a3b32" />
+                                        <Bar dataKey="ticketSales" name="回数券販売(入金)" fill="#10b981" radius={[4, 4, 0, 0]} opacity={0.3} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </Card>
+                        </div>
+
+                        {/* Side Widgets */}
+                        <div className="space-y-6">
+                            {/* Media Performance Mini */}
+                            <Card>
+                                <h3 className="text-lg font-bold text-brown-800 mb-4 serif">媒体別 新規集客状況</h3>
+                                <div className="space-y-4">
+                                    {mediaSourcesData.slice(0, 3).map(media => (
+                                        <div key={media.id} className="flex flex-col">
+                                            <div className="flex justify-between text-sm mb-1">
+                                                <span className="font-medium text-gray-700">{media.name}</span>
+                                                <span className="font-bold text-gold-600">{media.newVisits}人</span>
+                                            </div>
+                                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-gold-500" 
+                                                    style={{width: `${(media.newVisits / 50) * 100}%`}}
+                                                ></div>
+                                            </div>
+                                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                <span>CPA: ¥{media.cpa.toLocaleString()}</span>
+                                                <span>定着率: {media.repeatRate}%</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button className="w-full mt-2 text-xs text-gold-600 hover:text-gold-700 text-center py-2 border border-gold-200 rounded hover:bg-gold-50 transition-colors">
+                                        全ての媒体を見る
+                                    </button>
+                                </div>
+                            </Card>
+
+                            {/* Ticket Alert */}
+                            <div className="bg-gradient-to-br from-brown-800 to-brown-900 text-gold-100 p-6 rounded-lg shadow-lg">
+                                <div className="flex items-center mb-3">
+                                    <Icon name="alert-circle" size={20} className="text-gold-400 mr-2" />
+                                    <h3 className="font-bold serif">有効期限アラート</h3>
+                                </div>
+                                <p className="text-sm opacity-90 mb-4">
+                                    今月末で有効期限が切れる回数券を持つ顧客が <span className="font-bold text-white text-lg">12名</span> います。
+                                </p>
+                                <button className="w-full bg-gold-500 hover:bg-gold-600 text-white text-sm font-bold py-2 rounded transition-colors">
+                                    対象顧客リストを表示
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Media Analysis Section (New) ---
+        const SalesAnalysisView = ({ dailySalesData }) => {
+             if (!window.Recharts) return <div>Loading Charts...</div>;
+             
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Media Source Performance Table */}
+                        <Card className="col-span-1">
+                             <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-lg font-bold text-brown-800 serif">媒体別パフォーマンス分析</h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gold-100 text-xs text-gray-500 uppercase">
+                                            <th className="py-3 font-medium">媒体名</th>
+                                            <th className="py-3 font-medium text-right">新規数</th>
+                                            <th className="py-3 font-medium text-right">獲得単価(CPA)</th>
+                                            <th className="py-3 font-medium text-right">リピート率</th>
+                                            <th className="py-3 font-medium text-right">総売上貢献</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm divide-y divide-gray-50">
+                                        {mediaSourcesData.map((media) => (
+                                            <tr key={media.id} className="hover:bg-gold-50/50">
+                                                <td className="py-3 font-medium text-brown-800">{media.name}</td>
+                                                <td className="py-3 text-right">{media.newVisits}</td>
+                                                <td className="py-3 text-right">¥{media.cpa.toLocaleString()}</td>
+                                                <td className="py-3 text-right">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${media.repeatRate >= 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {media.repeatRate}%
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-right font-medium">¥{media.sales.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-4 p-4 bg-gold-50 rounded text-xs text-brown-800">
+                                <strong>分析:</strong> 「紹介・口コミ」のリピート率が85%と圧倒的です。紹介キャンペーンの強化を推奨します。一方、チラシはCPAが高くリピート率が低いため、予算の見直しが必要です。
+                            </div>
+                        </Card>
+
+                        {/* Sales Trend Chart */}
+                         <Card className="col-span-1">
+                            <h2 className="text-lg font-bold text-brown-800 mb-6 serif">売上推移（キャッシュイン vs 役務消化）</h2>
+                             <ResponsiveContainer width="100%" height={300}>
+                                <AreaChart data={dailySalesData}>
+                                    <defs>
+                                        <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#d4af37" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#d4af37" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="day" tick={{fontSize: 10}} interval={5} />
+                                    <YAxis tick={{fontSize: 10}} />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <Tooltip />
+                                    <Legend verticalAlign="top" height={36}/>
+                                    <Area type="monotone" dataKey="cashIn" name="キャッシュイン(現金)" stroke="#10b981" fillOpacity={1} fill="url(#colorCash)" />
+                                    <Area type="monotone" dataKey="accountingSales" name="会計上売上(消化)" stroke="#d4af37" fillOpacity={1} fill="url(#colorSales)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </Card>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- Staff Management Section (Enhanced) ---
+
+        const StaffManagementView = ({ staffList, onUpdateStaff, onAddStaff }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            
+            // Form State
+            const [formData, setFormData] = useState({
+                name: '', role: '', sales: 0, target: 0, nomination: 0, retention: 0, satisfaction: 0
+            });
+
+            const handleEditClick = (staff) => {
+                setIsEditing(true);
+                setEditingId(staff.id);
+                setFormData({ ...staff });
+            };
+
+            const handleAddClick = () => {
+                setIsEditing(true);
+                setEditingId(null); // New
+                setFormData({
+                    name: '', role: 'スタッフ', sales: 0, target: 1000000, nomination: 0, retention: 0, satisfaction: 0
+                });
+            };
+
+            const handleSave = () => {
+                if (editingId) {
+                    onUpdateStaff(editingId, formData);
+                } else {
+                    onAddStaff({ ...formData, id: Date.now() });
+                }
+                setIsEditing(false);
+                setEditingId(null);
+            };
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: name === 'name' || name === 'role' ? value : Number(value)
+                }));
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* Header Action */}
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-bold text-brown-800 serif">スタッフ管理・分析</h2>
+                            <p className="text-sm text-gray-500">個人のパフォーマンス管理と評価データの編集</p>
+                        </div>
+                        <button 
+                            onClick={handleAddClick}
+                            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
+                        >
+                            <Icon name="plus" size={16} className="mr-2" />
+                            スタッフ新規登録
+                        </button>
+                    </div>
+
+                    {/* Staff List Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {staffList.map(staff => (
+                            <div key={staff.id} className="bg-white border border-gold-100 rounded-xl p-5 hover:shadow-md transition-shadow group relative">
+                                <button 
+                                    onClick={() => handleEditClick(staff)}
+                                    className="absolute top-3 right-3 text-gray-300 hover:text-gold-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Icon name="edit-2" size={16} />
+                                </button>
+
+                                <div className="flex items-center mb-4">
+                                    <div className="w-12 h-12 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-700 font-bold text-lg">
+                                        {staff.name.charAt(0)}
+                                    </div>
+                                    <div className="ml-3">
+                                        <h3 className="font-bold text-brown-800">{staff.name}</h3>
+                                        <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">{staff.role}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-sm items-end">
+                                        <span className="text-gray-500 text-xs">売上実績</span>
+                                        <span className="font-bold text-brown-800">¥{staff.sales.toLocaleString()}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div 
+                                            className={`h-full ${staff.sales >= staff.target ? 'bg-emerald-500' : 'bg-gold-500'}`} 
+                                            style={{width: `${Math.min(100, (staff.sales/staff.target)*100)}%`}}
+                                        ></div>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-gray-400">
+                                        <span>目標: ¥{staff.target.toLocaleString()}</span>
+                                        <span>{Math.round((staff.sales/staff.target)*100)}%</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50 mt-2">
+                                        <div className="text-center">
+                                            <div className="text-xs text-gray-400">指名</div>
+                                            <div className="font-bold text-brown-800">{staff.nomination}</div>
+                                        </div>
+                                        <div className="text-center border-l border-gray-100">
+                                            <div className="text-xs text-gray-400">リピート</div>
+                                            <div className="font-bold text-brown-800">{staff.retention}%</div>
+                                        </div>
+                                        <div className="text-center border-l border-gray-100">
+                                            <div className="text-xs text-gray-400">満足度</div>
+                                            <div className="font-bold text-gold-600 flex justify-center items-center">
+                                                {staff.satisfaction}<Icon name="star" size={10} className="ml-0.5 fill-current" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Edit Modal */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+                            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md border border-gold-200">
+                                <h3 className="text-lg font-bold text-brown-800 mb-4 serif">
+                                    {editingId ? 'スタッフ情報編集' : '新規スタッフ登録'}
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">氏名</label>
+                                            <input name="name" value={formData.name} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" placeholder="氏名" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">役職</label>
+                                            <select name="role" value={formData.role} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none">
+                                                <option value="店長">店長</option>
+                                                <option value="シニア">シニア</option>
+                                                <option value="スタッフ">スタッフ</option>
+                                                <option value="新人">新人</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">今月の売上目標</label>
+                                        <input type="number" name="target" value={formData.target} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">現在売上</label>
+                                            <input type="number" name="sales" value={formData.sales} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">指名数</label>
+                                            <input type="number" name="nomination" value={formData.nomination} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">リピート率(%)</label>
+                                            <input type="number" name="retention" value={formData.retention} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">満足度(5.0)</label>
+                                            <input type="number" step="0.1" name="satisfaction" value={formData.satisfaction} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 text-sm focus:border-gold-500 outline-none" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end space-x-3 mt-6">
+                                    <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded">キャンセル</button>
+                                    <button onClick={handleSave} className="px-4 py-2 text-sm bg-gold-500 hover:bg-gold-600 text-white rounded font-medium shadow-sm">保存する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Simulation View (Reused but Styled) ---
+        const SimulationView = () => {
+            const [targetSales, setTargetSales] = useState(5000000);
+            const [unitPrice, setUnitPrice] = useState(12800);
+            const [visitors, setVisitors] = useState(300);
+            const projectedSales = unitPrice * visitors;
+            const progress = Math.min(100, (projectedSales / targetSales) * 100);
+            const diff = projectedSales - targetSales;
+            const requiredVisitors = Math.ceil(targetSales / unitPrice);
+            const requiredPrice = Math.ceil(targetSales / visitors);
+
+            return (
+                <div className="space-y-6">
+                    <Card>
+                        <h2 className="text-xl font-bold text-brown-800 mb-2 serif">目標達成シミュレーション</h2>
+                        <p className="text-sm text-gray-500 mb-8">パラメータを操作して、目標達成に必要な単価と集客数を算出します。</p>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            <div className="space-y-8">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">月間目標売上</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
+                                        <input 
+                                            type="number" 
+                                            value={targetSales}
+                                            onChange={(e) => setTargetSales(Number(e.target.value))}
+                                            className="w-full pl-8 pr-4 py-3 text-2xl font-bold text-brown-800 bg-gold-50 border border-gold-200 rounded-lg focus:border-gold-500 outline-none font-ui"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-sm font-medium text-gray-700">平均客単価</label>
+                                            <span className="text-lg font-bold text-gold-600">¥{unitPrice.toLocaleString()}</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="5000" max="30000" step="100" value={unitPrice}
+                                            onChange={(e) => setUnitPrice(Number(e.target.value))}
+                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gold-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-sm font-medium text-gray-700">月間来客数</label>
+                                            <span className="text-lg font-bold text-blue-600">{visitors}人</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="50" max="1000" step="10" value={visitors}
+                                            onChange={(e) => setVisitors(Number(e.target.value))}
+                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="relative bg-gradient-to-br from-brown-900 to-brown-800 rounded-xl p-8 text-white overflow-hidden flex flex-col justify-center">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500 opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                                <div className="relative z-10 text-center">
+                                    <h3 className="text-gold-200 font-medium mb-1 serif">予測月間売上</h3>
+                                    <div className="text-5xl font-bold font-ui mb-6">¥{projectedSales.toLocaleString()}</div>
+                                    
+                                    <div className="w-full bg-white/20 rounded-full h-2 mb-6">
+                                        <div 
+                                            className={`h-full rounded-full transition-all duration-500 ${diff >= 0 ? 'bg-gold-400' : 'bg-white/50'}`}
+                                            style={{width: `${progress}%`}}
+                                        ></div>
+                                    </div>
+
+                                    {diff < 0 ? (
+                                        <div className="bg-white/10 backdrop-blur rounded p-4 border border-white/10 text-left">
+                                            <p className="text-sm font-bold text-rose-300 mb-1 flex items-center"><Icon name="alert-triangle" size={16} className="mr-2"/> 目標未達成</p>
+                                            <p className="text-xs text-gray-300">不足額: ¥{Math.abs(diff).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-300 mt-2 pt-2 border-t border-white/10">
+                                                対策: 単価を <span className="text-gold-300 font-bold">¥{requiredPrice.toLocaleString()}</span> に上げるか、
+                                                集客を <span className="text-blue-300 font-bold">{requiredVisitors}人</span> に増やしてください。
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white/10 backdrop-blur rounded p-4 border border-white/10 text-left">
+                                            <p className="text-sm font-bold text-emerald-300 mb-1 flex items-center"><Icon name="check" size={16} className="mr-2"/> 目標達成圏内</p>
+                                            <p className="text-xs text-gray-300">余剰予測: +¥{diff.toLocaleString()}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+
+        // --- App Layout & Navigation ---
+
+        const Layout = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [sidebarOpen, setSidebarOpen] = useState(true);
+            const [staffList, setStaffList] = useState(initialStaffData);
+            const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // 生成データをメモ化して、再レンダリングでグラフがガタガタ動かないようにする
+            const dailySalesData = useMemo(() => generateDailySalesComplex(), []);
+
+            // スタッフ更新関数
+            const updateStaff = (id, newData) => {
+                setStaffList(prev => prev.map(staff => staff.id === id ? newData : staff));
+            };
+
+            const addStaff = (newData) => {
+                setStaffList(prev => [...prev, newData]);
+            };
+
+            const NavItem = ({ id, icon, label }) => (
+                <button
+                    onClick={() => setActiveTab(id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 my-1 rounded-lg transition-all duration-200 border-l-4 ${
+                        activeTab === id 
+                        ? 'border-gold-500 bg-gold-50 text-brown-800 font-bold shadow-sm' 
+                        : 'border-transparent text-gray-500 hover:text-brown-800 hover:bg-white'
+                    }`}
+                >
+                    <Icon name={icon} size={20} className={activeTab === id ? 'text-gold-600' : 'text-gray-400'} />
+                    {sidebarOpen && <span className={activeTab === id ? 'serif' : ''}>{label}</span>}
+                </button>
+            );
+
+            return (
+                <div className="flex h-screen bg-brown-50 font-sans text-brown-900">
+                    {/* Sidebar */}
+                    <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gold-200 flex flex-col transition-all duration-300 z-20 shadow-xl`}>
+                        <div className="h-20 flex items-center justify-center border-b border-gold-100 bg-white">
+                            {sidebarOpen ? (
+                                <h1 className="text-2xl font-bold text-brown-800 flex items-center serif tracking-wider">
+                                    <span className="text-gold-500 mr-2 text-3xl">✦</span> LuxeMetrics
+                                </h1>
+                            ) : (
+                                <span className="text-gold-500 text-3xl">✦</span>
+                            )}
+                        </div>
+
+                        <div className="flex-1 py-6 px-2 space-y-1">
+                            <NavItem id="dashboard" icon="layout-dashboard" label="ダッシュボード" />
+                            <NavItem id="simulation" icon="target" label="目標シミュレーション" />
+                            <NavItem id="sales" icon="bar-chart-2" label="売上・媒体分析" />
+                            <NavItem id="staff" icon="users" label="スタッフ管理" />
+                            <NavItem id="customers" icon="heart" label="顧客・回数券管理" />
+                        </div>
+
+                        <div className="p-4 border-t border-gold-100 bg-gold-50/50">
+                             <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-white hover:text-brown-800 transition-colors ${!sidebarOpen && 'justify-center'}`}>
+                                <Icon name="settings" size={20} />
+                                {sidebarOpen && <span>設定</span>}
+                            </button>
+                            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="mt-2 w-full flex items-center justify-center p-2 text-gold-400 hover:text-gold-600">
+                                <Icon name={sidebarOpen ? "chevrons-left" : "chevrons-right"} size={20} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col overflow-hidden relative bg-[#f9f8f4]">
+                        {/* Topbar */}
+                        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gold-100 flex justify-between items-center px-8 shadow-sm z-10 sticky top-0">
+                            <div>
+                                <h2 className="text-xl font-bold text-brown-800 serif">
+                                    {activeTab === 'dashboard' && 'Executive Summary'}
+                                    {activeTab === 'simulation' && 'Strategy Simulation'}
+                                    {activeTab === 'sales' && 'Sales & Marketing Analytics'}
+                                    {activeTab === 'staff' && 'Staff Performance & Management'}
+                                    {activeTab === 'customers' && 'Customer & Ticket Management'}
+                                    {activeTab === 'settings' && 'System Settings'}
+                                </h2>
+                                <p className="text-xs text-gold-600 font-medium tracking-widest uppercase mt-1">
+                                    {activeTab === 'dashboard' && '経営サマリー'}
+                                    {activeTab === 'simulation' && '経営シミュレーション'}
+                                    {activeTab === 'sales' && '売上詳細・媒体分析'}
+                                    {activeTab === 'staff' && 'スタッフ管理・編集'}
+                                    {activeTab === 'customers' && '顧客リスト・回数券管理'}
+                                    {activeTab === 'settings' && 'システム設定'}
+                                </p>
+                            </div>
+                            <div className="flex items-center space-x-6">
+                                <div className="text-right hidden md:block">
+                                    <p className="text-sm font-bold text-brown-800">{currentDate}</p>
+                                    <p className="text-xs text-gray-400">Tokyo, Japan</p>
+                                </div>
+                                <div className="h-8 w-px bg-gold-200"></div>
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 rounded-full bg-brown-800 border-2 border-gold-300 flex items-center justify-center text-gold-100 text-sm font-serif">
+                                        OP
+                                    </div>
+                                    <div className="hidden md:block">
+                                        <p className="text-sm font-bold text-brown-800">オーナー様</p>
+                                        <p className="text-xs text-gold-600">Administrator</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* Content Area */}
+                        <main className="flex-1 overflow-y-auto p-8">
+                            <div className="max-w-7xl mx-auto pb-10">
+                                {activeTab === 'dashboard' && <DashboardView staffList={staffList} dailySalesData={dailySalesData} />}
+                                {activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} />}
+                                {activeTab === 'simulation' && <SimulationView />}
+                                {activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} />}
+                                {activeTab === 'customers' && (
+                                    <div className="flex flex-col items-center justify-center h-96 text-gray-400 border-2 border-dashed border-gold-200 rounded-xl bg-white/50">
+                                        <Icon name="users" size={48} className="mb-4 text-gold-300" />
+                                        <p className="text-lg serif text-brown-800">顧客・回数券詳細管理モジュール</p>
+                                        <p className="text-sm mt-2">（この画面は現在詳細設計中です。ダッシュボードで概要を確認できます）</p>
+                                    </div>
+                                )}
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Layout />);
+    </script>
+</body>
+</html>
