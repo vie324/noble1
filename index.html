@@ -730,8 +730,16 @@
                 setIsEditing(true);
                 setEditingId(staff.id);
                 setFormData({
-                    ...staff,
-                    availableMenus: staff.availableMenus || []
+                    name: staff.name || '',
+                    employmentType: staff.employmentType || '正社員',
+                    role: staff.role || 'スタッフ',
+                    storeId: staff.storeId || 1,
+                    availableMenus: Array.isArray(staff.availableMenus) ? staff.availableMenus : [],
+                    sales: staff.sales || 0,
+                    target: staff.target || 0,
+                    nomination: staff.nomination || 0,
+                    retention: staff.retention || 0,
+                    reviewScore: staff.reviewScore || 0
                 });
             };
 
@@ -938,11 +946,12 @@
                                                 <label key={menu.id} className="flex items-center cursor-pointer hover:bg-white px-2 py-1 rounded transition-colors">
                                                     <input
                                                         type="checkbox"
-                                                        checked={formData.availableMenus.includes(menu.id)}
+                                                        checked={Array.isArray(formData.availableMenus) && formData.availableMenus.includes(menu.id)}
                                                         onChange={(e) => {
+                                                            const currentMenus = Array.isArray(formData.availableMenus) ? formData.availableMenus : [];
                                                             const newMenus = e.target.checked
-                                                                ? [...formData.availableMenus, menu.id]
-                                                                : formData.availableMenus.filter(id => id !== menu.id);
+                                                                ? [...currentMenus, menu.id]
+                                                                : currentMenus.filter(id => id !== menu.id);
                                                             setFormData(prev => ({ ...prev, availableMenus: newMenus }));
                                                         }}
                                                         className="mr-2 accent-gold-500"
@@ -1502,7 +1511,7 @@
         };
 
         // --- Performance Input View ---
-        const PerformanceInputView = ({ dailySalesData, setDailySalesData, menuSalesData, setMenuSalesData, staffList }) => {
+        const PerformanceInputView = ({ dailySalesData, setDailySalesData, menuSalesData, setMenuSalesData, staffList = [] }) => {
             const [activeInputTab, setActiveInputTab] = useState('daily'); // 'daily' or 'menu'
 
             // 日次売上入力フォーム
@@ -1683,7 +1692,7 @@
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
                                     >
                                         <option value="">全体（スタッフ指定なし）</option>
-                                        {staffList.filter(s => s.storeId === dailyForm.storeId).map(staff => (
+                                        {(staffList || []).filter(s => s.storeId === dailyForm.storeId).map(staff => (
                                             <option key={staff.id} value={staff.id}>{staff.name}</option>
                                         ))}
                                     </select>
@@ -1800,7 +1809,7 @@
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
                                     >
                                         <option value="">全体（スタッフ指定なし）</option>
-                                        {staffList.filter(s => s.storeId === menuForm.storeId).map(staff => (
+                                        {(staffList || []).filter(s => s.storeId === menuForm.storeId).map(staff => (
                                             <option key={staff.id} value={staff.id}>{staff.name}</option>
                                         ))}
                                     </select>
