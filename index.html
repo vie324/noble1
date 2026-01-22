@@ -133,28 +133,140 @@
             return halfWidth.replace(/[^0-9.-]/g, ''); // 数字、マイナス、小数点のみ許可
         };
 
-        // 初期スタッフデータ（空 - 実データを入力）
-        const initialStaffData = [];
+        // 初期スタッフデータ（仮データ - 自由に編集可能）
+        const initialStaffData = [
+            {
+                id: 1,
+                name: '田中美咲',
+                employmentType: '正社員',
+                role: '店長',
+                storeId: 1,
+                availableMenus: [1, 2, 3],
+                sales: 850000,
+                target: 1000000,
+                nomination: 25,
+                retention: 75,
+                reviewScore: 4.8
+            },
+            {
+                id: 2,
+                name: '佐藤花子',
+                employmentType: '正社員',
+                role: 'スタッフ',
+                storeId: 1,
+                availableMenus: [1, 2],
+                sales: 620000,
+                target: 800000,
+                nomination: 18,
+                retention: 68,
+                reviewScore: 4.5
+            },
+            {
+                id: 3,
+                name: '鈴木彩香',
+                employmentType: 'アルバイト',
+                role: 'スタッフ',
+                storeId: 2,
+                availableMenus: [2, 4, 5],
+                sales: 480000,
+                target: 600000,
+                nomination: 12,
+                retention: 65,
+                reviewScore: 4.3
+            }
+        ];
         // スタッフデータ構造: { id, name, employmentType, role, storeId, availableMenus, sales, target, nomination, retention, reviewScore }
 
-        // 回数券マスターデータ（空 - 実データを入力）
-        const initialTicketMasterData = [];
+        // 回数券マスターデータ（仮データ - 自由に編集可能）
+        const initialTicketMasterData = [
+            { id: 1, name: '5回券', sessions: 5, price: 85000, validMonths: 6, description: 'お得な5回セット' },
+            { id: 2, name: '10回券', sessions: 10, price: 160000, validMonths: 12, description: '10回セット・1年間有効' }
+        ];
         // 回数券マスター構造: { id, name, sessions, price, validMonths, description }
 
-        // 顧客データ（空 - 実データを入力）
-        const initialCustomerData = [];
+        // 顧客データ（仮データ - 自由に編集可能）
+        const initialCustomerData = [
+            {
+                id: 1,
+                name: '山田太郎',
+                phone: '090-1234-5678',
+                email: 'yamada@example.com',
+                purchaseDate: '2025-12-01',
+                ticketMasterId: 1,
+                remainingSessions: 3,
+                expiryDate: '2026-06-01',
+                storeId: 1
+            },
+            {
+                id: 2,
+                name: '高橋愛',
+                phone: '080-9876-5432',
+                email: 'takahashi@example.com',
+                purchaseDate: '2025-11-15',
+                ticketMasterId: 2,
+                remainingSessions: 7,
+                expiryDate: '2026-11-15',
+                storeId: 1
+            }
+        ];
         // 顧客データ構造: { id, name, phone, email, purchaseDate, ticketMasterId, remainingSessions, expiryDate, storeId }
 
-        // 媒体別データ（空 - 実データを入力）
-        const initialMediaSourcesData = [];
+        // 媒体別データ（仮データ - 自由に編集可能）
+        const initialMediaSourcesData = [
+            { id: 1, name: 'ホットペッパー', newVisits: 45, repeatRate: 35, cpa: 8500, sales: 680000 },
+            { id: 2, name: 'Instagram', newVisits: 28, repeatRate: 52, cpa: 3200, sales: 420000 },
+            { id: 3, name: '紹介', newVisits: 15, repeatRate: 78, cpa: 0, sales: 320000 }
+        ];
         // 媒体データ構造: { id, name, newVisits, repeatRate, cpa, sales }
 
-        // 日次売上データ（空 - 実データを入力）
-        const initialDailySalesData = [];
+        // 日次売上データ（仮データ - 自由に編集可能）
+        const initialDailySalesData = [
+            {
+                date: '2026-01-15',
+                storeId: 1,
+                staffId: 1,
+                storeName: '新宿店',
+                spotSales: 120000,
+                ticketSales: 85000,
+                ticketUsage: 54000,
+                product: 28000,
+                accountingSales: 287000,
+                cashIn: 233000
+            },
+            {
+                date: '2026-01-16',
+                storeId: 1,
+                staffId: 2,
+                storeName: '新宿店',
+                spotSales: 95000,
+                ticketSales: 0,
+                ticketUsage: 72000,
+                product: 15000,
+                accountingSales: 182000,
+                cashIn: 110000
+            },
+            {
+                date: '2026-01-15',
+                storeId: 2,
+                staffId: 3,
+                storeName: '新宿南口店',
+                spotSales: 78000,
+                ticketSales: 160000,
+                ticketUsage: 40000,
+                product: 22000,
+                accountingSales: 300000,
+                cashIn: 260000
+            }
+        ];
         // 日次売上構造: { date, storeId, staffId, storeName, spotSales, ticketSales, ticketUsage, product, accountingSales, cashIn }
 
-        // メニュー別売上データ（空 - 実データを入力）
-        const initialMenuSalesData = [];
+        // メニュー別売上データ（仮データ - 自由に編集可能）
+        const initialMenuSalesData = [
+            { menuId: 1, menuName: '剥離ありハーブピーリング(顔)', count: 8, sales: 144000, date: '2026-01-15', storeId: 1, staffId: 1 },
+            { menuId: 2, menuName: '剥離なしハーブピーリング(顔)', count: 12, sales: 180000, date: '2026-01-15', storeId: 1, staffId: 2 },
+            { menuId: 4, menuName: 'よもぎ蒸し', count: 6, sales: 48000, date: '2026-01-15', storeId: 2, staffId: 3 },
+            { menuId: 5, menuName: 'セルフホワイトニング', count: 10, sales: 50000, date: '2026-01-16', storeId: 2, staffId: 3 }
+        ];
         // メニュー売上構造: { menuId, menuName, count, sales, date, storeId, staffId }
 
         // --- Google Apps Script連携関数 ---
@@ -2415,8 +2527,19 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<Layout />);
+        try {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<Layout />);
+        } catch (error) {
+            console.error('レンダリングエラー:', error);
+            document.body.innerHTML = `
+                <div style="padding: 40px; font-family: sans-serif;">
+                    <h1 style="color: red;">エラーが発生しました</h1>
+                    <pre style="background: #f5f5f5; padding: 20px; overflow: auto;">${error.toString()}\n\n${error.stack}</pre>
+                    <p>ブラウザのコンソール（F12キー）で詳細を確認してください。</p>
+                </div>
+            `;
+        }
     </script>
 </body>
 </html>
