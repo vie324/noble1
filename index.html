@@ -474,7 +474,40 @@
         // --- Media Analysis Section (New) ---
         const SalesAnalysisView = ({ dailySalesData }) => {
              if (!window.Recharts) return <div>Loading Charts...</div>;
-             
+
+            // 空データチェック
+            const hasData = dailySalesData && dailySalesData.length > 0;
+
+            if (!hasData) {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="bg-white rounded-xl p-12 shadow-lg border border-gold-200 text-center max-w-2xl">
+                            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Icon name="trending-up" size={40} className="text-amber-600" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-brown-800 mb-4 serif">売上・媒体分析データがありません</h2>
+                            <p className="text-gray-600 mb-8 leading-relaxed">
+                                売上データと媒体データを入力すると、詳細な分析が表示されます。<br/>
+                                まずは日次売上データを入力してください。
+                            </p>
+                            <div className="text-left space-y-4 bg-amber-50 rounded-lg p-6">
+                                <div className="flex items-start">
+                                    <Icon name="info" size={20} className="text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold text-brown-800 mb-2">データ入力方法</p>
+                                        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                                            <li>「実績入力」メニューから日次売上を登録</li>
+                                            <li>媒体別の集客データを入力</li>
+                                            <li>スプレッドシートに保存して管理</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -688,6 +721,19 @@
                                                 {staff.reviewScore || 0}<Icon name="star" size={10} className="ml-0.5 fill-current" />
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        <button
+                                            onClick={() => {
+                                                const staffUrl = `${window.location.origin}${window.location.pathname}?staffId=${staff.id}`;
+                                                navigator.clipboard.writeText(staffUrl);
+                                                alert(`スタッフURL をコピーしました！\n\n${staffUrl}\n\nこのURLを ${staff.name} さんに共有してください。`);
+                                            }}
+                                            className="w-full text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded flex items-center justify-center transition-colors"
+                                        >
+                                            <Icon name="link" size={12} className="mr-1" />
+                                            スタッフURLをコピー
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1293,25 +1339,377 @@
             );
         };
 
+        // --- Performance Input View ---
+        const PerformanceInputView = ({ dailySalesData, setDailySalesData, menuSalesData, setMenuSalesData }) => {
+            const [activeInputTab, setActiveInputTab] = useState('daily'); // 'daily' or 'menu'
+
+            // 日次売上入力フォーム
+            const [dailyForm, setDailyForm] = useState({
+                date: new Date().toISOString().split('T')[0],
+                storeId: 1,
+                spotSales: 0,
+                ticketSales: 0,
+                ticketUsage: 0,
+                product: 0
+            });
+
+            // メニュー売上入力フォーム
+            const [menuForm, setMenuForm] = useState({
+                date: new Date().toISOString().split('T')[0],
+                menuId: 1,
+                storeId: 1,
+                count: 0
+            });
+
+            const handleDailyFormChange = (e) => {
+                const { name, value } = e.target;
+                setDailyForm(prev => ({
+                    ...prev,
+                    [name]: ['date'].includes(name) ? value : Number(value)
+                }));
+            };
+
+            const handleMenuFormChange = (e) => {
+                const { name, value } = e.target;
+                setMenuForm(prev => ({
+                    ...prev,
+                    [name]: ['date'].includes(name) ? value : Number(value)
+                }));
+            };
+
+            const handleDailySalesSubmit = () => {
+                const store = stores.find(s => s.id === dailyForm.storeId);
+                const accountingSales = dailyForm.spotSales + dailyForm.ticketUsage + dailyForm.product;
+                const cashIn = dailyForm.spotSales + dailyForm.ticketSales + dailyForm.product;
+
+                const newEntry = {
+                    day: new Date(dailyForm.date).getDate() + '日',
+                    date: dailyForm.date,
+                    storeId: dailyForm.storeId,
+                    storeName: store.name,
+                    spotSales: dailyForm.spotSales,
+                    ticketSales: dailyForm.ticketSales,
+                    ticketUsage: dailyForm.ticketUsage,
+                    product: dailyForm.product,
+                    accountingSales,
+                    cashIn,
+                    storeData: [{
+                        storeId: dailyForm.storeId,
+                        storeName: store.name,
+                        spotSales: dailyForm.spotSales,
+                        ticketSales: dailyForm.ticketSales,
+                        ticketUsage: dailyForm.ticketUsage,
+                        product: dailyForm.product,
+                        accountingSales,
+                        cashIn
+                    }]
+                };
+
+                setDailySalesData(prev => [...prev, newEntry]);
+
+                // フォームをリセット
+                setDailyForm({
+                    date: new Date().toISOString().split('T')[0],
+                    storeId: 1,
+                    spotSales: 0,
+                    ticketSales: 0,
+                    ticketUsage: 0,
+                    product: 0
+                });
+
+                alert('日次売上を登録しました！');
+            };
+
+            const handleMenuSalesSubmit = () => {
+                const menu = menus.find(m => m.id === menuForm.menuId);
+                const sales = menuForm.count * menu.price;
+
+                const newEntry = {
+                    id: Date.now(),
+                    date: menuForm.date,
+                    menuId: menuForm.menuId,
+                    menuName: menu.name,
+                    storeId: menuForm.storeId,
+                    count: menuForm.count,
+                    sales,
+                    availableStores: menu.availableStores
+                };
+
+                setMenuSalesData(prev => [...prev, newEntry]);
+
+                // フォームをリセット
+                setMenuForm({
+                    date: new Date().toISOString().split('T')[0],
+                    menuId: 1,
+                    storeId: 1,
+                    count: 0
+                });
+
+                alert('メニュー売上を登録しました！');
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* タブ切り替え */}
+                    <div className="flex gap-2 bg-white rounded-lg p-1 border border-gold-200 inline-flex">
+                        <button
+                            onClick={() => setActiveInputTab('daily')}
+                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${
+                                activeInputTab === 'daily' ? 'bg-gold-500 text-white' : 'text-gray-600 hover:bg-gold-50'
+                            }`}
+                        >
+                            日次売上入力
+                        </button>
+                        <button
+                            onClick={() => setActiveInputTab('menu')}
+                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${
+                                activeInputTab === 'menu' ? 'bg-gold-500 text-white' : 'text-gray-600 hover:bg-gold-50'
+                            }`}
+                        >
+                            メニュー別売上入力
+                        </button>
+                    </div>
+
+                    {/* 日次売上入力フォーム */}
+                    {activeInputTab === 'daily' && (
+                        <Card>
+                            <h2 className="text-xl font-bold text-brown-800 mb-6 serif">日次売上データ入力</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">日付</label>
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        value={dailyForm.date}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">店舗</label>
+                                    <select
+                                        name="storeId"
+                                        value={dailyForm.storeId}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    >
+                                        {stores.map(store => (
+                                            <option key={store.id} value={store.id}>{store.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">都度払い売上 (円)</label>
+                                    <input
+                                        type="number"
+                                        name="spotSales"
+                                        value={dailyForm.spotSales}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">回数券販売 (円)</label>
+                                    <input
+                                        type="number"
+                                        name="ticketSales"
+                                        value={dailyForm.ticketSales}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">回数券消化 (円)</label>
+                                    <input
+                                        type="number"
+                                        name="ticketUsage"
+                                        value={dailyForm.ticketUsage}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">物販売上 (円)</label>
+                                    <input
+                                        type="number"
+                                        name="product"
+                                        value={dailyForm.product}
+                                        onChange={handleDailyFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={handleDailySalesSubmit}
+                                    className="px-6 py-3 bg-gold-500 hover:bg-gold-600 text-white font-bold rounded-lg shadow-sm transition-colors"
+                                >
+                                    登録する
+                                </button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* メニュー別売上入力フォーム */}
+                    {activeInputTab === 'menu' && (
+                        <Card>
+                            <h2 className="text-xl font-bold text-brown-800 mb-6 serif">メニュー別売上データ入力</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">日付</label>
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        value={menuForm.date}
+                                        onChange={handleMenuFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">店舗</label>
+                                    <select
+                                        name="storeId"
+                                        value={menuForm.storeId}
+                                        onChange={handleMenuFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    >
+                                        {stores.map(store => (
+                                            <option key={store.id} value={store.id}>{store.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">メニュー</label>
+                                    <select
+                                        name="menuId"
+                                        value={menuForm.menuId}
+                                        onChange={handleMenuFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                    >
+                                        {menus.filter(m => m.availableStores.includes(menuForm.storeId)).map(menu => (
+                                            <option key={menu.id} value={menu.id}>
+                                                {menu.name} (¥{menu.price.toLocaleString()})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">施術回数</label>
+                                    <input
+                                        type="number"
+                                        name="count"
+                                        value={menuForm.count}
+                                        onChange={handleMenuFormChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-gold-500 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-6 bg-gold-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-700">
+                                    <strong>予想売上:</strong> ¥{(menuForm.count * (menus.find(m => m.id === menuForm.menuId)?.price || 0)).toLocaleString()}
+                                </p>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={handleMenuSalesSubmit}
+                                    className="px-6 py-3 bg-gold-500 hover:bg-gold-600 text-white font-bold rounded-lg shadow-sm transition-colors"
+                                >
+                                    登録する
+                                </button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* 登録済みデータ一覧 */}
+                    {activeInputTab === 'daily' && dailySalesData.length > 0 && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4">登録済み日次売上（最新10件）</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gold-50 border-b border-gold-100">
+                                        <tr className="text-left text-xs text-gray-500 uppercase">
+                                            <th className="py-2 px-3">日付</th>
+                                            <th className="py-2 px-3">店舗</th>
+                                            <th className="py-2 px-3 text-right">都度払い</th>
+                                            <th className="py-2 px-3 text-right">回数券販売</th>
+                                            <th className="py-2 px-3 text-right">回数券消化</th>
+                                            <th className="py-2 px-3 text-right">物販</th>
+                                            <th className="py-2 px-3 text-right">合計売上</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {dailySalesData.slice(-10).reverse().map((item, index) => (
+                                            <tr key={index} className="hover:bg-gold-50/30">
+                                                <td className="py-2 px-3">{item.date || item.day}</td>
+                                                <td className="py-2 px-3">{item.storeName}</td>
+                                                <td className="py-2 px-3 text-right">¥{item.spotSales.toLocaleString()}</td>
+                                                <td className="py-2 px-3 text-right">¥{item.ticketSales.toLocaleString()}</td>
+                                                <td className="py-2 px-3 text-right">¥{item.ticketUsage.toLocaleString()}</td>
+                                                <td className="py-2 px-3 text-right">¥{item.product.toLocaleString()}</td>
+                                                <td className="py-2 px-3 text-right font-bold">¥{item.accountingSales.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+
+                    {activeInputTab === 'menu' && menuSalesData.length > 0 && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4">登録済みメニュー売上（最新10件）</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gold-50 border-b border-gold-100">
+                                        <tr className="text-left text-xs text-gray-500 uppercase">
+                                            <th className="py-2 px-3">日付</th>
+                                            <th className="py-2 px-3">メニュー</th>
+                                            <th className="py-2 px-3 text-right">回数</th>
+                                            <th className="py-2 px-3 text-right">売上</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {menuSalesData.slice(-10).reverse().map((item, index) => (
+                                            <tr key={index} className="hover:bg-gold-50/30">
+                                                <td className="py-2 px-3">{item.date}</td>
+                                                <td className="py-2 px-3">{item.menuName}</td>
+                                                <td className="py-2 px-3 text-right">{item.count}回</td>
+                                                <td className="py-2 px-3 text-right font-bold">¥{item.sales.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+                </div>
+            );
+        };
+
         // --- Simulation View (Reused but Styled) ---
         const SimulationView = () => {
-            const [targetSales, setTargetSales] = useState(5000000);
+            const [targetSales, setTargetSales] = useState(0);
             const [manualTarget, setManualTarget] = useState('');
 
             // 新規・リピート関連
-            const [newCustomers, setNewCustomers] = useState(80);
-            const [repeatCustomers, setRepeatCustomers] = useState(150);
-            const [newCustomerPrice, setNewCustomerPrice] = useState(15000);
-            const [repeatCustomerPrice, setRepeatCustomerPrice] = useState(12000);
+            const [newCustomers, setNewCustomers] = useState(0);
+            const [repeatCustomers, setRepeatCustomers] = useState(0);
+            const [newCustomerPrice, setNewCustomerPrice] = useState(0);
+            const [repeatCustomerPrice, setRepeatCustomerPrice] = useState(0);
 
             // 回数券関連
-            const [ticketPurchaseRate, setTicketPurchaseRate] = useState(30); // %
-            const [ticketAvgPrice, setTicketAvgPrice] = useState(100000);
+            const [ticketPurchaseRate, setTicketPurchaseRate] = useState(0); // %
+            const [ticketAvgPrice, setTicketAvgPrice] = useState(0);
 
             // オプション・物販
-            const [optionRate, setOptionRate] = useState(40); // %
-            const [optionAvgPrice, setOptionAvgPrice] = useState(5000);
-            const [productSalesPerMonth, setProductSalesPerMonth] = useState(200000);
+            const [optionRate, setOptionRate] = useState(0); // %
+            const [optionAvgPrice, setOptionAvgPrice] = useState(0);
+            const [productSalesPerMonth, setProductSalesPerMonth] = useState(0);
 
             // 計算
             const totalCustomers = newCustomers + repeatCustomers;
@@ -1526,6 +1924,12 @@
         // --- App Layout & Navigation ---
 
         const Layout = () => {
+            // URLパラメータからスタッフIDを取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const staffIdFromUrl = urlParams.get('staffId');
+            const isStaffMode = staffIdFromUrl !== null;
+            const currentStaffId = isStaffMode ? Number(staffIdFromUrl) : null;
+
             const [activeTab, setActiveTab] = useState('dashboard');
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [staffList, setStaffList] = useState(initialStaffData);
@@ -1538,6 +1942,9 @@
             const [isLoading, setIsLoading] = useState(false);
             const [saveMessage, setSaveMessage] = useState('');
             const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // 現在のスタッフ情報を取得
+            const currentStaff = isStaffMode ? staffList.find(s => s.id === currentStaffId) : null;
 
             // スタッフ管理関数
             const updateStaff = (id, newData) => {
@@ -1669,12 +2076,22 @@
                         </div>
 
                         <div className="flex-1 py-6 px-2 space-y-1">
-                            <NavItem id="dashboard" icon="layout-dashboard" label="ダッシュボード" />
-                            <NavItem id="simulation" icon="target" label="目標シミュレーション" />
-                            <NavItem id="sales" icon="bar-chart-2" label="売上・媒体分析" />
-                            <NavItem id="menus" icon="package" label="メニュー別分析" />
-                            <NavItem id="staff" icon="users" label="スタッフ管理" />
-                            <NavItem id="customers" icon="heart" label="顧客・回数券管理" />
+                            {isStaffMode ? (
+                                <>
+                                    <NavItem id="dashboard" icon="layout-dashboard" label="マイダッシュボード" />
+                                    <NavItem id="input" icon="edit" label="実績入力" />
+                                </>
+                            ) : (
+                                <>
+                                    <NavItem id="dashboard" icon="layout-dashboard" label="ダッシュボード" />
+                                    <NavItem id="input" icon="edit" label="実績入力" />
+                                    <NavItem id="simulation" icon="target" label="目標シミュレーション" />
+                                    <NavItem id="sales" icon="bar-chart-2" label="売上・媒体分析" />
+                                    <NavItem id="menus" icon="package" label="メニュー別分析" />
+                                    <NavItem id="staff" icon="users" label="スタッフ管理" />
+                                    <NavItem id="customers" icon="heart" label="顧客・回数券管理" />
+                                </>
+                            )}
                         </div>
 
                         <div className="p-4 border-t border-gold-100 bg-gold-50/50">
@@ -1694,7 +2111,8 @@
                         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gold-100 flex justify-between items-center px-8 shadow-sm z-10 sticky top-0">
                             <div>
                                 <h2 className="text-xl font-bold text-brown-800 serif">
-                                    {activeTab === 'dashboard' && 'Executive Summary'}
+                                    {activeTab === 'dashboard' && (isStaffMode ? 'My Dashboard' : 'Executive Summary')}
+                                    {activeTab === 'input' && 'Performance Input'}
                                     {activeTab === 'simulation' && 'Strategy Simulation'}
                                     {activeTab === 'sales' && 'Sales & Marketing Analytics'}
                                     {activeTab === 'menus' && 'Menu Performance Analysis'}
@@ -1703,7 +2121,8 @@
                                     {activeTab === 'settings' && 'System Settings'}
                                 </h2>
                                 <p className="text-xs text-gold-600 font-medium tracking-widest uppercase mt-1">
-                                    {activeTab === 'dashboard' && '経営サマリー'}
+                                    {activeTab === 'dashboard' && (isStaffMode ? 'マイダッシュボード' : '経営サマリー')}
+                                    {activeTab === 'input' && '実績入力'}
                                     {activeTab === 'simulation' && '経営シミュレーション'}
                                     {activeTab === 'sales' && '売上詳細・媒体分析'}
                                     {activeTab === 'menus' && 'メニュー別分析'}
@@ -1747,11 +2166,15 @@
                                 <div className="h-8 w-px bg-gold-200"></div>
                                 <div className="flex items-center space-x-3">
                                     <div className="w-10 h-10 rounded-full bg-brown-800 border-2 border-gold-300 flex items-center justify-center text-gold-100 text-sm font-serif">
-                                        OP
+                                        {isStaffMode && currentStaff ? currentStaff.name.charAt(0) : 'OP'}
                                     </div>
                                     <div className="hidden md:block">
-                                        <p className="text-sm font-bold text-brown-800">オーナー様</p>
-                                        <p className="text-xs text-gold-600">Administrator</p>
+                                        <p className="text-sm font-bold text-brown-800">
+                                            {isStaffMode && currentStaff ? currentStaff.name : 'オーナー様'}
+                                        </p>
+                                        <p className="text-xs text-gold-600">
+                                            {isStaffMode && currentStaff ? currentStaff.role : 'Administrator'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1760,12 +2183,89 @@
                         {/* Content Area */}
                         <main className="flex-1 overflow-y-auto p-8">
                             <div className="max-w-7xl mx-auto pb-10">
-                                {activeTab === 'dashboard' && <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} />}
-                                {activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
-                                {activeTab === 'simulation' && <SimulationView />}
-                                {activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} />}
-                                {activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
-                                {activeTab === 'customers' && (
+                                {activeTab === 'dashboard' && (
+                                    isStaffMode && currentStaff ? (
+                                        // スタッフモード: 自分の成績と店舗目標のみ表示
+                                        <div className="space-y-6">
+                                            <Card>
+                                                <h2 className="text-2xl font-bold text-brown-800 mb-6 serif">あなたの実績</h2>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 mb-1">今月の売上実績</p>
+                                                        <p className="text-3xl font-bold text-gold-600">¥{currentStaff.sales.toLocaleString()}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 mb-1">売上目標</p>
+                                                        <p className="text-3xl font-bold text-brown-800">¥{currentStaff.target.toLocaleString()}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <p className="text-sm text-gray-500 mb-2">達成率</p>
+                                                    <div className="w-full bg-gray-200 rounded-full h-4">
+                                                        <div className={`h-4 rounded-full ${currentStaff.sales >= currentStaff.target ? 'bg-emerald-500' : 'bg-gold-500'}`}
+                                                            style={{width: `${Math.min(100, (currentStaff.sales / currentStaff.target) * 100)}%`}}></div>
+                                                    </div>
+                                                    <p className="text-right text-sm font-bold text-gray-700 mt-1">
+                                                        {Math.round((currentStaff.sales / currentStaff.target) * 100)}%
+                                                    </p>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+                                                    <div className="text-center">
+                                                        <p className="text-sm text-gray-500">指名数</p>
+                                                        <p className="text-2xl font-bold text-brown-800">{currentStaff.nomination}</p>
+                                                    </div>
+                                                    <div className="text-center border-l border-gray-200">
+                                                        <p className="text-sm text-gray-500">リピート率</p>
+                                                        <p className="text-2xl font-bold text-emerald-600">{currentStaff.retention}%</p>
+                                                    </div>
+                                                    <div className="text-center border-l border-gray-200">
+                                                        <p className="text-sm text-gray-500">口コミ評価</p>
+                                                        <p className="text-2xl font-bold text-gold-600">{currentStaff.reviewScore || 0}</p>
+                                                    </div>
+                                                </div>
+                                            </Card>
+
+                                            <Card>
+                                                <h2 className="text-xl font-bold text-brown-800 mb-4 serif">店舗全体の目標</h2>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 mb-1">今月の店舗目標</p>
+                                                        <p className="text-2xl font-bold text-brown-800">
+                                                            ¥{staffList.filter(s => s.storeId === currentStaff.storeId).reduce((sum, s) => sum + s.target, 0).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 mb-1">現在の実績</p>
+                                                        <p className="text-2xl font-bold text-gold-600">
+                                                            ¥{staffList.filter(s => s.storeId === currentStaff.storeId).reduce((sum, s) => sum + s.sales, 0).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </Card>
+
+                                            <div className="bg-gold-50 border border-gold-200 rounded-lg p-6">
+                                                <h3 className="font-bold text-brown-800 mb-2">💡 スタッフURLについて</h3>
+                                                <p className="text-sm text-gray-700">
+                                                    このページはあなた専用のURLです。他のスタッフの詳細情報は表示されません。<br/>
+                                                    「実績入力」から日々の売上を記録しましょう！
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} />
+                                    )
+                                )}
+                                {activeTab === 'input' && <PerformanceInputView
+                                    dailySalesData={dailySalesData}
+                                    setDailySalesData={setDailySalesData}
+                                    menuSalesData={menuSalesData}
+                                    setMenuSalesData={setMenuSalesData}
+                                />}
+                                {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
+                                {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
+                                {!isStaffMode && activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} />}
+                                {!isStaffMode && activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
+                                {!isStaffMode && activeTab === 'customers' && (
                                     <CustomerTicketManagementView
                                         ticketMasterList={ticketMasterList}
                                         customerList={customerList}
