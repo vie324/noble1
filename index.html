@@ -571,9 +571,15 @@
             const buttonClass = mobileOptimized ? 'mobile-btn touch-feedback' : '';
             const tabClass = mobileOptimized ? 'mobile-tab touch-feedback' : '';
 
+            // 安全な配列チェック
+            const safeCustomerList = Array.isArray(customerList) ? customerList : [];
+            const safeStaffList = Array.isArray(staffList) ? staffList : [];
+            const safeDailySalesData = Array.isArray(dailySalesData) ? dailySalesData : [];
+            const safeStoreData = Array.isArray(storeData) && storeData.length > 0 ? storeData : stores;
+
             // 期間でフィルタリングされた売上データ
             const periodFilteredSales = useMemo(() => {
-                if (!dailySalesData || dailySalesData.length === 0) return [];
+                if (safeDailySalesData.length === 0) return [];
 
                 const today = new Date();
                 const filterDate = new Date();
@@ -595,19 +601,20 @@
                         filterDate.setMonth(today.getMonth() - 1);
                 }
 
-                return dailySalesData.filter(d => {
+                return safeDailySalesData.filter(d => {
                     const saleDate = new Date(d.date);
                     return saleDate >= filterDate;
                 });
-            }, [dailySalesData, periodMode]);
+            }, [safeDailySalesData, periodMode]);
 
             // フィルタリングされた売上データ
             const filteredDailySales = useMemo(() => {
                 if (!periodFilteredSales || periodFilteredSales.length === 0) return [];
                 if (viewMode === 'all') return periodFilteredSales;
 
-                if (viewMode === 'store_1' || viewMode === 'store_2') {
-                    const storeId = viewMode === 'store_1' ? 1 : 2;
+                // 動的な店舗フィルタリング
+                if (viewMode.startsWith('store_')) {
+                    const storeId = parseInt(viewMode.replace('store_', ''));
                     return periodFilteredSales.filter(d => d.storeId === storeId);
                 }
 
@@ -668,17 +675,17 @@
                 const today = new Date();
                 const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-                return customerList.filter(customer => {
+                return safeCustomerList.filter(customer => {
                     if (!customer.expiryDate) return false;
                     const expiryDate = new Date(customer.expiryDate);
                     return expiryDate >= today && expiryDate <= thirtyDaysLater && customer.remainingSessions > 0;
                 });
-            }, [customerList]);
+            }, [safeCustomerList]);
 
             if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
 
             // データが空の場合の表示
-            const hasData = (staffList && staffList.length > 0) || (dailySalesData && dailySalesData.length > 0);
+            const hasData = (Array.isArray(safeStaffList) && safeStaffList.length > 0) || safeDailySalesData.length > 0;
 
             if (!hasData) {
                 return (
@@ -758,8 +765,9 @@
                             <h3 className={`font-bold text-gray-600 serif ${fontSize.subtitle}`}>表示切替</h3>
                             <div className={`flex gap-2 items-center ${mobileOptimized ? 'flex-wrap' : ''}`}>
                                 <ViewTab id="all" label="全店舗合計" />
-                                <ViewTab id="store_1" label="新宿店" />
-                                <ViewTab id="store_2" label="新宿南口店" />
+                                {safeStoreData.map(store => (
+                                    <ViewTab key={store.id} id={`store_${store.id}`} label={store.name} />
+                                ))}
                                 <ViewTab id="staff" label="スタッフ別" />
                                 {viewMode === 'staff' && (
                                     <select
@@ -768,9 +776,14 @@
                                         className="ml-2 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-gold-500 outline-none bg-white"
                                     >
                                         <option value="">スタッフを選択</option>
-                                        {staffList.map(staff => (
-                                            <option key={staff.id} value={staff.id}>{staff.name} ({stores.find(s => s.id === staff.storeId)?.name})</option>
-                                        ))}
+                                        {safeStaffList.map(staff => {
+                                            const staffStore = safeStoreData.find(s => s.id === staff.storeId);
+                                            return (
+                                                <option key={staff.id} value={staff.id}>
+                                                    {staff.name} ({staffStore ? staffStore.name : '店舗不明'})
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 )}
                             </div>
@@ -872,7 +885,7 @@
                             <Card>
                                 <h3 className="text-lg font-bold text-brown-800 mb-4 serif">媒体別 新規集客状況</h3>
                                 <div className="space-y-4">
-                                    {mediaSourcesData.slice(0, 3).map(media => (
+                                    {(mediaSourcesData || []).slice(0, 3).map(media => (
                                         <div key={media.id} className="flex flex-col">
                                             <div className="flex justify-between text-sm mb-1">
                                                 <span className="font-medium text-gray-700">{media.name}</span>
@@ -1315,7 +1328,7 @@
 
                     {/* Staff List Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {staffList.length === 0 ? (
+                        {!Array.isArray(staffList) || staffList.length === 0 ? (
                             <div className="col-span-full text-center py-12 text-gray-400">
                                 <Icon name="users" size={48} className="mx-auto mb-4 opacity-30" />
                                 <p className="text-sm">スタッフが登録されていません</p>
@@ -1346,7 +1359,7 @@
                                         <div className="ml-3">
                                             <h3 className="font-bold text-brown-800">{staff.name}</h3>
                                             <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">
-                                                {staff.role} - {stores.find(s => s.id === staff.storeId)?.name}
+                                                {staff.role} - {stores.find(s => s.id === staff.storeId)?.name || '店舗不明'}
                                             </p>
                                         </div>
                                     </div>
@@ -1356,14 +1369,14 @@
                                         <span className="font-bold text-brown-800">¥{staff.sales.toLocaleString()}</span>
                                     </div>
                                     <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                        <div 
-                                            className={`h-full ${staff.sales >= staff.target ? 'bg-emerald-500' : 'bg-gold-500'}`} 
-                                            style={{width: `${Math.min(100, (staff.sales/staff.target)*100)}%`}}
+                                        <div
+                                            className={`h-full ${staff.sales >= staff.target ? 'bg-emerald-500' : 'bg-gold-500'}`}
+                                            style={{width: `${staff.target > 0 ? Math.min(100, (staff.sales/staff.target)*100) : 0}%`}}
                                         ></div>
                                     </div>
                                     <div className="flex justify-between text-xs text-gray-400">
                                         <span>目標: ¥{staff.target.toLocaleString()}</span>
-                                        <span>{Math.round((staff.sales/staff.target)*100)}%</span>
+                                        <span>{staff.target > 0 ? Math.round((staff.sales/staff.target)*100) : 0}%</span>
                                     </div>
                                     
                                     <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50 mt-2">
@@ -1713,7 +1726,7 @@
                     {/* Customer List */}
                     {activeView === 'customers' && (
                         <div className="bg-white rounded-xl border border-gold-100 overflow-hidden">
-                            {customerList.length === 0 ? (
+                            {!Array.isArray(customerList) || customerList.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400">
                                     <Icon name="users" size={48} className="mx-auto mb-4 opacity-30" />
                                     <p className="text-sm">顧客が登録されていません</p>
@@ -1737,7 +1750,7 @@
                                             {customerList.map(customer => {
                                                 const ticket = ticketMasterList.find(t => t.id === customer.ticketMasterId);
                                                 const store = stores.find(s => s.id === customer.storeId);
-                                                const isExpired = new Date(customer.expiryDate) < new Date();
+                                                const isExpired = customer.expiryDate ? new Date(customer.expiryDate) < new Date() : false;
 
                                                 return (
                                                     <tr key={customer.id} className="hover:bg-gold-50/30 text-sm">
@@ -1757,7 +1770,7 @@
                                                                 {customer.expiryDate}
                                                             </span>
                                                         </td>
-                                                        <td className="py-3 px-4 text-gray-600">{store?.name}</td>
+                                                        <td className="py-3 px-4 text-gray-600">{store?.name || '不明'}</td>
                                                         <td className="py-3 px-4">
                                                             <div className="flex justify-center gap-2">
                                                                 <button
@@ -1906,14 +1919,15 @@
         const MenuAnalysisView = ({ menuSalesData }) => {
             if (!window.Recharts) return <div>Loading Charts...</div>;
 
-            const hasData = menuSalesData && menuSalesData.length > 0;
+            const safeMenuSalesData = Array.isArray(menuSalesData) ? menuSalesData : [];
+            const hasData = safeMenuSalesData.length > 0;
 
             // メニューIDごとにデータを集約
             const aggregatedMenuData = useMemo(() => {
                 if (!hasData) return [];
 
                 const menuMap = {};
-                menuSalesData.forEach(entry => {
+                safeMenuSalesData.forEach(entry => {
                     if (!menuMap[entry.menuId]) {
                         menuMap[entry.menuId] = {
                             menuId: entry.menuId,
@@ -1932,10 +1946,10 @@
                     ...menu,
                     storeIds: Array.from(menu.storeIds)
                 }));
-            }, [menuSalesData, hasData]);
+            }, [safeMenuSalesData, hasData]);
 
-            const totalMenuSales = hasData ? menuSalesData.reduce((sum, m) => sum + (m.sales || 0), 0) : 0;
-            const totalMenuCount = hasData ? menuSalesData.reduce((sum, m) => sum + (m.count || 0), 0) : 0;
+            const totalMenuSales = hasData ? safeMenuSalesData.reduce((sum, m) => sum + (m.sales || 0), 0) : 0;
+            const totalMenuCount = hasData ? safeMenuSalesData.reduce((sum, m) => sum + (m.count || 0), 0) : 0;
             const topMenu = aggregatedMenuData.length > 0 ? [...aggregatedMenuData].sort((a, b) => (b.count || 0) - (a.count || 0))[0] : null;
 
             if (!hasData) {
@@ -2105,6 +2119,10 @@
 
             const handleDailySalesSubmit = () => {
                 const store = stores.find(s => s.id === dailyForm.storeId);
+                if (!store) {
+                    alert('店舗を選択してください');
+                    return;
+                }
                 const accountingSales = dailyForm.spotSales + dailyForm.ticketUsage + dailyForm.product;
                 const cashIn = dailyForm.spotSales + dailyForm.ticketSales + dailyForm.product;
 
@@ -2433,7 +2451,7 @@
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {menuSalesData.slice(-10).reverse().map((item, index) => (
+                                        {(menuSalesData || []).slice(-10).reverse().map((item, index) => (
                                             <tr key={index} className="hover:bg-gold-50/30">
                                                 <td className="py-2 px-3">{item.date}</td>
                                                 <td className="py-2 px-3">{item.menuName}</td>
@@ -3179,10 +3197,10 @@
                                                     <p className="text-sm text-gray-500 mb-2">達成率</p>
                                                     <div className="w-full bg-gray-200 rounded-full h-4">
                                                         <div className={`h-4 rounded-full ${currentStaff.sales >= currentStaff.target ? 'bg-emerald-500' : 'bg-gold-500'}`}
-                                                            style={{width: `${Math.min(100, (currentStaff.sales / currentStaff.target) * 100)}%`}}></div>
+                                                            style={{width: `${currentStaff.target > 0 ? Math.min(100, (currentStaff.sales / currentStaff.target) * 100) : 0}%`}}></div>
                                                     </div>
                                                     <p className="text-right text-sm font-bold text-gray-700 mt-1">
-                                                        {Math.round((currentStaff.sales / currentStaff.target) * 100)}%
+                                                        {currentStaff.target > 0 ? Math.round((currentStaff.sales / currentStaff.target) * 100) : 0}%
                                                     </p>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
