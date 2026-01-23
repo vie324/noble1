@@ -3521,6 +3521,13 @@
                 setIsLoading(true);
                 setSaveMessage('');
 
+                // GAS URLが設定されているかチェック
+                if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+                    setSaveMessage('✗ スプレッドシートURLが設定されていません。index.htmlのGAS_WEB_APP_URLを設定してください。');
+                    setIsLoading(false);
+                    return;
+                }
+
                 try {
                     const response = await fetch(GAS_WEB_APP_URL + '?action=getAllData', {
                         method: 'POST',
@@ -3530,9 +3537,15 @@
                         body: JSON.stringify({ action: 'getAllData' })
                     });
 
+                    // レスポンスのステータスチェック
+                    if (!response.ok) {
+                        throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
+                    }
+
                     const result = await response.json();
 
                     if (result.success && result.data) {
+                        // データの読み込み
                         if (result.data.staff) {
                             setStaffList(result.data.staff);
                         }
@@ -3542,23 +3555,42 @@
                         if (result.data.customers) {
                             setCustomerList(result.data.customers);
                         }
+                        if (result.data.menus) {
+                            setMenuList(result.data.menus);
+                        }
+                        if (result.data.mediaSources) {
+                            setMediaSourcesList(result.data.mediaSources);
+                        }
 
                         setSaveMessage('✓ データをスプレッドシートから読み込みました');
                         setTimeout(() => setSaveMessage(''), 3000);
                     } else {
-                        setSaveMessage('✗ データの読み込みに失敗しました');
+                        const errorMsg = result.error || 'データの読み込みに失敗しました';
+                        setSaveMessage('✗ ' + errorMsg);
+                        console.error('読み込みエラー:', result);
                     }
                 } catch (error) {
-                    setSaveMessage('✗ 読み込みエラー: ' + error.message);
+                    console.error('読み込みエラー詳細:', error);
+                    let errorMessage = '読み込みエラー: ';
+
+                    if (error.message.includes('Failed to fetch')) {
+                        errorMessage += 'ネットワークエラー。スプレッドシートURLを確認してください。';
+                    } else if (error.message.includes('JSON')) {
+                        errorMessage += 'レスポンス形式エラー。GASスクリプトを確認してください。';
+                    } else {
+                        errorMessage += error.message;
+                    }
+
+                    setSaveMessage('✗ ' + errorMessage);
                 }
 
                 setIsLoading(false);
             };
 
-            // スタッフモードの場合、初回ロード時にデータを自動取得
+            // 初回ロード時にデータを自動取得（全モード対応）
             useEffect(() => {
-                // GAS URLが設定されていて、スタッフモードで、まだデータが読み込まれていない場合
-                if (isStaffMode && GAS_WEB_APP_URL && GAS_WEB_APP_URL !== 'YOUR_GAS_WEB_APP_URL_HERE' && staffList.length === 0) {
+                // GAS URLが設定されている場合、自動的にデータを読み込む
+                if (GAS_WEB_APP_URL && GAS_WEB_APP_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
                     handleLoadFromSpreadsheet();
                 }
             }, []); // 初回マウント時のみ実行
