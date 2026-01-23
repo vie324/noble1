@@ -235,11 +235,11 @@
 
         // 媒体別データ（仮データ - 自由に編集可能）
         const initialMediaSourcesData = [
-            { id: 1, name: 'ホットペッパー', newVisits: 45, repeatRate: 35, cpa: 8500, sales: 680000 },
-            { id: 2, name: 'Instagram', newVisits: 28, repeatRate: 52, cpa: 3200, sales: 420000 },
-            { id: 3, name: '紹介', newVisits: 15, repeatRate: 78, cpa: 0, sales: 320000 }
+            { id: 1, name: 'ホットペッパー', newVisits: 45, repeatRate: 35, cpa: 8500, sales: 680000, adCost: 382500 },
+            { id: 2, name: 'Instagram', newVisits: 28, repeatRate: 52, cpa: 3200, sales: 420000, adCost: 89600 },
+            { id: 3, name: '紹介', newVisits: 15, repeatRate: 78, cpa: 0, sales: 320000, adCost: 0 }
         ];
-        // 媒体データ構造: { id, name, newVisits, repeatRate, cpa, sales }
+        // 媒体データ構造: { id, name, newVisits, repeatRate, cpa, sales, adCost }
 
         // 日次売上データ（仮データ - 自由に編集可能）
         const initialDailySalesData = [
@@ -386,7 +386,7 @@
 
         // --- Main Sections ---
 
-        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [] }) => {
+        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [], onNavigate, mobileOptimized = false }) => {
             const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff_{id}'
             const [selectedStaffId, setSelectedStaffId] = useState(null);
             const [periodMode, setPeriodMode] = useState('month'); // 'month', '3months', '6months', 'year'
@@ -699,7 +699,10 @@
                                             </div>
                                         </div>
                                     ))}
-                                    <button className="w-full mt-2 text-xs text-gold-600 hover:text-gold-700 text-center py-2 border border-gold-200 rounded hover:bg-gold-50 transition-colors">
+                                    <button
+                                        onClick={() => onNavigate && onNavigate('sales')}
+                                        className="w-full mt-2 text-xs text-gold-600 hover:text-gold-700 text-center py-2 border border-gold-200 rounded hover:bg-gold-50 transition-colors"
+                                    >
                                         全ての媒体を見る
                                     </button>
                                 </div>
@@ -733,16 +736,92 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* Monthly Trend Chart (when period > month) */}
+                    {periodMode !== 'month' && monthlyData.length > 0 && (
+                        <Card>
+                            <div className="mb-6">
+                                <h2 className="text-lg font-bold text-brown-800 serif">月次推移グラフ</h2>
+                                <p className="text-xs text-gray-500">選択期間の月ごとの売上推移を確認</p>
+                            </div>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={monthlyData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <XAxis dataKey="month" tick={{fontSize: 10}} />
+                                    <YAxis tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
+                                    <Tooltip
+                                        formatter={(value) => `¥${value.toLocaleString()}`}
+                                        contentStyle={{backgroundColor: '#fff', borderColor: '#d4af37'}}
+                                    />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="accountingSales" name="会計上売上" stroke="#d4af37" strokeWidth={2} dot={{r: 4}} />
+                                    <Line type="monotone" dataKey="cashIn" name="キャッシュイン" stroke="#10b981" strokeWidth={2} dot={{r: 4}} />
+                                    <Line type="monotone" dataKey="ticketSales" name="回数券販売" stroke="#3b82f6" strokeWidth={2} dot={{r: 4}} />
+                                </LineChart>
+                            </ResponsiveContainer>
+
+                            {/* Summary Statistics */}
+                            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-gold-50 p-3 rounded">
+                                    <p className="text-xs text-gray-600">期間合計売上</p>
+                                    <p className="text-lg font-bold text-gold-700">¥{monthlyData.reduce((sum, m) => sum + m.accountingSales, 0).toLocaleString()}</p>
+                                </div>
+                                <div className="bg-emerald-50 p-3 rounded">
+                                    <p className="text-xs text-gray-600">期間合計入金</p>
+                                    <p className="text-lg font-bold text-emerald-700">¥{monthlyData.reduce((sum, m) => sum + m.cashIn, 0).toLocaleString()}</p>
+                                </div>
+                                <div className="bg-blue-50 p-3 rounded">
+                                    <p className="text-xs text-gray-600">月平均売上</p>
+                                    <p className="text-lg font-bold text-blue-700">¥{Math.round(monthlyData.reduce((sum, m) => sum + m.accountingSales, 0) / monthlyData.length).toLocaleString()}</p>
+                                </div>
+                                <div className="bg-rose-50 p-3 rounded">
+                                    <p className="text-xs text-gray-600">対象期間</p>
+                                    <p className="text-lg font-bold text-rose-700">{monthlyData.length}ヶ月</p>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
                 </div>
             );
         };
 
         // --- Media Analysis Section (New) ---
-        const SalesAnalysisView = ({ dailySalesData, mediaSourcesData = [] }) => {
+        const SalesAnalysisView = ({ dailySalesData, mediaSourcesData = [], onUpdateMediaSource }) => {
              if (!window.Recharts) return <div>Loading Charts...</div>;
+
+            const [editingAdCostId, setEditingAdCostId] = useState(null);
+            const [adCostInput, setAdCostInput] = useState('');
 
             // 空データチェック
             const hasData = (dailySalesData && dailySalesData.length > 0) || (mediaSourcesData && mediaSourcesData.length > 0);
+
+            // 広告費の編集を開始
+            const startEditAdCost = (media) => {
+                setEditingAdCostId(media.id);
+                setAdCostInput(String(media.adCost || 0));
+            };
+
+            // 広告費の保存
+            const saveAdCost = (media) => {
+                const processedValue = normalizeNumberInput(adCostInput);
+                const newAdCost = processedValue === '' ? 0 : Number(processedValue);
+
+                if (onUpdateMediaSource) {
+                    onUpdateMediaSource(media.id, {
+                        ...media,
+                        adCost: newAdCost
+                    });
+                }
+
+                setEditingAdCostId(null);
+                setAdCostInput('');
+            };
+
+            // 編集をキャンセル
+            const cancelEditAdCost = () => {
+                setEditingAdCostId(null);
+                setAdCostInput('');
+            };
 
             // データを整形（dayフィールドを追加）
             const formattedDailySalesData = useMemo(() => {
@@ -798,28 +877,83 @@
                                             <th className="py-3 font-medium">媒体名</th>
                                             <th className="py-3 font-medium text-right">新規数</th>
                                             <th className="py-3 font-medium text-right">獲得単価(CPA)</th>
+                                            <th className="py-3 font-medium text-right">広告費</th>
                                             <th className="py-3 font-medium text-right">リピート率</th>
                                             <th className="py-3 font-medium text-right">総売上貢献</th>
+                                            <th className="py-3 font-medium text-center">ROAS</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm divide-y divide-gray-50">
                                         {mediaSourcesData && mediaSourcesData.length > 0 ? (
-                                            mediaSourcesData.map((media) => (
-                                                <tr key={media.id} className="hover:bg-gold-50/50">
-                                                    <td className="py-3 font-medium text-brown-800">{media.name}</td>
-                                                    <td className="py-3 text-right">{media.newVisits}</td>
-                                                    <td className="py-3 text-right">¥{media.cpa.toLocaleString()}</td>
-                                                    <td className="py-3 text-right">
-                                                        <span className={`px-2 py-1 rounded-full text-xs ${media.repeatRate >= 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {media.repeatRate}%
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 text-right font-medium">¥{media.sales.toLocaleString()}</td>
-                                                </tr>
-                                            ))
+                                            mediaSourcesData.map((media) => {
+                                                const roas = media.adCost > 0 ? ((media.sales / media.adCost) * 100).toFixed(0) : '-';
+                                                return (
+                                                    <tr key={media.id} className="hover:bg-gold-50/50">
+                                                        <td className="py-3 font-medium text-brown-800">{media.name}</td>
+                                                        <td className="py-3 text-right">{media.newVisits}</td>
+                                                        <td className="py-3 text-right">¥{media.cpa.toLocaleString()}</td>
+                                                        <td className="py-3 text-right">
+                                                            {editingAdCostId === media.id ? (
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <input
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        value={adCostInput}
+                                                                        onChange={(e) => setAdCostInput(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') saveAdCost(media);
+                                                                            if (e.key === 'Escape') cancelEditAdCost();
+                                                                        }}
+                                                                        className="w-24 px-2 py-1 border border-blue-400 rounded text-sm text-right focus:outline-none focus:border-blue-600"
+                                                                        autoFocus
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => saveAdCost(media)}
+                                                                        className="text-green-600 hover:text-green-700"
+                                                                    >
+                                                                        <Icon name="check" size={14} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={cancelEditAdCost}
+                                                                        className="text-red-600 hover:text-red-700"
+                                                                    >
+                                                                        <Icon name="x" size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => startEditAdCost(media)}
+                                                                    className="text-blue-600 hover:text-blue-700 hover:underline"
+                                                                >
+                                                                    ¥{(media.adCost || 0).toLocaleString()}
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 text-right">
+                                                            <span className={`px-2 py-1 rounded-full text-xs ${media.repeatRate >= 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {media.repeatRate}%
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-right font-medium">¥{media.sales.toLocaleString()}</td>
+                                                        <td className="py-3 text-center">
+                                                            {roas !== '-' ? (
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                                    Number(roas) >= 300 ? 'bg-green-100 text-green-700' :
+                                                                    Number(roas) >= 150 ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
+                                                                }`}>
+                                                                    {roas}%
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-gray-400 text-xs">-</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         ) : (
                                             <tr>
-                                                <td colSpan="5" className="py-6 text-center text-gray-400 text-sm">
+                                                <td colSpan="7" className="py-6 text-center text-gray-400 text-sm">
                                                     媒体データがありません
                                                 </td>
                                             </tr>
@@ -827,8 +961,16 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="mt-4 p-4 bg-gold-50 rounded text-xs text-brown-800">
-                                <strong>分析:</strong> 「紹介・口コミ」のリピート率が85%と圧倒的です。紹介キャンペーンの強化を推奨します。一方、チラシはCPAが高くリピート率が低いため、予算の見直しが必要です。
+                            <div className="mt-4 p-4 bg-gold-50 rounded text-xs text-brown-800 space-y-2">
+                                <div>
+                                    <strong>広告費の入力方法:</strong> 各媒体の広告費（青色の金額）をクリックすると編集できます。月間の広告費を入力してください。
+                                </div>
+                                <div>
+                                    <strong>ROAS (Return On Ad Spend):</strong> 広告費1円あたりの売上を示します。300%以上=優秀、150-300%=良好、150%未満=改善必要
+                                </div>
+                                <div>
+                                    <strong>分析:</strong> 紹介媒体は広告費ゼロで高いリピート率を実現しています。有料媒体のROASを確認し、費用対効果の高い媒体に予算を集中させることを推奨します。
+                                </div>
                             </div>
                         </Card>
 
@@ -2352,6 +2494,7 @@
 
             const [activeTab, setActiveTab] = useState('dashboard');
             const [sidebarOpen, setSidebarOpen] = useState(true);
+            const [mobileOptimized, setMobileOptimized] = useState(false);
             const [staffList, setStaffList] = useState(initialStaffData);
             const [ticketMasterList, setTicketMasterList] = useState(initialTicketMasterData);
             const [customerList, setCustomerList] = useState(initialCustomerData);
@@ -2403,6 +2546,19 @@
 
             const deleteCustomer = (id) => {
                 setCustomerList(prev => prev.filter(customer => customer.id !== id));
+            };
+
+            // 媒体ソース管理関数
+            const updateMediaSource = (id, newData) => {
+                setMediaSourcesList(prev => prev.map(media => media.id === id ? newData : media));
+            };
+
+            const addMediaSource = (newData) => {
+                setMediaSourcesList(prev => [...prev, newData]);
+            };
+
+            const deleteMediaSource = (id) => {
+                setMediaSourcesList(prev => prev.filter(media => media.id !== id));
             };
 
             // スプレッドシートに全データを保存
@@ -2587,6 +2743,20 @@
                                     )}
                                 </div>
                                 <div className="h-8 w-px bg-gold-200"></div>
+                                {/* Mobile/PC Toggle */}
+                                <button
+                                    onClick={() => setMobileOptimized(!mobileOptimized)}
+                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        mobileOptimized
+                                            ? 'bg-purple-600 text-white shadow-md'
+                                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-purple-50'
+                                    }`}
+                                    title={mobileOptimized ? 'PC表示に切替' : 'スマホ表示に切替'}
+                                >
+                                    <Icon name={mobileOptimized ? "smartphone" : "monitor"} size={16} className="mr-2" />
+                                    <span className="hidden lg:inline">{mobileOptimized ? 'モバイル' : 'PC'}</span>
+                                </button>
+                                <div className="h-8 w-px bg-gold-200"></div>
                                 <div className="text-right hidden md:block">
                                     <p className="text-sm font-bold text-brown-800">{currentDate}</p>
                                     <p className="text-xs text-gray-400">Tokyo, Japan</p>
@@ -2609,8 +2779,8 @@
                         </header>
 
                         {/* Content Area */}
-                        <main className="flex-1 overflow-y-auto p-8">
-                            <div className="max-w-7xl mx-auto pb-10">
+                        <main className={`flex-1 overflow-y-auto transition-all ${mobileOptimized ? 'p-2' : 'p-8'}`}>
+                            <div className={`mx-auto pb-10 ${mobileOptimized ? 'max-w-full' : 'max-w-7xl'}`}>
                                 {activeTab === 'dashboard' && (
                                     isStaffMode && currentStaff ? (
                                         // スタッフモード: 自分の成績と店舗目標のみ表示
@@ -2680,7 +2850,15 @@
                                             </div>
                                         </div>
                                     ) : (
-                                        <DashboardView staffList={staffList} dailySalesData={dailySalesData} menuSalesData={menuSalesData} mediaSourcesData={mediaSourcesList} customerList={customerList} />
+                                        <DashboardView
+                                            staffList={staffList}
+                                            dailySalesData={dailySalesData}
+                                            menuSalesData={menuSalesData}
+                                            mediaSourcesData={mediaSourcesList}
+                                            customerList={customerList}
+                                            onNavigate={setActiveTab}
+                                            mobileOptimized={mobileOptimized}
+                                        />
                                     )
                                 )}
                                 {activeTab === 'input' && <PerformanceInputView
@@ -2692,7 +2870,13 @@
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
                                 {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
-                                {!isStaffMode && activeTab === 'sales' && <SalesAnalysisView dailySalesData={dailySalesData} mediaSourcesData={mediaSourcesList} />}
+                                {!isStaffMode && activeTab === 'sales' && (
+                                    <SalesAnalysisView
+                                        dailySalesData={dailySalesData}
+                                        mediaSourcesData={mediaSourcesList}
+                                        onUpdateMediaSource={updateMediaSource}
+                                    />
+                                )}
                                 {!isStaffMode && activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
                                 {!isStaffMode && activeTab === 'customers' && (
                                     <CustomerTicketManagementView
