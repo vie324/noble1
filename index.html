@@ -1915,6 +1915,542 @@
             );
         };
 
+        // --- Menu Management View ---
+        const MenuManagementView = ({ menuList, onUpdateMenu, onAddMenu, onDeleteMenu }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [deletingId, setDeletingId] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                price: 0,
+                availableStores: []
+            });
+
+            const startEdit = (menu) => {
+                setEditingId(menu.id);
+                setFormData({
+                    name: menu.name,
+                    price: menu.price,
+                    availableStores: Array.isArray(menu.availableStores) ? menu.availableStores : []
+                });
+                setIsEditing(true);
+            };
+
+            const startAdd = () => {
+                setEditingId(null);
+                setFormData({
+                    name: '',
+                    price: 0,
+                    availableStores: []
+                });
+                setIsEditing(true);
+            };
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                const isTextField = ['name'].includes(name);
+
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: isTextField ? value : (() => {
+                        const processedValue = normalizeNumberInput(value);
+                        return processedValue === '' ? 0 : Number(processedValue);
+                    })()
+                }));
+            };
+
+            const handleStoreToggle = (storeId) => {
+                setFormData(prev => ({
+                    ...prev,
+                    availableStores: prev.availableStores.includes(storeId)
+                        ? prev.availableStores.filter(id => id !== storeId)
+                        : [...prev.availableStores, storeId]
+                }));
+            };
+
+            const handleSubmit = () => {
+                if (!formData.name.trim()) {
+                    alert('メニュー名を入力してください');
+                    return;
+                }
+
+                if (editingId) {
+                    onUpdateMenu(editingId, { ...formData, id: editingId });
+                } else {
+                    const newMenu = {
+                        ...formData,
+                        id: Date.now()
+                    };
+                    onAddMenu(newMenu);
+                }
+                setIsEditing(false);
+                setEditingId(null);
+            };
+
+            const confirmDelete = () => {
+                if (deletingId) {
+                    onDeleteMenu(deletingId);
+                }
+                setShowDeleteConfirm(false);
+                setDeletingId(null);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-brown-800 serif">メニュー管理</h2>
+                            <p className="text-sm text-gray-600 mt-1">施術メニューの登録・編集・削除</p>
+                        </div>
+                        <button
+                            onClick={startAdd}
+                            className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                        >
+                            <Icon name="plus" size={18} className="mr-2" />
+                            メニュー新規登録
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {!Array.isArray(menuList) || menuList.length === 0 ? (
+                            <div className="col-span-full text-center py-12 text-gray-400">
+                                <Icon name="package" size={48} className="mx-auto mb-4 opacity-30" />
+                                <p className="text-sm">メニューが登録されていません</p>
+                                <p className="text-xs mt-2">「メニュー新規登録」ボタンから追加してください</p>
+                            </div>
+                        ) : (
+                            menuList.map(menu => (
+                                <div key={menu.id} className="bg-white border border-purple-100 rounded-xl p-5 hover:shadow-md transition-shadow group relative">
+                                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => startEdit(menu)}
+                                            className="text-gray-300 hover:text-blue-500 p-1"
+                                        >
+                                            <Icon name="edit-2" size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => { setDeletingId(menu.id); setShowDeleteConfirm(true); }}
+                                            className="text-gray-300 hover:text-rose-500 p-1"
+                                        >
+                                            <Icon name="trash-2" size={16} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <div className="w-12 h-12 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 mb-3">
+                                            <Icon name="package" size={24} />
+                                        </div>
+                                        <h3 className="font-bold text-brown-800 text-lg mb-1">{menu.name}</h3>
+                                        <p className="text-2xl font-bold text-purple-600">¥{menu.price.toLocaleString()}</p>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <p className="text-xs text-gray-500 mb-2">提供店舗</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {(menu.availableStores || []).map(storeId => {
+                                                const store = stores.find(s => s.id === storeId);
+                                                return store ? (
+                                                    <span key={storeId} className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                                        {store.name}
+                                                    </span>
+                                                ) : null;
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* 編集フォームモーダル */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+                                <h3 className="text-xl font-bold text-brown-800 mb-4 serif">
+                                    {editingId ? 'メニュー編集' : 'メニュー新規登録'}
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">メニュー名</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
+                                            placeholder="例: 剥離ありハーブピーリング(顔)"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">価格（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="price"
+                                            value={formData.price}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-2 block">提供店舗</label>
+                                        <div className="space-y-2">
+                                            {stores.map(store => (
+                                                <label key={store.id} className="flex items-center space-x-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.availableStores.includes(store.id)}
+                                                        onChange={() => handleStoreToggle(store.id)}
+                                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700">{store.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 mt-6">
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-sm"
+                                    >
+                                        {editingId ? '更新する' : '登録する'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 削除確認モーダル */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                                        <Icon name="alert-triangle" size={20} className="text-rose-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-brown-800">メニュー削除</h3>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    このメニューを削除してもよろしいですか？この操作は取り消せません。
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded">キャンセル</button>
+                                    <button onClick={confirmDelete} className="px-4 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded font-medium shadow-sm">削除する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Media Source Management View ---
+        const MediaSourceManagementView = ({ mediaSourcesList, onUpdateMedia, onAddMedia, onDeleteMedia }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [deletingId, setDeletingId] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                newVisits: 0,
+                repeatRate: 0,
+                cpa: 0,
+                sales: 0,
+                adCost: 0
+            });
+
+            const startEdit = (media) => {
+                setEditingId(media.id);
+                setFormData({
+                    name: media.name,
+                    newVisits: media.newVisits || 0,
+                    repeatRate: media.repeatRate || 0,
+                    cpa: media.cpa || 0,
+                    sales: media.sales || 0,
+                    adCost: media.adCost || 0
+                });
+                setIsEditing(true);
+            };
+
+            const startAdd = () => {
+                setEditingId(null);
+                setFormData({
+                    name: '',
+                    newVisits: 0,
+                    repeatRate: 0,
+                    cpa: 0,
+                    sales: 0,
+                    adCost: 0
+                });
+                setIsEditing(true);
+            };
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                const isTextField = ['name'].includes(name);
+
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: isTextField ? value : (() => {
+                        const processedValue = normalizeNumberInput(value);
+                        return processedValue === '' ? 0 : Number(processedValue);
+                    })()
+                }));
+            };
+
+            const handleSubmit = () => {
+                if (!formData.name.trim()) {
+                    alert('媒体名を入力してください');
+                    return;
+                }
+
+                if (editingId) {
+                    onUpdateMedia(editingId, { ...formData, id: editingId });
+                } else {
+                    const newMedia = {
+                        ...formData,
+                        id: Date.now()
+                    };
+                    onAddMedia(newMedia);
+                }
+                setIsEditing(false);
+                setEditingId(null);
+            };
+
+            const confirmDelete = () => {
+                if (deletingId) {
+                    onDeleteMedia(deletingId);
+                }
+                setShowDeleteConfirm(false);
+                setDeletingId(null);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-brown-800 serif">媒体マスター管理</h2>
+                            <p className="text-sm text-gray-600 mt-1">集客媒体の登録・編集・削除</p>
+                        </div>
+                        <button
+                            onClick={startAdd}
+                            className="flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                        >
+                            <Icon name="plus" size={18} className="mr-2" />
+                            媒体新規登録
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {!Array.isArray(mediaSourcesList) || mediaSourcesList.length === 0 ? (
+                            <div className="col-span-full text-center py-12 text-gray-400">
+                                <Icon name="megaphone" size={48} className="mx-auto mb-4 opacity-30" />
+                                <p className="text-sm">媒体が登録されていません</p>
+                                <p className="text-xs mt-2">「媒体新規登録」ボタンから追加してください</p>
+                            </div>
+                        ) : (
+                            mediaSourcesList.map(media => {
+                                const roas = media.adCost > 0 ? ((media.sales / media.adCost) * 100).toFixed(0) : '-';
+                                return (
+                                    <div key={media.id} className="bg-white border border-amber-100 rounded-xl p-5 hover:shadow-md transition-shadow group relative">
+                                        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => startEdit(media)}
+                                                className="text-gray-300 hover:text-blue-500 p-1"
+                                            >
+                                                <Icon name="edit-2" size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => { setDeletingId(media.id); setShowDeleteConfirm(true); }}
+                                                className="text-gray-300 hover:text-rose-500 p-1"
+                                            >
+                                                <Icon name="trash-2" size={16} />
+                                            </button>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-3">
+                                                <Icon name="megaphone" size={24} />
+                                            </div>
+                                            <h3 className="font-bold text-brown-800 text-lg mb-1">{media.name}</h3>
+                                        </div>
+
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">新規集客数</span>
+                                                <span className="font-bold text-blue-600">{media.newVisits}人</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">リピート率</span>
+                                                <span className="font-bold text-emerald-600">{media.repeatRate}%</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">獲得単価(CPA)</span>
+                                                <span className="font-bold">¥{media.cpa.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">広告費</span>
+                                                <span className="font-bold text-rose-600">¥{media.adCost.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">売上貢献</span>
+                                                <span className="font-bold text-purple-600">¥{media.sales.toLocaleString()}</span>
+                                            </div>
+                                            {roas !== '-' && (
+                                                <div className="flex justify-between pt-2 border-t border-gray-100">
+                                                    <span className="text-gray-500 font-semibold">ROAS</span>
+                                                    <span className={`font-bold ${
+                                                        Number(roas) >= 300 ? 'text-green-600' :
+                                                        Number(roas) >= 150 ? 'text-yellow-600' :
+                                                        'text-red-600'
+                                                    }`}>
+                                                        {roas}%
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* 編集フォームモーダル */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                                <h3 className="text-xl font-bold text-brown-800 mb-4 serif">
+                                    {editingId ? '媒体編集' : '媒体新規登録'}
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">媒体名</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                            placeholder="例: ホットペッパー"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">新規集客数（人）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="newVisits"
+                                            value={formData.newVisits}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">リピート率（%）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="repeatRate"
+                                            value={formData.repeatRate}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">獲得単価（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="cpa"
+                                            value={formData.cpa}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">広告費（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="adCost"
+                                            value={formData.adCost}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">売上貢献（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="sales"
+                                            value={formData.sales}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 mt-6">
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium shadow-sm"
+                                    >
+                                        {editingId ? '更新する' : '登録する'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 削除確認モーダル */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                                        <Icon name="alert-triangle" size={20} className="text-rose-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-brown-800">媒体削除</h3>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    この媒体を削除してもよろしいですか？この操作は取り消せません。
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded">キャンセル</button>
+                                    <button onClick={confirmDelete} className="px-4 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded font-medium shadow-sm">削除する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         // --- Menu Analysis View ---
         const MenuAnalysisView = ({ menuSalesData }) => {
             if (!window.Recharts) return <div>Loading Charts...</div>;
@@ -2469,7 +3005,8 @@
         };
 
         // --- Simulation View (Reused but Styled) ---
-        const SimulationView = () => {
+        const SimulationView = ({ staffList, onUpdateStaff }) => {
+            const [selectedStaffId, setSelectedStaffId] = useState(null);
             const [targetSales, setTargetSales] = useState(0);
             const [manualTarget, setManualTarget] = useState('');
 
@@ -2478,6 +3015,9 @@
             const [repeatCustomers, setRepeatCustomers] = useState(0);
             const [newCustomerPrice, setNewCustomerPrice] = useState(0);
             const [repeatCustomerPrice, setRepeatCustomerPrice] = useState(0);
+
+            // 選択されたスタッフ
+            const selectedStaff = selectedStaffId ? staffList.find(s => s.id === selectedStaffId) : null;
 
             // 回数券関連
             const [ticketPurchaseRate, setTicketPurchaseRate] = useState(0); // %
@@ -2506,8 +3046,50 @@
             return (
                 <div className="space-y-6">
                     <Card>
-                        <h2 className="text-xl font-bold text-brown-800 mb-2 serif">詳細売上シミュレーション</h2>
-                        <p className="text-sm text-gray-500 mb-8">新規・リピート・回数券・オプション・物販を含めた詳細な売上予測</p>
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-brown-800 mb-2 serif">詳細売上シミュレーション</h2>
+                                <p className="text-sm text-gray-500">新規・リピート・回数券・オプション・物販を含めた詳細な売上予測</p>
+                            </div>
+                            <div className="w-64">
+                                <label className="text-xs font-medium text-gray-700 mb-1 block">スタッフを選択</label>
+                                <select
+                                    value={selectedStaffId || ''}
+                                    onChange={(e) => setSelectedStaffId(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-gold-500 outline-none bg-white"
+                                >
+                                    <option value="">全体目標</option>
+                                    {(staffList || []).map(staff => (
+                                        <option key={staff.id} value={staff.id}>
+                                            {staff.name} ({staff.role})
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedStaff && (
+                                    <div className="mt-2 space-y-2">
+                                        <div className="text-xs text-gray-600">
+                                            <p>現在の売上: <span className="font-bold text-brown-800">¥{selectedStaff.sales.toLocaleString()}</span></p>
+                                            <p>現在の目標: <span className="font-bold text-brown-800">¥{selectedStaff.target.toLocaleString()}</span></p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                if (onUpdateStaff && selectedStaff) {
+                                                    const newTarget = displayTarget || 0;
+                                                    onUpdateStaff(selectedStaff.id, {
+                                                        ...selectedStaff,
+                                                        target: newTarget
+                                                    });
+                                                    alert(`${selectedStaff.name}の目標を¥${newTarget.toLocaleString()}に設定しました`);
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 bg-gold-600 hover:bg-gold-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                                        >
+                                            この目標を{selectedStaff.name}に設定
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* 左カラム: 目標設定 */}
@@ -2825,6 +3407,7 @@
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
             const [selectedMaster, setSelectedMaster] = useState(null);
             const [staffList, setStaffList] = useState(initialStaffData);
+            const [menuList, setMenuList] = useState(menus);
             const [ticketMasterList, setTicketMasterList] = useState(initialTicketMasterData);
             const [customerList, setCustomerList] = useState(initialCustomerData);
             const [mediaSourcesList, setMediaSourcesList] = useState(initialMediaSourcesData);
@@ -2895,6 +3478,19 @@
 
             const deleteMediaSource = (id) => {
                 setMediaSourcesList(prev => prev.filter(media => media.id !== id));
+            };
+
+            // メニュー管理関数
+            const updateMenu = (id, newData) => {
+                setMenuList(prev => prev.map(menu => menu.id === id ? newData : menu));
+            };
+
+            const addMenu = (newData) => {
+                setMenuList(prev => [...prev, newData]);
+            };
+
+            const deleteMenu = (id) => {
+                setMenuList(prev => prev.filter(menu => menu.id !== id));
             };
 
             // スプレッドシートに全データを保存
@@ -3269,7 +3865,7 @@
                                     staffList={staffList}
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
-                                {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
+                                {!isStaffMode && activeTab === 'simulation' && <SimulationView staffList={staffList} onUpdateStaff={updateStaff} />}
                                 {!isStaffMode && activeTab === 'master' && !selectedMaster && (
                                     <MasterDataManagementView onSelectMaster={handleSelectMaster} />
                                 )}
@@ -3280,7 +3876,23 @@
                                         onUpdateMediaSource={updateMediaSource}
                                     />
                                 )}
-                                {!isStaffMode && activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
+                                {!isStaffMode && activeTab === 'menus' && selectedMaster === 'menus' && (
+                                    <MenuManagementView
+                                        menuList={menuList}
+                                        onUpdateMenu={updateMenu}
+                                        onAddMenu={addMenu}
+                                        onDeleteMenu={deleteMenu}
+                                    />
+                                )}
+                                {!isStaffMode && activeTab === 'menus' && !selectedMaster && <MenuAnalysisView menuSalesData={menuSalesData} />}
+                                {!isStaffMode && activeTab === 'media' && (
+                                    <MediaSourceManagementView
+                                        mediaSourcesList={mediaSourcesList}
+                                        onUpdateMedia={updateMediaSource}
+                                        onAddMedia={addMediaSource}
+                                        onDeleteMedia={deleteMediaSource}
+                                    />
+                                )}
                                 {!isStaffMode && activeTab === 'customers' && (
                                     <CustomerTicketManagementView
                                         ticketMasterList={ticketMasterList}
