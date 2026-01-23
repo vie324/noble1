@@ -389,23 +389,86 @@
         const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [] }) => {
             const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff_{id}'
             const [selectedStaffId, setSelectedStaffId] = useState(null);
+            const [periodMode, setPeriodMode] = useState('month'); // 'month', '3months', '6months', 'year'
+
+            // 期間でフィルタリングされた売上データ
+            const periodFilteredSales = useMemo(() => {
+                if (!dailySalesData || dailySalesData.length === 0) return [];
+
+                const today = new Date();
+                const filterDate = new Date();
+
+                switch(periodMode) {
+                    case 'month':
+                        filterDate.setMonth(today.getMonth() - 1);
+                        break;
+                    case '3months':
+                        filterDate.setMonth(today.getMonth() - 3);
+                        break;
+                    case '6months':
+                        filterDate.setMonth(today.getMonth() - 6);
+                        break;
+                    case 'year':
+                        filterDate.setFullYear(today.getFullYear() - 1);
+                        break;
+                    default:
+                        filterDate.setMonth(today.getMonth() - 1);
+                }
+
+                return dailySalesData.filter(d => {
+                    const saleDate = new Date(d.date);
+                    return saleDate >= filterDate;
+                });
+            }, [dailySalesData, periodMode]);
 
             // フィルタリングされた売上データ
             const filteredDailySales = useMemo(() => {
-                if (!dailySalesData || dailySalesData.length === 0) return [];
-                if (viewMode === 'all') return dailySalesData;
+                if (!periodFilteredSales || periodFilteredSales.length === 0) return [];
+                if (viewMode === 'all') return periodFilteredSales;
 
                 if (viewMode === 'store_1' || viewMode === 'store_2') {
                     const storeId = viewMode === 'store_1' ? 1 : 2;
-                    return dailySalesData.filter(d => d.storeId === storeId);
+                    return periodFilteredSales.filter(d => d.storeId === storeId);
                 }
 
                 if (viewMode === 'staff' && selectedStaffId) {
-                    return dailySalesData.filter(d => d.staffId === selectedStaffId);
+                    return periodFilteredSales.filter(d => d.staffId === selectedStaffId);
                 }
 
-                return dailySalesData;
-            }, [dailySalesData, viewMode, selectedStaffId]);
+                return periodFilteredSales;
+            }, [periodFilteredSales, viewMode, selectedStaffId]);
+
+            // 月次集計データ
+            const monthlyData = useMemo(() => {
+                if (!periodFilteredSales || periodFilteredSales.length === 0) return [];
+
+                const monthMap = {};
+                periodFilteredSales.forEach(entry => {
+                    const date = new Date(entry.date);
+                    const monthKey = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+                    if (!monthMap[monthKey]) {
+                        monthMap[monthKey] = {
+                            month: monthKey,
+                            accountingSales: 0,
+                            cashIn: 0,
+                            ticketSales: 0,
+                            ticketUsage: 0,
+                            spotSales: 0,
+                            product: 0
+                        };
+                    }
+
+                    monthMap[monthKey].accountingSales += entry.accountingSales || 0;
+                    monthMap[monthKey].cashIn += entry.cashIn || 0;
+                    monthMap[monthKey].ticketSales += entry.ticketSales || 0;
+                    monthMap[monthKey].ticketUsage += entry.ticketUsage || 0;
+                    monthMap[monthKey].spotSales += entry.spotSales || 0;
+                    monthMap[monthKey].product += entry.product || 0;
+                });
+
+                return Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
+            }, [periodFilteredSales]);
 
             const filteredStaffList = useMemo(() => {
                 if (viewMode === 'all' || viewMode === 'staff') return staffList;
@@ -494,6 +557,19 @@
                 </button>
             );
 
+            const PeriodTab = ({ id, label }) => (
+                <button
+                    onClick={() => setPeriodMode(id)}
+                    className={`px-4 py-2 text-sm font-medium rounded transition-all ${
+                        periodMode === id
+                            ? 'bg-blue-500 text-white shadow'
+                            : 'bg-white text-gray-600 hover:bg-blue-50 border border-gray-200'
+                    }`}
+                >
+                    {label}
+                </button>
+            );
+
             return (
                 <div className="space-y-6">
                     {/* 店舗/スタッフ切り替えタブ */}
@@ -517,6 +593,19 @@
                                         ))}
                                     </select>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 期間選択タブ */}
+                    <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-200">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <h3 className="text-sm font-bold text-gray-600 serif">表示期間</h3>
+                            <div className="flex gap-2">
+                                <PeriodTab id="month" label="今月" />
+                                <PeriodTab id="3months" label="過去3ヶ月" />
+                                <PeriodTab id="6months" label="過去6ヶ月" />
+                                <PeriodTab id="year" label="過去1年" />
                             </div>
                         </div>
                     </div>
