@@ -2,8 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LuxeMetrics - NOBLEダッシュボード</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>LuxeMetrics - 高級エステサロン経営ダッシュボード</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,39 +62,201 @@
         }
     </script>
     <style>
+        /* Base Styles */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
         body {
             background-color: #f7f5f3; /* brown-50 */
             color: #4a3b32; /* brown-800 */
             font-family: "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overscroll-behavior-y: contain;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+
         h1, h2, h3, .serif {
             font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
         }
+
+        /* Mobile Typography & Layout */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px; /* Prevent zoom on input focus */
+                line-height: 1.6;
+            }
+
+            input, select, textarea {
+                font-size: 16px !important; /* Prevent iOS zoom */
+            }
+
+            /* Larger touch targets */
+            button, a, input[type="button"], input[type="submit"], select {
+                min-height: 48px;
+            }
+
+            /* Improve scroll performance */
+            * {
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Enhanced Mobile Typography */
+            .mobile-title {
+                font-size: 1.375rem !important; /* 22px */
+                font-weight: 700 !important;
+                line-height: 1.3 !important;
+                letter-spacing: -0.01em !important;
+            }
+
+            .mobile-subtitle {
+                font-size: 0.9375rem !important; /* 15px */
+                line-height: 1.5 !important;
+                font-weight: 500 !important;
+            }
+
+            .mobile-metric {
+                font-size: 2.25rem !important; /* 36px */
+                font-weight: 800 !important;
+                line-height: 1.1 !important;
+                letter-spacing: -0.02em !important;
+            }
+
+            .mobile-label {
+                font-size: 0.8125rem !important; /* 13px */
+                font-weight: 600 !important;
+                line-height: 1.4 !important;
+            }
+
+            .mobile-body {
+                font-size: 0.9375rem !important; /* 15px */
+                line-height: 1.6 !important;
+            }
+
+            /* Mobile Card Spacing */
+            .mobile-card {
+                padding: 1rem !important;
+                margin-bottom: 0.875rem !important;
+                border-radius: 12px !important;
+            }
+
+            /* Compact Header */
+            .mobile-header {
+                height: 56px !important;
+                padding: 0 0.75rem !important;
+            }
+
+            /* Button Optimization */
+            .mobile-btn {
+                padding: 0.875rem 1rem !important;
+                font-size: 1rem !important;
+                font-weight: 600 !important;
+                border-radius: 10px !important;
+                min-height: 48px !important;
+            }
+
+            /* Tab Optimization */
+            .mobile-tab {
+                padding: 0.625rem 0.875rem !important;
+                font-size: 0.875rem !important;
+                font-weight: 600 !important;
+            }
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
+            background: #f1f1f1;
         }
         ::-webkit-scrollbar-thumb {
-            background: #d4af37; 
+            background: #d4af37;
             border-radius: 4px;
         }
+
+        /* Range Input */
         input[type=range] {
-            -webkit-appearance: none; 
-            background: transparent; 
+            -webkit-appearance: none;
+            background: transparent;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
         }
         input[type=range]:focus {
-            outline: none; 
+            outline: none;
         }
+
+        /* Glass Panel */
         .glass-panel {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        /* Touch Feedback */
+        .touch-feedback:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease-in-out;
+        }
+
+        /* Loading Skeleton */
+        @keyframes skeleton-pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .skeleton {
+            animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            background-color: #e5e7eb;
+        }
+
+        /* Smooth Scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Safe Area Support */
+        .safe-top {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Performance: Hardware Acceleration */
+        .hw-accelerate {
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High Contrast Mode */
+        @media (prefers-contrast: high) {
+            body {
+                color: #000;
+            }
+            button {
+                border: 2px solid currentColor;
+            }
         }
     </style>
 </head>
@@ -354,33 +519,35 @@
             return <i data-lucide={name} width={size} height={size} stroke={color} className={className}></i>;
         };
 
-        const Card = ({ children, className = "" }) => (
-            <div className={`bg-white rounded-lg shadow-sm border border-gold-200 p-6 ${className}`}>
+        const Card = ({ children, className = "", mobileOptimized = false }) => (
+            <div className={`bg-white rounded-lg shadow-sm border border-gold-200 ${mobileOptimized ? 'mobile-card' : 'p-6'} ${className}`}>
                 {children}
             </div>
         );
 
-        const KpiCard = ({ title, value, subValue, trend, icon, color = "bg-gold-500" }) => (
-            <Card className="hover:shadow-md transition-shadow relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Icon name={icon} size={64} className="text-gold-900" />
-                </div>
-                <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className={`p-3 rounded-lg ${color} text-white shadow-md`}>
-                        <Icon name={icon} size={24} />
+        const KpiCard = ({ title, value, subValue, trend, icon, color = "bg-gold-500", mobileOptimized = false }) => (
+            <Card className={`hover:shadow-md transition-shadow relative overflow-hidden ${mobileOptimized ? 'touch-feedback' : ''}`} mobileOptimized={mobileOptimized}>
+                {!mobileOptimized && (
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Icon name={icon} size={64} className="text-gold-900" />
+                    </div>
+                )}
+                <div className={`flex justify-between items-start relative z-10 ${mobileOptimized ? 'mb-3' : 'mb-4'}`}>
+                    <div className={`rounded-lg ${color} text-white shadow-md ${mobileOptimized ? 'p-2.5' : 'p-3'}`}>
+                        <Icon name={icon} size={mobileOptimized ? 20 : 24} />
                     </div>
                     {trend && (
-                        <span className={`text-sm font-medium ${trend > 0 ? 'text-emerald-600' : 'text-rose-500'} flex items-center bg-white/80 px-2 py-1 rounded-full`}>
+                        <span className={`font-medium ${trend > 0 ? 'text-emerald-600' : 'text-rose-500'} flex items-center bg-white/80 px-2 py-1 rounded-full ${mobileOptimized ? 'text-xs' : 'text-sm'}`}>
                             {trend > 0 ? '+' : ''}{trend}% 
                             <Icon name={trend > 0 ? 'trending-up' : 'trending-down'} size={14} className="ml-1" />
                         </span>
                     )}
                 </div>
-                <h3 className="text-gray-500 text-sm font-medium serif relative z-10">{title}</h3>
-                <div className="flex items-baseline mt-1 relative z-10">
-                    <span className="text-2xl font-bold text-brown-800 font-ui">{value}</span>
+                <h3 className={`text-gray-600 font-medium serif relative z-10 ${mobileOptimized ? 'mobile-label' : 'text-sm'}`}>{title}</h3>
+                <div className={`flex items-baseline relative z-10 ${mobileOptimized ? 'mt-2' : 'mt-1'}`}>
+                    <span className={`font-bold text-brown-800 ${mobileOptimized ? 'mobile-metric' : 'text-2xl'}`}>{value}</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1 relative z-10">{subValue}</p>
+                <p className={`text-gray-500 relative z-10 ${mobileOptimized ? 'mobile-subtitle mt-1.5' : 'text-xs text-gray-400 mt-1'}`}>{subValue}</p>
             </Card>
         );
 
@@ -393,17 +560,26 @@
 
             // モバイルレイアウト用のスタイルクラス
             const cardGridClass = mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
-            const cardPadding = mobileOptimized ? 'p-4' : 'p-6';
+            const cardPadding = mobileOptimized ? 'mobile-card' : 'p-6';
             const fontSize = {
-                title: mobileOptimized ? 'text-base' : 'text-lg',
-                subtitle: mobileOptimized ? 'text-xs' : 'text-sm',
-                metric: mobileOptimized ? 'text-2xl' : 'text-3xl',
-                label: mobileOptimized ? 'text-xs' : 'text-sm',
+                title: mobileOptimized ? 'mobile-title' : 'text-lg',
+                subtitle: mobileOptimized ? 'mobile-subtitle' : 'text-sm',
+                metric: mobileOptimized ? 'mobile-metric' : 'text-3xl',
+                label: mobileOptimized ? 'mobile-label' : 'text-sm',
+                body: mobileOptimized ? 'mobile-body' : 'text-base',
             };
+            const buttonClass = mobileOptimized ? 'mobile-btn touch-feedback' : '';
+            const tabClass = mobileOptimized ? 'mobile-tab touch-feedback' : '';
+
+            // 安全な配列チェック
+            const safeCustomerList = Array.isArray(customerList) ? customerList : [];
+            const safeStaffList = Array.isArray(staffList) ? staffList : [];
+            const safeDailySalesData = Array.isArray(dailySalesData) ? dailySalesData : [];
+            const safeStoreData = Array.isArray(storeData) && storeData.length > 0 ? storeData : stores;
 
             // 期間でフィルタリングされた売上データ
             const periodFilteredSales = useMemo(() => {
-                if (!dailySalesData || dailySalesData.length === 0) return [];
+                if (safeDailySalesData.length === 0) return [];
 
                 const today = new Date();
                 const filterDate = new Date();
@@ -425,19 +601,20 @@
                         filterDate.setMonth(today.getMonth() - 1);
                 }
 
-                return dailySalesData.filter(d => {
+                return safeDailySalesData.filter(d => {
                     const saleDate = new Date(d.date);
                     return saleDate >= filterDate;
                 });
-            }, [dailySalesData, periodMode]);
+            }, [safeDailySalesData, periodMode]);
 
             // フィルタリングされた売上データ
             const filteredDailySales = useMemo(() => {
                 if (!periodFilteredSales || periodFilteredSales.length === 0) return [];
                 if (viewMode === 'all') return periodFilteredSales;
 
-                if (viewMode === 'store_1' || viewMode === 'store_2') {
-                    const storeId = viewMode === 'store_1' ? 1 : 2;
+                // 動的な店舗フィルタリング
+                if (viewMode.startsWith('store_')) {
+                    const storeId = parseInt(viewMode.replace('store_', ''));
                     return periodFilteredSales.filter(d => d.storeId === storeId);
                 }
 
@@ -498,17 +675,17 @@
                 const today = new Date();
                 const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-                return customerList.filter(customer => {
+                return safeCustomerList.filter(customer => {
                     if (!customer.expiryDate) return false;
                     const expiryDate = new Date(customer.expiryDate);
                     return expiryDate >= today && expiryDate <= thirtyDaysLater && customer.remainingSessions > 0;
                 });
-            }, [customerList]);
+            }, [safeCustomerList]);
 
             if (!window.Recharts) return <div>Loading Charts... (If this persists, please refresh)</div>;
 
             // データが空の場合の表示
-            const hasData = (staffList && staffList.length > 0) || (dailySalesData && dailySalesData.length > 0);
+            const hasData = (Array.isArray(safeStaffList) && safeStaffList.length > 0) || safeDailySalesData.length > 0;
 
             if (!hasData) {
                 return (
@@ -557,11 +734,11 @@
             const ViewTab = ({ id, label }) => (
                 <button
                     onClick={() => setViewMode(id)}
-                    className={`font-medium rounded-lg transition-all ${
+                    className={`font-medium rounded-lg transition-all ${tabClass} ${
                         viewMode === id
                             ? 'bg-gold-500 text-white shadow-md'
                             : 'bg-white text-gray-600 hover:bg-gold-50 border border-gray-200'
-                    } ${mobileOptimized ? 'px-3 py-2 text-xs' : 'px-6 py-2.5 text-sm'}`}
+                    } ${mobileOptimized ? 'px-3.5 py-2.5 text-sm font-semibold' : 'px-6 py-2.5 text-sm'}`}
                 >
                     {label}
                 </button>
@@ -570,11 +747,11 @@
             const PeriodTab = ({ id, label }) => (
                 <button
                     onClick={() => setPeriodMode(id)}
-                    className={`font-medium rounded transition-all ${
+                    className={`font-medium rounded transition-all ${tabClass} ${
                         periodMode === id
                             ? 'bg-blue-500 text-white shadow'
                             : 'bg-white text-gray-600 hover:bg-blue-50 border border-gray-200'
-                    } ${mobileOptimized ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}`}
+                    } ${mobileOptimized ? 'px-3.5 py-2.5 text-sm font-semibold' : 'px-4 py-2 text-sm'}`}
                 >
                     {label}
                 </button>
@@ -588,8 +765,9 @@
                             <h3 className={`font-bold text-gray-600 serif ${fontSize.subtitle}`}>表示切替</h3>
                             <div className={`flex gap-2 items-center ${mobileOptimized ? 'flex-wrap' : ''}`}>
                                 <ViewTab id="all" label="全店舗合計" />
-                                <ViewTab id="store_1" label="新宿店" />
-                                <ViewTab id="store_2" label="新宿南口店" />
+                                {safeStoreData.map(store => (
+                                    <ViewTab key={store.id} id={`store_${store.id}`} label={store.name} />
+                                ))}
                                 <ViewTab id="staff" label="スタッフ別" />
                                 {viewMode === 'staff' && (
                                     <select
@@ -598,9 +776,14 @@
                                         className="ml-2 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-gold-500 outline-none bg-white"
                                     >
                                         <option value="">スタッフを選択</option>
-                                        {staffList.map(staff => (
-                                            <option key={staff.id} value={staff.id}>{staff.name} ({stores.find(s => s.id === staff.storeId)?.name})</option>
-                                        ))}
+                                        {safeStaffList.map(staff => {
+                                            const staffStore = safeStoreData.find(s => s.id === staff.storeId);
+                                            return (
+                                                <option key={staff.id} value={staff.id}>
+                                                    {staff.name} ({staffStore ? staffStore.name : '店舗不明'})
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 )}
                             </div>
@@ -622,60 +805,71 @@
 
                     {/* Top KPI Cards - Split Sales Types */}
                     <div className={`grid gap-4 ${cardGridClass}`}>
-                        <KpiCard 
-                            title="会計上売上 (役務消化込)" 
-                            value={`¥${totalAccountingSales.toLocaleString()}`} 
+                        <KpiCard
+                            title="会計上売上 (役務消化込)"
+                            value={`¥${totalAccountingSales.toLocaleString()}`}
                             subValue={`消化額: ¥${totalTicketUsage.toLocaleString()}`}
-                            trend={5.2} 
-                            icon="file-text" 
+                            trend={5.2}
+                            icon="file-text"
                             color="bg-gold-600"
+                            mobileOptimized={mobileOptimized}
                         />
-                        <KpiCard 
-                            title="キャッシュイン (入金総額)" 
-                            value={`¥${totalCashIn.toLocaleString()}`} 
+                        <KpiCard
+                            title="キャッシュイン (入金総額)"
+                            value={`¥${totalCashIn.toLocaleString()}`}
                             subValue={`回数券販売: ¥${totalTicketSales.toLocaleString()}`}
-                            trend={12.8} 
-                            icon="coins" 
+                            trend={12.8}
+                            icon="coins"
                             color="bg-emerald-600"
+                            mobileOptimized={mobileOptimized}
                         />
-                        <KpiCard 
-                            title="回数券未消化残高" 
-                            value="¥4,250,000" 
+                        <KpiCard
+                            title="回数券未消化残高"
+                            value="¥4,250,000"
                             subValue="前月比 +¥50,000 (負債増)"
-                            trend={-1.2} 
-                            icon="layers" 
+                            trend={-1.2}
+                            icon="layers"
                             color="bg-brown-800"
+                            mobileOptimized={mobileOptimized}
                         />
-                        <KpiCard 
-                            title="平均リピート率" 
-                            value="72.4%" 
+                        <KpiCard
+                            title="平均リピート率"
+                            value="72.4%"
                             subValue="新規定着率: 45%"
-                            trend={2.1} 
-                            icon="repeat" 
+                            trend={2.1}
+                            icon="repeat"
                             color="bg-rose-500"
+                            mobileOptimized={mobileOptimized}
                         />
                     </div>
 
                     <div className={`grid gap-6 ${mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
                         {/* Main Chart: Sales Breakdown */}
                         <div className={mobileOptimized ? '' : 'lg:col-span-2'}>
-                            <Card className={mobileOptimized ? 'h-80' : 'h-96'}>
-                                <div className={`flex justify-between items-center ${mobileOptimized ? 'mb-4' : 'mb-6'}`}>
+                            <Card className={mobileOptimized ? 'h-72' : 'h-96'} mobileOptimized={mobileOptimized}>
+                                <div className={`flex justify-between items-center ${mobileOptimized ? 'mb-3' : 'mb-6'}`}>
                                     <div>
                                         <h2 className={`font-bold text-brown-800 serif ${fontSize.title}`}>売上構造分析</h2>
-                                        <p className={`text-gray-500 ${fontSize.subtitle}`}>キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
+                                        {!mobileOptimized && (
+                                            <p className={`text-gray-500 ${fontSize.subtitle}`}>キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
+                                        )}
                                     </div>
                                 </div>
-                                <ResponsiveContainer width="100%" height="85%">
+                                <ResponsiveContainer width="100%" height={mobileOptimized ? "82%" : "85%"}>
                                     <BarChart data={filteredDailySales}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                        <XAxis dataKey="day" tick={{fontSize: 10}} interval={2} />
-                                        <YAxis tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
-                                        <Tooltip 
+                                        <XAxis dataKey="day" tick={{fontSize: mobileOptimized ? 9 : 10}} interval={mobileOptimized ? 3 : 2} />
+                                        <YAxis tick={{fontSize: mobileOptimized ? 9 : 10}} tickFormatter={(val) => `¥${val/10000}万`} />
+                                        <Tooltip
                                             formatter={(value) => `¥${value.toLocaleString()}`}
-                                            contentStyle={{backgroundColor: '#fff', borderColor: '#d4af37'}}
+                                            contentStyle={{
+                                                backgroundColor: '#fff',
+                                                borderColor: '#d4af37',
+                                                fontSize: mobileOptimized ? '13px' : '14px',
+                                                padding: mobileOptimized ? '6px 10px' : '8px 12px'
+                                            }}
                                         />
-                                        <Legend />
+                                        <Legend wrapperStyle={{fontSize: mobileOptimized ? '11px' : '12px'}} />
                                         <Bar dataKey="spotSales" name="都度払い" stackId="a" fill="#d4af37" />
                                         <Bar dataKey="product" name="物販" stackId="a" fill="#b48e26" />
                                         <Bar dataKey="ticketUsage" name="回数券消化(売上)" stackId="a" fill="#4a3b32" />
@@ -691,7 +885,7 @@
                             <Card>
                                 <h3 className="text-lg font-bold text-brown-800 mb-4 serif">媒体別 新規集客状況</h3>
                                 <div className="space-y-4">
-                                    {mediaSourcesData.slice(0, 3).map(media => (
+                                    {(mediaSourcesData || []).slice(0, 3).map(media => (
                                         <div key={media.id} className="flex flex-col">
                                             <div className="flex justify-between text-sm mb-1">
                                                 <span className="font-medium text-gray-700">{media.name}</span>
@@ -749,21 +943,28 @@
 
                     {/* Monthly Trend Chart (when period > month) */}
                     {periodMode !== 'month' && monthlyData.length > 0 && (
-                        <Card>
-                            <div className="mb-6">
-                                <h2 className="text-lg font-bold text-brown-800 serif">月次推移グラフ</h2>
-                                <p className="text-xs text-gray-500">選択期間の月ごとの売上推移を確認</p>
+                        <Card mobileOptimized={mobileOptimized}>
+                            <div className={mobileOptimized ? 'mb-3' : 'mb-6'}>
+                                <h2 className={`font-bold text-brown-800 serif ${fontSize.title}`}>月次推移グラフ</h2>
+                                {!mobileOptimized && (
+                                    <p className="text-xs text-gray-500">選択期間の月ごとの売上推移を確認</p>
+                                )}
                             </div>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={mobileOptimized ? 240 : 300}>
                                 <LineChart data={monthlyData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                    <XAxis dataKey="month" tick={{fontSize: 10}} />
-                                    <YAxis tick={{fontSize: 10}} tickFormatter={(val) => `¥${val/10000}万`} />
+                                    <XAxis dataKey="month" tick={{fontSize: mobileOptimized ? 9 : 10}} />
+                                    <YAxis tick={{fontSize: mobileOptimized ? 9 : 10}} tickFormatter={(val) => `¥${val/10000}万`} />
                                     <Tooltip
                                         formatter={(value) => `¥${value.toLocaleString()}`}
-                                        contentStyle={{backgroundColor: '#fff', borderColor: '#d4af37'}}
+                                        contentStyle={{
+                                            backgroundColor: '#fff',
+                                            borderColor: '#d4af37',
+                                            fontSize: mobileOptimized ? '13px' : '14px',
+                                            padding: mobileOptimized ? '6px 10px' : '8px 12px'
+                                        }}
                                     />
-                                    <Legend />
+                                    <Legend wrapperStyle={{fontSize: mobileOptimized ? '11px' : '12px'}} />
                                     <Line type="monotone" dataKey="accountingSales" name="会計上売上" stroke="#d4af37" strokeWidth={2} dot={{r: 4}} />
                                     <Line type="monotone" dataKey="cashIn" name="キャッシュイン" stroke="#10b981" strokeWidth={2} dot={{r: 4}} />
                                     <Line type="monotone" dataKey="ticketSales" name="回数券販売" stroke="#3b82f6" strokeWidth={2} dot={{r: 4}} />
@@ -771,22 +972,22 @@
                             </ResponsiveContainer>
 
                             {/* Summary Statistics */}
-                            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-gold-50 p-3 rounded">
-                                    <p className="text-xs text-gray-600">期間合計売上</p>
-                                    <p className="text-lg font-bold text-gold-700">¥{monthlyData.reduce((sum, m) => sum + m.accountingSales, 0).toLocaleString()}</p>
+                            <div className={`grid grid-cols-2 gap-3 ${mobileOptimized ? 'mt-4' : 'mt-6 md:grid-cols-4 gap-4'}`}>
+                                <div className={`bg-gold-50 rounded ${mobileOptimized ? 'p-2.5' : 'p-3'}`}>
+                                    <p className={`text-gray-600 ${mobileOptimized ? 'mobile-label' : 'text-xs'}`}>期間合計売上</p>
+                                    <p className={`font-bold text-gold-700 ${mobileOptimized ? 'text-base mt-1' : 'text-lg'}`}>¥{monthlyData.reduce((sum, m) => sum + m.accountingSales, 0).toLocaleString()}</p>
                                 </div>
-                                <div className="bg-emerald-50 p-3 rounded">
-                                    <p className="text-xs text-gray-600">期間合計入金</p>
-                                    <p className="text-lg font-bold text-emerald-700">¥{monthlyData.reduce((sum, m) => sum + m.cashIn, 0).toLocaleString()}</p>
+                                <div className={`bg-emerald-50 rounded ${mobileOptimized ? 'p-2.5' : 'p-3'}`}>
+                                    <p className={`text-gray-600 ${mobileOptimized ? 'mobile-label' : 'text-xs'}`}>期間合計入金</p>
+                                    <p className={`font-bold text-emerald-700 ${mobileOptimized ? 'text-base mt-1' : 'text-lg'}`}>¥{monthlyData.reduce((sum, m) => sum + m.cashIn, 0).toLocaleString()}</p>
                                 </div>
-                                <div className="bg-blue-50 p-3 rounded">
-                                    <p className="text-xs text-gray-600">月平均売上</p>
-                                    <p className="text-lg font-bold text-blue-700">¥{Math.round(monthlyData.reduce((sum, m) => sum + m.accountingSales, 0) / monthlyData.length).toLocaleString()}</p>
+                                <div className={`bg-blue-50 rounded ${mobileOptimized ? 'p-2.5' : 'p-3'}`}>
+                                    <p className={`text-gray-600 ${mobileOptimized ? 'mobile-label' : 'text-xs'}`}>月平均売上</p>
+                                    <p className={`font-bold text-blue-700 ${mobileOptimized ? 'text-base mt-1' : 'text-lg'}`}>¥{Math.round(monthlyData.reduce((sum, m) => sum + m.accountingSales, 0) / monthlyData.length).toLocaleString()}</p>
                                 </div>
-                                <div className="bg-rose-50 p-3 rounded">
-                                    <p className="text-xs text-gray-600">対象期間</p>
-                                    <p className="text-lg font-bold text-rose-700">{monthlyData.length}ヶ月</p>
+                                <div className={`bg-rose-50 rounded ${mobileOptimized ? 'p-2.5' : 'p-3'}`}>
+                                    <p className={`text-gray-600 ${mobileOptimized ? 'mobile-label' : 'text-xs'}`}>対象期間</p>
+                                    <p className={`font-bold text-rose-700 ${mobileOptimized ? 'text-base mt-1' : 'text-lg'}`}>{monthlyData.length}ヶ月</p>
                                 </div>
                             </div>
                         </Card>
@@ -1127,7 +1328,7 @@
 
                     {/* Staff List Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {staffList.length === 0 ? (
+                        {!Array.isArray(staffList) || staffList.length === 0 ? (
                             <div className="col-span-full text-center py-12 text-gray-400">
                                 <Icon name="users" size={48} className="mx-auto mb-4 opacity-30" />
                                 <p className="text-sm">スタッフが登録されていません</p>
@@ -1158,7 +1359,7 @@
                                         <div className="ml-3">
                                             <h3 className="font-bold text-brown-800">{staff.name}</h3>
                                             <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">
-                                                {staff.role} - {stores.find(s => s.id === staff.storeId)?.name}
+                                                {staff.role} - {stores.find(s => s.id === staff.storeId)?.name || '店舗不明'}
                                             </p>
                                         </div>
                                     </div>
@@ -1168,14 +1369,14 @@
                                         <span className="font-bold text-brown-800">¥{staff.sales.toLocaleString()}</span>
                                     </div>
                                     <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                        <div 
-                                            className={`h-full ${staff.sales >= staff.target ? 'bg-emerald-500' : 'bg-gold-500'}`} 
-                                            style={{width: `${Math.min(100, (staff.sales/staff.target)*100)}%`}}
+                                        <div
+                                            className={`h-full ${staff.sales >= staff.target ? 'bg-emerald-500' : 'bg-gold-500'}`}
+                                            style={{width: `${staff.target > 0 ? Math.min(100, (staff.sales/staff.target)*100) : 0}%`}}
                                         ></div>
                                     </div>
                                     <div className="flex justify-between text-xs text-gray-400">
                                         <span>目標: ¥{staff.target.toLocaleString()}</span>
-                                        <span>{Math.round((staff.sales/staff.target)*100)}%</span>
+                                        <span>{staff.target > 0 ? Math.round((staff.sales/staff.target)*100) : 0}%</span>
                                     </div>
                                     
                                     <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50 mt-2">
@@ -1525,7 +1726,7 @@
                     {/* Customer List */}
                     {activeView === 'customers' && (
                         <div className="bg-white rounded-xl border border-gold-100 overflow-hidden">
-                            {customerList.length === 0 ? (
+                            {!Array.isArray(customerList) || customerList.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400">
                                     <Icon name="users" size={48} className="mx-auto mb-4 opacity-30" />
                                     <p className="text-sm">顧客が登録されていません</p>
@@ -1549,7 +1750,7 @@
                                             {customerList.map(customer => {
                                                 const ticket = ticketMasterList.find(t => t.id === customer.ticketMasterId);
                                                 const store = stores.find(s => s.id === customer.storeId);
-                                                const isExpired = new Date(customer.expiryDate) < new Date();
+                                                const isExpired = customer.expiryDate ? new Date(customer.expiryDate) < new Date() : false;
 
                                                 return (
                                                     <tr key={customer.id} className="hover:bg-gold-50/30 text-sm">
@@ -1569,7 +1770,7 @@
                                                                 {customer.expiryDate}
                                                             </span>
                                                         </td>
-                                                        <td className="py-3 px-4 text-gray-600">{store?.name}</td>
+                                                        <td className="py-3 px-4 text-gray-600">{store?.name || '不明'}</td>
                                                         <td className="py-3 px-4">
                                                             <div className="flex justify-center gap-2">
                                                                 <button
@@ -1714,18 +1915,555 @@
             );
         };
 
+        // --- Menu Management View ---
+        const MenuManagementView = ({ menuList, onUpdateMenu, onAddMenu, onDeleteMenu }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [deletingId, setDeletingId] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                price: 0,
+                availableStores: []
+            });
+
+            const startEdit = (menu) => {
+                setEditingId(menu.id);
+                setFormData({
+                    name: menu.name,
+                    price: menu.price,
+                    availableStores: Array.isArray(menu.availableStores) ? menu.availableStores : []
+                });
+                setIsEditing(true);
+            };
+
+            const startAdd = () => {
+                setEditingId(null);
+                setFormData({
+                    name: '',
+                    price: 0,
+                    availableStores: []
+                });
+                setIsEditing(true);
+            };
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                const isTextField = ['name'].includes(name);
+
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: isTextField ? value : (() => {
+                        const processedValue = normalizeNumberInput(value);
+                        return processedValue === '' ? 0 : Number(processedValue);
+                    })()
+                }));
+            };
+
+            const handleStoreToggle = (storeId) => {
+                setFormData(prev => ({
+                    ...prev,
+                    availableStores: prev.availableStores.includes(storeId)
+                        ? prev.availableStores.filter(id => id !== storeId)
+                        : [...prev.availableStores, storeId]
+                }));
+            };
+
+            const handleSubmit = () => {
+                if (!formData.name.trim()) {
+                    alert('メニュー名を入力してください');
+                    return;
+                }
+
+                if (editingId) {
+                    onUpdateMenu(editingId, { ...formData, id: editingId });
+                } else {
+                    const newMenu = {
+                        ...formData,
+                        id: Date.now()
+                    };
+                    onAddMenu(newMenu);
+                }
+                setIsEditing(false);
+                setEditingId(null);
+            };
+
+            const confirmDelete = () => {
+                if (deletingId) {
+                    onDeleteMenu(deletingId);
+                }
+                setShowDeleteConfirm(false);
+                setDeletingId(null);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-brown-800 serif">メニュー管理</h2>
+                            <p className="text-sm text-gray-600 mt-1">施術メニューの登録・編集・削除</p>
+                        </div>
+                        <button
+                            onClick={startAdd}
+                            className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                        >
+                            <Icon name="plus" size={18} className="mr-2" />
+                            メニュー新規登録
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {!Array.isArray(menuList) || menuList.length === 0 ? (
+                            <div className="col-span-full text-center py-12 text-gray-400">
+                                <Icon name="package" size={48} className="mx-auto mb-4 opacity-30" />
+                                <p className="text-sm">メニューが登録されていません</p>
+                                <p className="text-xs mt-2">「メニュー新規登録」ボタンから追加してください</p>
+                            </div>
+                        ) : (
+                            menuList.map(menu => (
+                                <div key={menu.id} className="bg-white border border-purple-100 rounded-xl p-5 hover:shadow-md transition-shadow group relative">
+                                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => startEdit(menu)}
+                                            className="text-gray-300 hover:text-blue-500 p-1"
+                                        >
+                                            <Icon name="edit-2" size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => { setDeletingId(menu.id); setShowDeleteConfirm(true); }}
+                                            className="text-gray-300 hover:text-rose-500 p-1"
+                                        >
+                                            <Icon name="trash-2" size={16} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <div className="w-12 h-12 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 mb-3">
+                                            <Icon name="package" size={24} />
+                                        </div>
+                                        <h3 className="font-bold text-brown-800 text-lg mb-1">{menu.name}</h3>
+                                        <p className="text-2xl font-bold text-purple-600">¥{menu.price.toLocaleString()}</p>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <p className="text-xs text-gray-500 mb-2">提供店舗</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {(menu.availableStores || []).map(storeId => {
+                                                const store = stores.find(s => s.id === storeId);
+                                                return store ? (
+                                                    <span key={storeId} className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                                        {store.name}
+                                                    </span>
+                                                ) : null;
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* 編集フォームモーダル */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+                                <h3 className="text-xl font-bold text-brown-800 mb-4 serif">
+                                    {editingId ? 'メニュー編集' : 'メニュー新規登録'}
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">メニュー名</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
+                                            placeholder="例: 剥離ありハーブピーリング(顔)"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">価格（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="price"
+                                            value={formData.price}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-2 block">提供店舗</label>
+                                        <div className="space-y-2">
+                                            {stores.map(store => (
+                                                <label key={store.id} className="flex items-center space-x-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.availableStores.includes(store.id)}
+                                                        onChange={() => handleStoreToggle(store.id)}
+                                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700">{store.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 mt-6">
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-sm"
+                                    >
+                                        {editingId ? '更新する' : '登録する'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 削除確認モーダル */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                                        <Icon name="alert-triangle" size={20} className="text-rose-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-brown-800">メニュー削除</h3>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    このメニューを削除してもよろしいですか？この操作は取り消せません。
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded">キャンセル</button>
+                                    <button onClick={confirmDelete} className="px-4 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded font-medium shadow-sm">削除する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Media Source Management View ---
+        const MediaSourceManagementView = ({ mediaSourcesList, onUpdateMedia, onAddMedia, onDeleteMedia }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [deletingId, setDeletingId] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                newVisits: 0,
+                repeatRate: 0,
+                cpa: 0,
+                sales: 0,
+                adCost: 0
+            });
+
+            const startEdit = (media) => {
+                setEditingId(media.id);
+                setFormData({
+                    name: media.name,
+                    newVisits: media.newVisits || 0,
+                    repeatRate: media.repeatRate || 0,
+                    cpa: media.cpa || 0,
+                    sales: media.sales || 0,
+                    adCost: media.adCost || 0
+                });
+                setIsEditing(true);
+            };
+
+            const startAdd = () => {
+                setEditingId(null);
+                setFormData({
+                    name: '',
+                    newVisits: 0,
+                    repeatRate: 0,
+                    cpa: 0,
+                    sales: 0,
+                    adCost: 0
+                });
+                setIsEditing(true);
+            };
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                const isTextField = ['name'].includes(name);
+
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: isTextField ? value : (() => {
+                        const processedValue = normalizeNumberInput(value);
+                        return processedValue === '' ? 0 : Number(processedValue);
+                    })()
+                }));
+            };
+
+            const handleSubmit = () => {
+                if (!formData.name.trim()) {
+                    alert('媒体名を入力してください');
+                    return;
+                }
+
+                if (editingId) {
+                    onUpdateMedia(editingId, { ...formData, id: editingId });
+                } else {
+                    const newMedia = {
+                        ...formData,
+                        id: Date.now()
+                    };
+                    onAddMedia(newMedia);
+                }
+                setIsEditing(false);
+                setEditingId(null);
+            };
+
+            const confirmDelete = () => {
+                if (deletingId) {
+                    onDeleteMedia(deletingId);
+                }
+                setShowDeleteConfirm(false);
+                setDeletingId(null);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-brown-800 serif">媒体マスター管理</h2>
+                            <p className="text-sm text-gray-600 mt-1">集客媒体の登録・編集・削除</p>
+                        </div>
+                        <button
+                            onClick={startAdd}
+                            className="flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                        >
+                            <Icon name="plus" size={18} className="mr-2" />
+                            媒体新規登録
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {!Array.isArray(mediaSourcesList) || mediaSourcesList.length === 0 ? (
+                            <div className="col-span-full text-center py-12 text-gray-400">
+                                <Icon name="megaphone" size={48} className="mx-auto mb-4 opacity-30" />
+                                <p className="text-sm">媒体が登録されていません</p>
+                                <p className="text-xs mt-2">「媒体新規登録」ボタンから追加してください</p>
+                            </div>
+                        ) : (
+                            mediaSourcesList.map(media => {
+                                const roas = media.adCost > 0 ? ((media.sales / media.adCost) * 100).toFixed(0) : '-';
+                                return (
+                                    <div key={media.id} className="bg-white border border-amber-100 rounded-xl p-5 hover:shadow-md transition-shadow group relative">
+                                        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => startEdit(media)}
+                                                className="text-gray-300 hover:text-blue-500 p-1"
+                                            >
+                                                <Icon name="edit-2" size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => { setDeletingId(media.id); setShowDeleteConfirm(true); }}
+                                                className="text-gray-300 hover:text-rose-500 p-1"
+                                            >
+                                                <Icon name="trash-2" size={16} />
+                                            </button>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-3">
+                                                <Icon name="megaphone" size={24} />
+                                            </div>
+                                            <h3 className="font-bold text-brown-800 text-lg mb-1">{media.name}</h3>
+                                        </div>
+
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">新規集客数</span>
+                                                <span className="font-bold text-blue-600">{media.newVisits}人</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">リピート率</span>
+                                                <span className="font-bold text-emerald-600">{media.repeatRate}%</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">獲得単価(CPA)</span>
+                                                <span className="font-bold">¥{media.cpa.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">広告費</span>
+                                                <span className="font-bold text-rose-600">¥{media.adCost.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">売上貢献</span>
+                                                <span className="font-bold text-purple-600">¥{media.sales.toLocaleString()}</span>
+                                            </div>
+                                            {roas !== '-' && (
+                                                <div className="flex justify-between pt-2 border-t border-gray-100">
+                                                    <span className="text-gray-500 font-semibold">ROAS</span>
+                                                    <span className={`font-bold ${
+                                                        Number(roas) >= 300 ? 'text-green-600' :
+                                                        Number(roas) >= 150 ? 'text-yellow-600' :
+                                                        'text-red-600'
+                                                    }`}>
+                                                        {roas}%
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* 編集フォームモーダル */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                                <h3 className="text-xl font-bold text-brown-800 mb-4 serif">
+                                    {editingId ? '媒体編集' : '媒体新規登録'}
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">媒体名</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                            placeholder="例: ホットペッパー"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">新規集客数（人）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="newVisits"
+                                            value={formData.newVisits}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">リピート率（%）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="repeatRate"
+                                            value={formData.repeatRate}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">獲得単価（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="cpa"
+                                            value={formData.cpa}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">広告費（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="adCost"
+                                            value={formData.adCost}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">売上貢献（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="sales"
+                                            value={formData.sales}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-amber-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 mt-6">
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium shadow-sm"
+                                    >
+                                        {editingId ? '更新する' : '登録する'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 削除確認モーダル */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                                        <Icon name="alert-triangle" size={20} className="text-rose-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-brown-800">媒体削除</h3>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    この媒体を削除してもよろしいですか？この操作は取り消せません。
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded">キャンセル</button>
+                                    <button onClick={confirmDelete} className="px-4 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded font-medium shadow-sm">削除する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         // --- Menu Analysis View ---
         const MenuAnalysisView = ({ menuSalesData }) => {
             if (!window.Recharts) return <div>Loading Charts...</div>;
 
-            const hasData = menuSalesData && menuSalesData.length > 0;
+            const safeMenuSalesData = Array.isArray(menuSalesData) ? menuSalesData : [];
+            const hasData = safeMenuSalesData.length > 0;
 
             // メニューIDごとにデータを集約
             const aggregatedMenuData = useMemo(() => {
                 if (!hasData) return [];
 
                 const menuMap = {};
-                menuSalesData.forEach(entry => {
+                safeMenuSalesData.forEach(entry => {
                     if (!menuMap[entry.menuId]) {
                         menuMap[entry.menuId] = {
                             menuId: entry.menuId,
@@ -1744,10 +2482,10 @@
                     ...menu,
                     storeIds: Array.from(menu.storeIds)
                 }));
-            }, [menuSalesData, hasData]);
+            }, [safeMenuSalesData, hasData]);
 
-            const totalMenuSales = hasData ? menuSalesData.reduce((sum, m) => sum + (m.sales || 0), 0) : 0;
-            const totalMenuCount = hasData ? menuSalesData.reduce((sum, m) => sum + (m.count || 0), 0) : 0;
+            const totalMenuSales = hasData ? safeMenuSalesData.reduce((sum, m) => sum + (m.sales || 0), 0) : 0;
+            const totalMenuCount = hasData ? safeMenuSalesData.reduce((sum, m) => sum + (m.count || 0), 0) : 0;
             const topMenu = aggregatedMenuData.length > 0 ? [...aggregatedMenuData].sort((a, b) => (b.count || 0) - (a.count || 0))[0] : null;
 
             if (!hasData) {
@@ -1917,6 +2655,10 @@
 
             const handleDailySalesSubmit = () => {
                 const store = stores.find(s => s.id === dailyForm.storeId);
+                if (!store) {
+                    alert('店舗を選択してください');
+                    return;
+                }
                 const accountingSales = dailyForm.spotSales + dailyForm.ticketUsage + dailyForm.product;
                 const cashIn = dailyForm.spotSales + dailyForm.ticketSales + dailyForm.product;
 
@@ -2245,7 +2987,7 @@
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {menuSalesData.slice(-10).reverse().map((item, index) => (
+                                        {(menuSalesData || []).slice(-10).reverse().map((item, index) => (
                                             <tr key={index} className="hover:bg-gold-50/30">
                                                 <td className="py-2 px-3">{item.date}</td>
                                                 <td className="py-2 px-3">{item.menuName}</td>
@@ -2263,7 +3005,8 @@
         };
 
         // --- Simulation View (Reused but Styled) ---
-        const SimulationView = () => {
+        const SimulationView = ({ staffList, onUpdateStaff }) => {
+            const [selectedStaffId, setSelectedStaffId] = useState(null);
             const [targetSales, setTargetSales] = useState(0);
             const [manualTarget, setManualTarget] = useState('');
 
@@ -2272,6 +3015,9 @@
             const [repeatCustomers, setRepeatCustomers] = useState(0);
             const [newCustomerPrice, setNewCustomerPrice] = useState(0);
             const [repeatCustomerPrice, setRepeatCustomerPrice] = useState(0);
+
+            // 選択されたスタッフ
+            const selectedStaff = selectedStaffId ? staffList.find(s => s.id === selectedStaffId) : null;
 
             // 回数券関連
             const [ticketPurchaseRate, setTicketPurchaseRate] = useState(0); // %
@@ -2300,8 +3046,50 @@
             return (
                 <div className="space-y-6">
                     <Card>
-                        <h2 className="text-xl font-bold text-brown-800 mb-2 serif">詳細売上シミュレーション</h2>
-                        <p className="text-sm text-gray-500 mb-8">新規・リピート・回数券・オプション・物販を含めた詳細な売上予測</p>
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-brown-800 mb-2 serif">詳細売上シミュレーション</h2>
+                                <p className="text-sm text-gray-500">新規・リピート・回数券・オプション・物販を含めた詳細な売上予測</p>
+                            </div>
+                            <div className="w-64">
+                                <label className="text-xs font-medium text-gray-700 mb-1 block">スタッフを選択</label>
+                                <select
+                                    value={selectedStaffId || ''}
+                                    onChange={(e) => setSelectedStaffId(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-gold-500 outline-none bg-white"
+                                >
+                                    <option value="">全体目標</option>
+                                    {(staffList || []).map(staff => (
+                                        <option key={staff.id} value={staff.id}>
+                                            {staff.name} ({staff.role})
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedStaff && (
+                                    <div className="mt-2 space-y-2">
+                                        <div className="text-xs text-gray-600">
+                                            <p>現在の売上: <span className="font-bold text-brown-800">¥{selectedStaff.sales.toLocaleString()}</span></p>
+                                            <p>現在の目標: <span className="font-bold text-brown-800">¥{selectedStaff.target.toLocaleString()}</span></p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                if (onUpdateStaff && selectedStaff) {
+                                                    const newTarget = displayTarget || 0;
+                                                    onUpdateStaff(selectedStaff.id, {
+                                                        ...selectedStaff,
+                                                        target: newTarget
+                                                    });
+                                                    alert(`${selectedStaff.name}の目標を¥${newTarget.toLocaleString()}に設定しました`);
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 bg-gold-600 hover:bg-gold-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                                        >
+                                            この目標を{selectedStaff.name}に設定
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* 左カラム: 目標設定 */}
@@ -2619,6 +3407,7 @@
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
             const [selectedMaster, setSelectedMaster] = useState(null);
             const [staffList, setStaffList] = useState(initialStaffData);
+            const [menuList, setMenuList] = useState(menus);
             const [ticketMasterList, setTicketMasterList] = useState(initialTicketMasterData);
             const [customerList, setCustomerList] = useState(initialCustomerData);
             const [mediaSourcesList, setMediaSourcesList] = useState(initialMediaSourcesData);
@@ -2689,6 +3478,19 @@
 
             const deleteMediaSource = (id) => {
                 setMediaSourcesList(prev => prev.filter(media => media.id !== id));
+            };
+
+            // メニュー管理関数
+            const updateMenu = (id, newData) => {
+                setMenuList(prev => prev.map(menu => menu.id === id ? newData : menu));
+            };
+
+            const addMenu = (newData) => {
+                setMenuList(prev => [...prev, newData]);
+            };
+
+            const deleteMenu = (id) => {
+                setMenuList(prev => prev.filter(menu => menu.id !== id));
             };
 
             // スプレッドシートに全データを保存
@@ -2772,10 +3574,10 @@
                         activeTab === id
                         ? 'border-gold-500 bg-gold-50 text-brown-800 font-bold shadow-sm'
                         : 'border-transparent text-gray-500 hover:text-brown-800 hover:bg-white'
-                    } ${mobileOptimized ? 'py-4 text-base' : 'py-3'}`}
+                    } ${mobileOptimized ? 'py-4 text-base touch-feedback' : 'py-3'}`}
                 >
                     <Icon name={icon} size={mobileOptimized ? 24 : 20} className={activeTab === id ? 'text-gold-600' : 'text-gray-400'} />
-                    {(sidebarOpen || mobileOptimized) && <span className={activeTab === id ? 'serif' : ''}>{label}</span>}
+                    {(sidebarOpen || mobileOptimized) && <span className={activeTab === id ? 'serif font-semibold' : ''}>{label}</span>}
                 </button>
             );
 
@@ -2828,7 +3630,7 @@
                             )}
                         </div>
 
-                        <div className="p-4 border-t border-gold-100 bg-gold-50/50">
+                        <div className={`border-t border-gold-100 bg-gold-50/50 ${mobileOptimized ? 'p-3' : 'p-4'}`}>
                              <button
                                 onClick={() => {
                                     setActiveTab('master');
@@ -2837,7 +3639,7 @@
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 rounded-lg transition-colors ${
                                     activeTab === 'master' ? 'bg-gold-200 text-brown-800 font-bold' : 'text-gray-500 hover:bg-white hover:text-brown-800'
-                                } ${mobileOptimized ? 'py-4 text-base' : 'py-3'} ${(!sidebarOpen && !mobileOptimized) && 'justify-center'}`}
+                                } ${mobileOptimized ? 'py-4 text-base font-semibold touch-feedback' : 'py-3'} ${(!sidebarOpen && !mobileOptimized) && 'justify-center'}`}
                             >
                                 <Icon name="database" size={mobileOptimized ? 24 : 20} />
                                 {(sidebarOpen || mobileOptimized) && <span>マスターデータ</span>}
@@ -2856,14 +3658,15 @@
                     {/* Main Content */}
                     <div className="flex-1 flex flex-col overflow-hidden relative bg-[#f9f8f4]">
                         {/* Topbar */}
-                        <header className={`bg-white/80 backdrop-blur-md border-b border-gold-100 flex justify-between items-center shadow-sm z-10 sticky top-0 ${
-                            mobileOptimized ? 'h-14 px-3' : 'h-20 px-8'
+                        <header className={`bg-white/95 backdrop-blur-md border-b border-gold-100 flex justify-between items-center shadow-sm z-10 sticky top-0 safe-top hw-accelerate ${
+                            mobileOptimized ? 'mobile-header' : 'h-20 px-8'
                         }`}>
                             <div className="flex items-center space-x-3">
                                 {mobileOptimized && (
                                     <button
                                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                                        className="p-2 rounded-lg hover:bg-gold-50 transition-colors"
+                                        className="p-2.5 rounded-lg hover:bg-gold-50 transition-colors touch-feedback"
+                                        aria-label="メニューを開く"
                                     >
                                         <Icon name="menu" size={24} className="text-brown-800" />
                                     </button>
@@ -2900,21 +3703,23 @@
                                         <button
                                             onClick={handleLoadFromSpreadsheet}
                                             disabled={isLoading}
-                                            className={`flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors ${
-                                                mobileOptimized ? 'px-2 py-2 text-xs' : 'px-4 py-2 text-sm'
+                                            className={`flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors touch-feedback ${
+                                                mobileOptimized ? 'px-2.5 py-2.5' : 'px-4 py-2 text-sm'
                                             }`}
+                                            aria-label="データを読み込む"
                                         >
-                                            <Icon name={isLoading ? "loader" : "download"} size={mobileOptimized ? 14 : 16} className={`${isLoading ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
+                                            <Icon name={isLoading ? "loader" : "download"} size={mobileOptimized ? 16 : 16} className={`${isLoading ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
                                             {!mobileOptimized && (isLoading ? '読込中...' : '読み込み')}
                                         </button>
                                         <button
                                             onClick={handleSaveToSpreadsheet}
                                             disabled={isSaving}
-                                            className={`flex items-center bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors ${
-                                                mobileOptimized ? 'px-2 py-2 text-xs' : 'px-4 py-2 text-sm'
+                                            className={`flex items-center bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors touch-feedback ${
+                                                mobileOptimized ? 'px-2.5 py-2.5' : 'px-4 py-2 text-sm'
                                             }`}
+                                            aria-label="データを保存する"
                                         >
-                                            <Icon name={isSaving ? "loader" : "save"} size={mobileOptimized ? 14 : 16} className={`${isSaving ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
+                                            <Icon name={isSaving ? "loader" : "save"} size={mobileOptimized ? 16 : 16} className={`${isSaving ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
                                             {!mobileOptimized && (isSaving ? '保存中...' : '保存')}
                                         </button>
                                     </div>
@@ -2928,14 +3733,15 @@
                                 {/* Mobile/PC Toggle */}
                                 <button
                                     onClick={() => setMobileOptimized(!mobileOptimized)}
-                                    className={`flex items-center rounded-lg font-medium transition-all ${
+                                    className={`flex items-center rounded-lg font-semibold transition-all touch-feedback ${
                                         mobileOptimized
-                                            ? 'bg-purple-600 text-white shadow-md px-2 py-2'
+                                            ? 'bg-purple-600 text-white shadow-md px-2.5 py-2.5'
                                             : 'bg-white text-gray-600 border border-gray-300 hover:bg-purple-50 px-3 py-2 text-sm'
                                     }`}
                                     title={mobileOptimized ? 'PC表示に切替' : 'スマホ表示に切替'}
+                                    aria-label={mobileOptimized ? 'PC表示に切替' : 'スマホ表示に切替'}
                                 >
-                                    <Icon name={mobileOptimized ? "smartphone" : "monitor"} size={mobileOptimized ? 18 : 16} className={mobileOptimized ? '' : 'mr-2'} />
+                                    <Icon name={mobileOptimized ? "smartphone" : "monitor"} size={mobileOptimized ? 20 : 16} className={mobileOptimized ? '' : 'mr-2'} />
                                     {!mobileOptimized && <span className="hidden lg:inline">{mobileOptimized ? 'モバイル' : 'PC'}</span>}
                                 </button>
                                 {!mobileOptimized && (
@@ -2965,8 +3771,8 @@
                         </header>
 
                         {/* Content Area */}
-                        <main className={`flex-1 overflow-y-auto transition-all ${mobileOptimized ? 'p-2' : 'p-8'}`}>
-                            <div className={`mx-auto pb-10 ${mobileOptimized ? 'max-w-full' : 'max-w-7xl'}`}>
+                        <main className={`flex-1 overflow-y-auto transition-all safe-bottom ${mobileOptimized ? 'p-3 pt-4' : 'p-8'}`}>
+                            <div className={`mx-auto ${mobileOptimized ? 'max-w-full pb-6' : 'max-w-7xl pb-10'}`}>
                                 {activeTab === 'dashboard' && (
                                     isStaffMode && currentStaff ? (
                                         // スタッフモード: 自分の成績と店舗目標のみ表示
@@ -2987,10 +3793,10 @@
                                                     <p className="text-sm text-gray-500 mb-2">達成率</p>
                                                     <div className="w-full bg-gray-200 rounded-full h-4">
                                                         <div className={`h-4 rounded-full ${currentStaff.sales >= currentStaff.target ? 'bg-emerald-500' : 'bg-gold-500'}`}
-                                                            style={{width: `${Math.min(100, (currentStaff.sales / currentStaff.target) * 100)}%`}}></div>
+                                                            style={{width: `${currentStaff.target > 0 ? Math.min(100, (currentStaff.sales / currentStaff.target) * 100) : 0}%`}}></div>
                                                     </div>
                                                     <p className="text-right text-sm font-bold text-gray-700 mt-1">
-                                                        {Math.round((currentStaff.sales / currentStaff.target) * 100)}%
+                                                        {currentStaff.target > 0 ? Math.round((currentStaff.sales / currentStaff.target) * 100) : 0}%
                                                     </p>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
@@ -3059,7 +3865,7 @@
                                     staffList={staffList}
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
-                                {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
+                                {!isStaffMode && activeTab === 'simulation' && <SimulationView staffList={staffList} onUpdateStaff={updateStaff} />}
                                 {!isStaffMode && activeTab === 'master' && !selectedMaster && (
                                     <MasterDataManagementView onSelectMaster={handleSelectMaster} />
                                 )}
@@ -3070,7 +3876,23 @@
                                         onUpdateMediaSource={updateMediaSource}
                                     />
                                 )}
-                                {!isStaffMode && activeTab === 'menus' && <MenuAnalysisView menuSalesData={menuSalesData} />}
+                                {!isStaffMode && activeTab === 'menus' && selectedMaster === 'menus' && (
+                                    <MenuManagementView
+                                        menuList={menuList}
+                                        onUpdateMenu={updateMenu}
+                                        onAddMenu={addMenu}
+                                        onDeleteMenu={deleteMenu}
+                                    />
+                                )}
+                                {!isStaffMode && activeTab === 'menus' && !selectedMaster && <MenuAnalysisView menuSalesData={menuSalesData} />}
+                                {!isStaffMode && activeTab === 'media' && (
+                                    <MediaSourceManagementView
+                                        mediaSourcesList={mediaSourcesList}
+                                        onUpdateMedia={updateMediaSource}
+                                        onAddMedia={addMediaSource}
+                                        onDeleteMedia={deleteMediaSource}
+                                    />
+                                )}
                                 {!isStaffMode && activeTab === 'customers' && (
                                     <CustomerTicketManagementView
                                         ticketMasterList={ticketMasterList}
