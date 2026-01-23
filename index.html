@@ -386,10 +386,20 @@
 
         // --- Main Sections ---
 
-        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [], onNavigate, mobileOptimized = false }) => {
+        const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [], onNavigate, mobileOptimized = false, storeData = [] }) => {
             const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff_{id}'
             const [selectedStaffId, setSelectedStaffId] = useState(null);
             const [periodMode, setPeriodMode] = useState('month'); // 'month', '3months', '6months', 'year'
+
+            // モバイルレイアウト用のスタイルクラス
+            const cardGridClass = mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+            const cardPadding = mobileOptimized ? 'p-4' : 'p-6';
+            const fontSize = {
+                title: mobileOptimized ? 'text-base' : 'text-lg',
+                subtitle: mobileOptimized ? 'text-xs' : 'text-sm',
+                metric: mobileOptimized ? 'text-2xl' : 'text-3xl',
+                label: mobileOptimized ? 'text-xs' : 'text-sm',
+            };
 
             // 期間でフィルタリングされた売上データ
             const periodFilteredSales = useMemo(() => {
@@ -547,11 +557,11 @@
             const ViewTab = ({ id, label }) => (
                 <button
                     onClick={() => setViewMode(id)}
-                    className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                    className={`font-medium rounded-lg transition-all ${
                         viewMode === id
                             ? 'bg-gold-500 text-white shadow-md'
                             : 'bg-white text-gray-600 hover:bg-gold-50 border border-gray-200'
-                    }`}
+                    } ${mobileOptimized ? 'px-3 py-2 text-xs' : 'px-6 py-2.5 text-sm'}`}
                 >
                     {label}
                 </button>
@@ -560,23 +570,23 @@
             const PeriodTab = ({ id, label }) => (
                 <button
                     onClick={() => setPeriodMode(id)}
-                    className={`px-4 py-2 text-sm font-medium rounded transition-all ${
+                    className={`font-medium rounded transition-all ${
                         periodMode === id
                             ? 'bg-blue-500 text-white shadow'
                             : 'bg-white text-gray-600 hover:bg-blue-50 border border-gray-200'
-                    }`}
+                    } ${mobileOptimized ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}`}
                 >
                     {label}
                 </button>
             );
 
             return (
-                <div className="space-y-6">
+                <div className={mobileOptimized ? 'space-y-4' : 'space-y-6'}>
                     {/* 店舗/スタッフ切り替えタブ */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gold-200">
+                    <div className={`bg-white rounded-lg shadow-sm border border-gold-200 ${mobileOptimized ? 'p-3' : 'p-4'}`}>
                         <div className="flex items-center justify-between flex-wrap gap-4">
-                            <h3 className="text-sm font-bold text-gray-600 serif">表示切替</h3>
-                            <div className="flex gap-2 items-center">
+                            <h3 className={`font-bold text-gray-600 serif ${fontSize.subtitle}`}>表示切替</h3>
+                            <div className={`flex gap-2 items-center ${mobileOptimized ? 'flex-wrap' : ''}`}>
                                 <ViewTab id="all" label="全店舗合計" />
                                 <ViewTab id="store_1" label="新宿店" />
                                 <ViewTab id="store_2" label="新宿南口店" />
@@ -598,10 +608,10 @@
                     </div>
 
                     {/* 期間選択タブ */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-200">
+                    <div className={`bg-white rounded-lg shadow-sm border border-blue-200 ${mobileOptimized ? 'p-3' : 'p-4'}`}>
                         <div className="flex items-center justify-between flex-wrap gap-4">
-                            <h3 className="text-sm font-bold text-gray-600 serif">表示期間</h3>
-                            <div className="flex gap-2">
+                            <h3 className={`font-bold text-gray-600 serif ${fontSize.subtitle}`}>表示期間</h3>
+                            <div className={`flex gap-2 ${mobileOptimized ? 'flex-wrap' : ''}`}>
                                 <PeriodTab id="month" label="今月" />
                                 <PeriodTab id="3months" label="過去3ヶ月" />
                                 <PeriodTab id="6months" label="過去6ヶ月" />
@@ -611,7 +621,7 @@
                     </div>
 
                     {/* Top KPI Cards - Split Sales Types */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className={`grid gap-4 ${cardGridClass}`}>
                         <KpiCard 
                             title="会計上売上 (役務消化込)" 
                             value={`¥${totalAccountingSales.toLocaleString()}`} 
@@ -646,14 +656,14 @@
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className={`grid gap-6 ${mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
                         {/* Main Chart: Sales Breakdown */}
-                        <div className="lg:col-span-2">
-                            <Card className="h-96">
-                                <div className="flex justify-between items-center mb-6">
+                        <div className={mobileOptimized ? '' : 'lg:col-span-2'}>
+                            <Card className={mobileOptimized ? 'h-80' : 'h-96'}>
+                                <div className={`flex justify-between items-center ${mobileOptimized ? 'mb-4' : 'mb-6'}`}>
                                     <div>
-                                        <h2 className="text-lg font-bold text-brown-800 serif">売上構造分析</h2>
-                                        <p className="text-xs text-gray-500">キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
+                                        <h2 className={`font-bold text-brown-800 serif ${fontSize.title}`}>売上構造分析</h2>
+                                        <p className={`text-gray-500 ${fontSize.subtitle}`}>キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
                                     </div>
                                 </div>
                                 <ResponsiveContainer width="100%" height="85%">
@@ -2483,6 +2493,117 @@
         };
 
 
+        // --- Master Data Management View ---
+        const MasterDataManagementView = ({ onSelectMaster }) => {
+            const masterOptions = [
+                {
+                    id: 'staff',
+                    icon: 'users',
+                    title: 'スタッフ管理',
+                    description: 'スタッフの追加・編集・削除',
+                    bgColor: 'bg-blue-50',
+                    borderColor: 'border-blue-200',
+                    hoverBorder: 'hover:border-blue-400',
+                    iconBg: 'bg-blue-100',
+                    iconBgHover: 'group-hover:bg-blue-200',
+                    iconColor: 'text-blue-600',
+                    chevronColor: 'text-blue-400',
+                    chevronHover: 'group-hover:text-blue-600'
+                },
+                {
+                    id: 'menus',
+                    icon: 'package',
+                    title: 'メニュー管理',
+                    description: 'メニューの追加・編集・削除',
+                    bgColor: 'bg-purple-50',
+                    borderColor: 'border-purple-200',
+                    hoverBorder: 'hover:border-purple-400',
+                    iconBg: 'bg-purple-100',
+                    iconBgHover: 'group-hover:bg-purple-200',
+                    iconColor: 'text-purple-600',
+                    chevronColor: 'text-purple-400',
+                    chevronHover: 'group-hover:text-purple-600'
+                },
+                {
+                    id: 'customers',
+                    icon: 'heart',
+                    title: '顧客・回数券管理',
+                    description: '顧客情報と回数券の管理',
+                    bgColor: 'bg-rose-50',
+                    borderColor: 'border-rose-200',
+                    hoverBorder: 'hover:border-rose-400',
+                    iconBg: 'bg-rose-100',
+                    iconBgHover: 'group-hover:bg-rose-200',
+                    iconColor: 'text-rose-600',
+                    chevronColor: 'text-rose-400',
+                    chevronHover: 'group-hover:text-rose-600'
+                },
+                {
+                    id: 'media',
+                    icon: 'megaphone',
+                    title: '媒体マスター',
+                    description: '集客媒体の追加・編集',
+                    bgColor: 'bg-amber-50',
+                    borderColor: 'border-amber-200',
+                    hoverBorder: 'hover:border-amber-400',
+                    iconBg: 'bg-amber-100',
+                    iconBgHover: 'group-hover:bg-amber-200',
+                    iconColor: 'text-amber-600',
+                    chevronColor: 'text-amber-400',
+                    chevronHover: 'group-hover:text-amber-600'
+                },
+            ];
+
+            return (
+                <div className="space-y-6">
+                    <Card>
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-brown-800 serif mb-2">マスターデータ管理</h2>
+                            <p className="text-sm text-gray-600">基本データの登録・編集を行います</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {masterOptions.map(option => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => onSelectMaster(option.id)}
+                                    className={`group p-6 rounded-xl border-2 transition-all duration-200 text-left hover:shadow-lg hover:scale-[1.02] ${option.bgColor} ${option.borderColor} ${option.hoverBorder}`}
+                                >
+                                    <div className="flex items-start space-x-4">
+                                        <div className={`p-3 rounded-lg ${option.iconBg} ${option.iconBgHover} transition-colors`}>
+                                            <Icon name={option.icon} size={24} className={option.iconColor} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-bold text-brown-800 mb-1 group-hover:text-brown-900">
+                                                {option.title}
+                                            </h3>
+                                            <p className="text-sm text-gray-600">{option.description}</p>
+                                        </div>
+                                        <Icon name="chevron-right" size={20} className={`${option.chevronColor} ${option.chevronHover} transition-colors`} />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-8 p-4 bg-gold-50 rounded-lg border border-gold-200">
+                            <div className="flex items-start space-x-3">
+                                <Icon name="info" size={20} className="text-gold-600 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm text-brown-800">
+                                    <p className="font-bold mb-2">マスターデータについて</p>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• マスターデータは実績入力や分析の基礎となる重要なデータです</li>
+                                        <li>• 変更内容はスプレッドシートに保存することで永続化されます</li>
+                                        <li>• 削除したデータは復元できませんのでご注意ください</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+
         // --- App Layout & Navigation ---
 
         const Layout = () => {
@@ -2495,6 +2616,8 @@
             const [activeTab, setActiveTab] = useState('dashboard');
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [mobileOptimized, setMobileOptimized] = useState(false);
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+            const [selectedMaster, setSelectedMaster] = useState(null);
             const [staffList, setStaffList] = useState(initialStaffData);
             const [ticketMasterList, setTicketMasterList] = useState(initialTicketMasterData);
             const [customerList, setCustomerList] = useState(initialCustomerData);
@@ -2508,6 +2631,13 @@
 
             // 現在のスタッフ情報を取得
             const currentStaff = isStaffMode ? staffList.find(s => s.id === currentStaffId) : null;
+
+            // マスターデータ選択時の処理
+            const handleSelectMaster = (masterId) => {
+                setSelectedMaster(masterId);
+                setActiveTab(masterId); // staff, menus, customers, media
+                setMobileMenuOpen(false); // モバイルメニューを閉じる
+            };
 
             // スタッフ管理関数
             const updateStaff = (id, newData) => {
@@ -2633,22 +2763,42 @@
 
             const NavItem = ({ id, icon, label }) => (
                 <button
-                    onClick={() => setActiveTab(id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 my-1 rounded-lg transition-all duration-200 border-l-4 ${
-                        activeTab === id 
-                        ? 'border-gold-500 bg-gold-50 text-brown-800 font-bold shadow-sm' 
+                    onClick={() => {
+                        setActiveTab(id);
+                        setSelectedMaster(null);
+                        if (mobileOptimized) setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 my-1 rounded-lg transition-all duration-200 border-l-4 ${
+                        activeTab === id
+                        ? 'border-gold-500 bg-gold-50 text-brown-800 font-bold shadow-sm'
                         : 'border-transparent text-gray-500 hover:text-brown-800 hover:bg-white'
-                    }`}
+                    } ${mobileOptimized ? 'py-4 text-base' : 'py-3'}`}
                 >
-                    <Icon name={icon} size={20} className={activeTab === id ? 'text-gold-600' : 'text-gray-400'} />
-                    {sidebarOpen && <span className={activeTab === id ? 'serif' : ''}>{label}</span>}
+                    <Icon name={icon} size={mobileOptimized ? 24 : 20} className={activeTab === id ? 'text-gold-600' : 'text-gray-400'} />
+                    {(sidebarOpen || mobileOptimized) && <span className={activeTab === id ? 'serif' : ''}>{label}</span>}
                 </button>
             );
 
             return (
-                <div className="flex h-screen bg-brown-50 font-sans text-brown-900">
+                <div className="flex h-screen bg-brown-50 font-sans text-brown-900 overflow-hidden">
+                    {/* Mobile Overlay */}
+                    {mobileOptimized && mobileMenuOpen && (
+                        <div
+                            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                            onClick={() => setMobileMenuOpen(false)}
+                        ></div>
+                    )}
+
                     {/* Sidebar */}
-                    <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gold-200 flex flex-col transition-all duration-300 z-20 shadow-xl`}>
+                    <div className={`
+                        ${mobileOptimized ? (
+                            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+                        ) : (
+                            sidebarOpen ? 'w-64' : 'w-20'
+                        )}
+                        ${mobileOptimized ? 'fixed inset-y-0 left-0 w-64 z-40' : 'relative'}
+                        bg-white border-r border-gold-200 flex flex-col transition-all duration-300 shadow-xl
+                    `}>
                         <div className="h-20 flex items-center justify-center border-b border-gold-100 bg-white">
                             {sidebarOpen ? (
                                 <h1 className="text-2xl font-bold text-brown-800 flex items-center serif tracking-wider">
@@ -2679,61 +2829,93 @@
                         </div>
 
                         <div className="p-4 border-t border-gold-100 bg-gold-50/50">
-                             <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-white hover:text-brown-800 transition-colors ${!sidebarOpen && 'justify-center'}`}>
-                                <Icon name="settings" size={20} />
-                                {sidebarOpen && <span>設定</span>}
+                             <button
+                                onClick={() => {
+                                    setActiveTab('master');
+                                    setSelectedMaster(null);
+                                    if (mobileOptimized) setMobileMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center space-x-3 px-4 rounded-lg transition-colors ${
+                                    activeTab === 'master' ? 'bg-gold-200 text-brown-800 font-bold' : 'text-gray-500 hover:bg-white hover:text-brown-800'
+                                } ${mobileOptimized ? 'py-4 text-base' : 'py-3'} ${(!sidebarOpen && !mobileOptimized) && 'justify-center'}`}
+                            >
+                                <Icon name="database" size={mobileOptimized ? 24 : 20} />
+                                {(sidebarOpen || mobileOptimized) && <span>マスターデータ</span>}
                             </button>
-                            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="mt-2 w-full flex items-center justify-center p-2 text-gold-400 hover:text-gold-600">
-                                <Icon name={sidebarOpen ? "chevrons-left" : "chevrons-right"} size={20} />
-                            </button>
+                            {!mobileOptimized && (
+                                <button
+                                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                                    className="mt-2 w-full flex items-center justify-center p-2 text-gold-400 hover:text-gold-600"
+                                >
+                                    <Icon name={sidebarOpen ? "chevrons-left" : "chevrons-right"} size={20} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Main Content */}
                     <div className="flex-1 flex flex-col overflow-hidden relative bg-[#f9f8f4]">
                         {/* Topbar */}
-                        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gold-100 flex justify-between items-center px-8 shadow-sm z-10 sticky top-0">
-                            <div>
-                                <h2 className="text-xl font-bold text-brown-800 serif">
-                                    {activeTab === 'dashboard' && (isStaffMode ? 'My Dashboard' : 'Executive Summary')}
-                                    {activeTab === 'input' && 'Performance Input'}
-                                    {activeTab === 'simulation' && 'Strategy Simulation'}
-                                    {activeTab === 'sales' && 'Sales & Marketing Analytics'}
-                                    {activeTab === 'menus' && 'Menu Performance Analysis'}
-                                    {activeTab === 'staff' && 'Staff Performance & Management'}
-                                    {activeTab === 'customers' && 'Customer & Ticket Management'}
-                                    {activeTab === 'settings' && 'System Settings'}
-                                </h2>
-                                <p className="text-xs text-gold-600 font-medium tracking-widest uppercase mt-1">
-                                    {activeTab === 'dashboard' && (isStaffMode ? 'マイダッシュボード' : '経営サマリー')}
-                                    {activeTab === 'input' && '実績入力'}
-                                    {activeTab === 'simulation' && '経営シミュレーション'}
-                                    {activeTab === 'sales' && '売上詳細・媒体分析'}
-                                    {activeTab === 'menus' && 'メニュー別分析'}
-                                    {activeTab === 'staff' && 'スタッフ管理・編集'}
-                                    {activeTab === 'customers' && '顧客リスト・回数券管理'}
-                                    {activeTab === 'settings' && 'システム設定'}
-                                </p>
+                        <header className={`bg-white/80 backdrop-blur-md border-b border-gold-100 flex justify-between items-center shadow-sm z-10 sticky top-0 ${
+                            mobileOptimized ? 'h-14 px-3' : 'h-20 px-8'
+                        }`}>
+                            <div className="flex items-center space-x-3">
+                                {mobileOptimized && (
+                                    <button
+                                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                        className="p-2 rounded-lg hover:bg-gold-50 transition-colors"
+                                    >
+                                        <Icon name="menu" size={24} className="text-brown-800" />
+                                    </button>
+                                )}
+                                <div>
+                                    <h2 className={`font-bold text-brown-800 serif ${mobileOptimized ? 'text-sm' : 'text-xl'}`}>
+                                        {activeTab === 'dashboard' && (isStaffMode ? (mobileOptimized ? 'ダッシュボード' : 'My Dashboard') : (mobileOptimized ? '経営サマリー' : 'Executive Summary'))}
+                                        {activeTab === 'input' && (mobileOptimized ? '実績入力' : 'Performance Input')}
+                                        {activeTab === 'simulation' && (mobileOptimized ? 'シミュレーション' : 'Strategy Simulation')}
+                                        {activeTab === 'sales' && (mobileOptimized ? '売上分析' : 'Sales & Marketing Analytics')}
+                                        {activeTab === 'menus' && (mobileOptimized ? 'メニュー分析' : 'Menu Performance Analysis')}
+                                        {activeTab === 'staff' && (mobileOptimized ? 'スタッフ管理' : 'Staff Performance & Management')}
+                                        {activeTab === 'customers' && (mobileOptimized ? '顧客管理' : 'Customer & Ticket Management')}
+                                        {activeTab === 'master' && (mobileOptimized ? 'マスター管理' : 'Master Data Management')}
+                                    </h2>
+                                    {!mobileOptimized && (
+                                        <p className="text-xs text-gold-600 font-medium tracking-widest uppercase mt-1">
+                                            {activeTab === 'dashboard' && (isStaffMode ? 'マイダッシュボード' : '経営サマリー')}
+                                            {activeTab === 'input' && '実績入力'}
+                                            {activeTab === 'simulation' && '経営シミュレーション'}
+                                            {activeTab === 'sales' && '売上詳細・媒体分析'}
+                                            {activeTab === 'menus' && 'メニュー別分析'}
+                                            {activeTab === 'staff' && 'スタッフ管理・編集'}
+                                            {activeTab === 'customers' && '顧客リスト・回数券管理'}
+                                            {activeTab === 'master' && 'マスターデータ管理'}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex items-center space-x-6">
+                            <div className={`flex items-center ${mobileOptimized ? 'space-x-2' : 'space-x-6'}`}>
                                 {/* スプレッドシート保存・読み込みボタン */}
                                 <div className="flex flex-col items-end">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleLoadFromSpreadsheet}
                                             disabled={isLoading}
-                                            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                                            className={`flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors ${
+                                                mobileOptimized ? 'px-2 py-2 text-xs' : 'px-4 py-2 text-sm'
+                                            }`}
                                         >
-                                            <Icon name={isLoading ? "loader" : "download"} size={16} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                                            {isLoading ? '読込中...' : '読み込み'}
+                                            <Icon name={isLoading ? "loader" : "download"} size={mobileOptimized ? 14 : 16} className={`${isLoading ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
+                                            {!mobileOptimized && (isLoading ? '読込中...' : '読み込み')}
                                         </button>
                                         <button
                                             onClick={handleSaveToSpreadsheet}
                                             disabled={isSaving}
-                                            className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                                            className={`flex items-center bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors ${
+                                                mobileOptimized ? 'px-2 py-2 text-xs' : 'px-4 py-2 text-sm'
+                                            }`}
                                         >
-                                            <Icon name={isSaving ? "loader" : "save"} size={16} className={`mr-2 ${isSaving ? 'animate-spin' : ''}`} />
-                                            {isSaving ? '保存中...' : '保存'}
+                                            <Icon name={isSaving ? "loader" : "save"} size={mobileOptimized ? 14 : 16} className={`${isSaving ? 'animate-spin' : ''} ${mobileOptimized ? '' : 'mr-2'}`} />
+                                            {!mobileOptimized && (isSaving ? '保存中...' : '保存')}
                                         </button>
                                     </div>
                                     {saveMessage && (
@@ -2742,39 +2924,43 @@
                                         </span>
                                     )}
                                 </div>
-                                <div className="h-8 w-px bg-gold-200"></div>
+                                {!mobileOptimized && <div className="h-8 w-px bg-gold-200"></div>}
                                 {/* Mobile/PC Toggle */}
                                 <button
                                     onClick={() => setMobileOptimized(!mobileOptimized)}
-                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    className={`flex items-center rounded-lg font-medium transition-all ${
                                         mobileOptimized
-                                            ? 'bg-purple-600 text-white shadow-md'
-                                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-purple-50'
+                                            ? 'bg-purple-600 text-white shadow-md px-2 py-2'
+                                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-purple-50 px-3 py-2 text-sm'
                                     }`}
                                     title={mobileOptimized ? 'PC表示に切替' : 'スマホ表示に切替'}
                                 >
-                                    <Icon name={mobileOptimized ? "smartphone" : "monitor"} size={16} className="mr-2" />
-                                    <span className="hidden lg:inline">{mobileOptimized ? 'モバイル' : 'PC'}</span>
+                                    <Icon name={mobileOptimized ? "smartphone" : "monitor"} size={mobileOptimized ? 18 : 16} className={mobileOptimized ? '' : 'mr-2'} />
+                                    {!mobileOptimized && <span className="hidden lg:inline">{mobileOptimized ? 'モバイル' : 'PC'}</span>}
                                 </button>
-                                <div className="h-8 w-px bg-gold-200"></div>
-                                <div className="text-right hidden md:block">
-                                    <p className="text-sm font-bold text-brown-800">{currentDate}</p>
-                                    <p className="text-xs text-gray-400">Tokyo, Japan</p>
-                                </div>
-                                <div className="h-8 w-px bg-gold-200"></div>
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-full bg-brown-800 border-2 border-gold-300 flex items-center justify-center text-gold-100 text-sm font-serif">
-                                        {isStaffMode && currentStaff ? currentStaff.name.charAt(0) : 'OP'}
-                                    </div>
-                                    <div className="hidden md:block">
-                                        <p className="text-sm font-bold text-brown-800">
-                                            {isStaffMode && currentStaff ? currentStaff.name : 'オーナー様'}
-                                        </p>
-                                        <p className="text-xs text-gold-600">
-                                            {isStaffMode && currentStaff ? currentStaff.role : 'Administrator'}
-                                        </p>
-                                    </div>
-                                </div>
+                                {!mobileOptimized && (
+                                    <>
+                                        <div className="h-8 w-px bg-gold-200"></div>
+                                        <div className="text-right hidden md:block">
+                                            <p className="text-sm font-bold text-brown-800">{currentDate}</p>
+                                            <p className="text-xs text-gray-400">Tokyo, Japan</p>
+                                        </div>
+                                        <div className="h-8 w-px bg-gold-200"></div>
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 rounded-full bg-brown-800 border-2 border-gold-300 flex items-center justify-center text-gold-100 text-sm font-serif">
+                                                {isStaffMode && currentStaff ? currentStaff.name.charAt(0) : 'OP'}
+                                            </div>
+                                            <div className="hidden md:block">
+                                                <p className="text-sm font-bold text-brown-800">
+                                                    {isStaffMode && currentStaff ? currentStaff.name : 'オーナー様'}
+                                                </p>
+                                                <p className="text-xs text-gold-600">
+                                                    {isStaffMode && currentStaff ? currentStaff.role : 'Administrator'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </header>
 
@@ -2858,6 +3044,10 @@
                                             customerList={customerList}
                                             onNavigate={setActiveTab}
                                             mobileOptimized={mobileOptimized}
+                                            storeData={[
+                                                { id: 1, name: '新宿店' },
+                                                { id: 2, name: '新宿南口店' }
+                                            ]}
                                         />
                                     )
                                 )}
@@ -2870,6 +3060,9 @@
                                 />}
                                 {!isStaffMode && activeTab === 'staff' && <StaffManagementView staffList={staffList} onUpdateStaff={updateStaff} onAddStaff={addStaff} onDeleteStaff={deleteStaff} />}
                                 {!isStaffMode && activeTab === 'simulation' && <SimulationView />}
+                                {!isStaffMode && activeTab === 'master' && !selectedMaster && (
+                                    <MasterDataManagementView onSelectMaster={handleSelectMaster} />
+                                )}
                                 {!isStaffMode && activeTab === 'sales' && (
                                     <SalesAnalysisView
                                         dailySalesData={dailySalesData}
