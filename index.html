@@ -1023,7 +1023,11 @@
         const DashboardView = ({ staffList, dailySalesData, menuSalesData, mediaSourcesData = [], customerList = [], onNavigate, mobileOptimized = false, storeData = [] }) => {
             const [viewMode, setViewMode] = useState('all'); // 'all', 'store_1', 'store_2', 'staff_{id}'
             const [selectedStaffId, setSelectedStaffId] = useState(null);
-            const [periodMode, setPeriodMode] = useState('month'); // 'month', '3months', '6months', 'year'
+            const [periodMode, setPeriodMode] = useState('month'); // 'month', '3months', '6months', 'year', 'specific'
+            const [selectedMonth, setSelectedMonth] = useState(() => {
+                const today = new Date();
+                return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+            });
 
             // モバイルレイアウト用のスタイルクラス
             const cardGridClass = mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
@@ -1044,35 +1048,53 @@
             const safeDailySalesData = Array.isArray(dailySalesData) ? dailySalesData : [];
             const safeStoreData = Array.isArray(storeData) && storeData.length > 0 ? storeData : stores;
 
+            // 月を変更する関数
+            const changeMonth = (offset) => {
+                const [year, month] = selectedMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+            };
+
             // 期間でフィルタリングされた売上データ
             const periodFilteredSales = useMemo(() => {
                 if (safeDailySalesData.length === 0) return [];
 
-                const today = new Date();
-                const filterDate = new Date();
+                if (periodMode === 'specific') {
+                    // 特定月モード：選択された月のデータのみ
+                    const [year, month] = selectedMonth.split('-').map(Number);
+                    return safeDailySalesData.filter(d => {
+                        if (!d.date) return false;
+                        const saleDate = new Date(d.date);
+                        return saleDate.getFullYear() === year && (saleDate.getMonth() + 1) === month;
+                    });
+                } else {
+                    // 期間モード：過去の期間
+                    const today = new Date();
+                    const filterDate = new Date();
 
-                switch(periodMode) {
-                    case 'month':
-                        filterDate.setMonth(today.getMonth() - 1);
-                        break;
-                    case '3months':
-                        filterDate.setMonth(today.getMonth() - 3);
-                        break;
-                    case '6months':
-                        filterDate.setMonth(today.getMonth() - 6);
-                        break;
-                    case 'year':
-                        filterDate.setFullYear(today.getFullYear() - 1);
-                        break;
-                    default:
-                        filterDate.setMonth(today.getMonth() - 1);
+                    switch(periodMode) {
+                        case 'month':
+                            filterDate.setMonth(today.getMonth() - 1);
+                            break;
+                        case '3months':
+                            filterDate.setMonth(today.getMonth() - 3);
+                            break;
+                        case '6months':
+                            filterDate.setMonth(today.getMonth() - 6);
+                            break;
+                        case 'year':
+                            filterDate.setFullYear(today.getFullYear() - 1);
+                            break;
+                        default:
+                            filterDate.setMonth(today.getMonth() - 1);
+                    }
+
+                    return safeDailySalesData.filter(d => {
+                        const saleDate = new Date(d.date);
+                        return saleDate >= filterDate;
+                    });
                 }
-
-                return safeDailySalesData.filter(d => {
-                    const saleDate = new Date(d.date);
-                    return saleDate >= filterDate;
-                });
-            }, [safeDailySalesData, periodMode]);
+            }, [safeDailySalesData, periodMode, selectedMonth]);
 
             // フィルタリングされた売上データ
             const filteredDailySales = useMemo(() => {
@@ -1261,11 +1283,38 @@
                     <div className={`bg-white rounded-lg shadow-sm border border-blue-200 ${mobileOptimized ? 'p-3' : 'p-4'}`}>
                         <div className="flex items-center justify-between flex-wrap gap-4">
                             <h3 className={`font-bold text-gray-600 serif ${fontSize.subtitle}`}>表示期間</h3>
-                            <div className={`flex gap-2 ${mobileOptimized ? 'flex-wrap' : ''}`}>
-                                <PeriodTab id="month" label="今月" />
-                                <PeriodTab id="3months" label="過去3ヶ月" />
-                                <PeriodTab id="6months" label="過去6ヶ月" />
-                                <PeriodTab id="year" label="過去1年" />
+                            <div className="flex items-center gap-4 flex-wrap">
+                                <div className={`flex gap-2 ${mobileOptimized ? 'flex-wrap' : ''}`}>
+                                    <PeriodTab id="specific" label="月選択" />
+                                    <PeriodTab id="month" label="今月" />
+                                    <PeriodTab id="3months" label="過去3ヶ月" />
+                                    <PeriodTab id="6months" label="過去6ヶ月" />
+                                    <PeriodTab id="year" label="過去1年" />
+                                </div>
+                                {periodMode === 'specific' && (
+                                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                                        <button
+                                            onClick={() => changeMonth(-1)}
+                                            className="p-1 hover:bg-blue-100 rounded transition-colors"
+                                            title="前月"
+                                        >
+                                            <Icon name="chevron-left" size={18} />
+                                        </button>
+                                        <input
+                                            type="month"
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="px-2 py-1 border border-blue-300 rounded text-sm focus:outline-none focus:border-blue-500 bg-white"
+                                        />
+                                        <button
+                                            onClick={() => changeMonth(1)}
+                                            className="p-1 hover:bg-blue-100 rounded transition-colors"
+                                            title="次月"
+                                        >
+                                            <Icon name="chevron-right" size={18} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1588,6 +1637,18 @@
 
             const [editingAdCostId, setEditingAdCostId] = useState(null);
             const [adCostInput, setAdCostInput] = useState('');
+            const [selectedMonth, setSelectedMonth] = useState(() => {
+                const today = new Date();
+                return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+            });
+            const [monthFilterEnabled, setMonthFilterEnabled] = useState(false);
+
+            // 月を変更する関数
+            const changeMonth = (offset) => {
+                const [year, month] = selectedMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+            };
 
             // 空データチェック
             const hasData = (dailySalesData && dailySalesData.length > 0) || (mediaSourcesData && mediaSourcesData.length > 0);
@@ -1620,14 +1681,30 @@
                 setAdCostInput('');
             };
 
+            // 月フィルターを適用したデータ
+            const filteredDailySalesData = useMemo(() => {
+                if (!dailySalesData || dailySalesData.length === 0) return [];
+
+                if (monthFilterEnabled) {
+                    const [year, month] = selectedMonth.split('-').map(Number);
+                    return dailySalesData.filter(d => {
+                        if (!d.date) return false;
+                        const saleDate = new Date(d.date);
+                        return saleDate.getFullYear() === year && (saleDate.getMonth() + 1) === month;
+                    });
+                }
+
+                return dailySalesData;
+            }, [dailySalesData, monthFilterEnabled, selectedMonth]);
+
             // データを整形（dayフィールドを追加）
             const formattedDailySalesData = useMemo(() => {
-                if (!dailySalesData || dailySalesData.length === 0) return [];
-                return dailySalesData.map(entry => ({
+                if (!filteredDailySalesData || filteredDailySalesData.length === 0) return [];
+                return filteredDailySalesData.map(entry => ({
                     ...entry,
                     day: entry.day || (entry.date ? new Date(entry.date).getDate() + '日' : '')
                 }));
-            }, [dailySalesData]);
+            }, [filteredDailySalesData]);
 
             if (!hasData) {
                 return (
@@ -1661,11 +1738,61 @@
 
             return (
                 <div className="space-y-6">
+                    {/* 月選択コントロール */}
+                    <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-4">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <h3 className="font-bold text-gray-600 serif text-sm">表示期間</h3>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={monthFilterEnabled}
+                                        onChange={(e) => setMonthFilterEnabled(e.target.checked)}
+                                        className="mr-2 accent-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">月次フィルター</span>
+                                </label>
+                                {monthFilterEnabled && (
+                                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                                        <button
+                                            onClick={() => changeMonth(-1)}
+                                            className="p-1 hover:bg-blue-100 rounded transition-colors"
+                                            title="前月"
+                                        >
+                                            <Icon name="chevron-left" size={18} />
+                                        </button>
+                                        <input
+                                            type="month"
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="px-2 py-1 border border-blue-300 rounded text-sm focus:outline-none focus:border-blue-500 bg-white"
+                                        />
+                                        <button
+                                            onClick={() => changeMonth(1)}
+                                            className="p-1 hover:bg-blue-100 rounded transition-colors"
+                                            title="次月"
+                                        >
+                                            <Icon name="chevron-right" size={18} />
+                                        </button>
+                                        <span className="text-xs text-gray-600 ml-2">
+                                            {filteredDailySalesData.length}件
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Media Source Performance Table */}
                         <Card className="col-span-1">
                              <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-lg font-bold text-brown-800 serif">媒体別パフォーマンス分析</h2>
+                                {monthFilterEnabled && (
+                                    <span className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded">
+                                        {selectedMonth.split('-')[0]}年{selectedMonth.split('-')[1]}月
+                                    </span>
+                                )}
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
