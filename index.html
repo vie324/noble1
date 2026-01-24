@@ -1367,14 +1367,14 @@
                                     <div>
                                         <h2 className={`font-bold text-brown-800 serif ${fontSize.title}`}>売上構造分析</h2>
                                         {!mobileOptimized && (
-                                            <p className={`text-gray-500 ${fontSize.subtitle}`}>キャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
+                                            <p className={`text-gray-500 ${fontSize.subtitle}`}>月次推移でキャッシュイン(現金)と会計上売上(PL)の乖離を確認</p>
                                         )}
                                     </div>
                                 </div>
                                 <ResponsiveContainer width="100%" height={mobileOptimized ? 220 : 280}>
-                                    <BarChart data={filteredDailySales}>
+                                    <BarChart data={monthlyData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                        <XAxis dataKey="day" tick={{fontSize: mobileOptimized ? 9 : 10}} interval={mobileOptimized ? 3 : 2} />
+                                        <XAxis dataKey="month" tick={{fontSize: mobileOptimized ? 9 : 10}} angle={-45} textAnchor="end" height={60} />
                                         <YAxis tick={{fontSize: mobileOptimized ? 9 : 10}} tickFormatter={(val) => `¥${val/10000}万`} />
                                         <Tooltip
                                             formatter={(value) => `¥${value.toLocaleString()}`}
