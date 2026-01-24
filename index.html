@@ -29,6 +29,7 @@
     <!-- Custom Config for Tailwind (Luxury Gold Theme) -->
     <script>
         tailwind.config = {
+            darkMode: 'class', // Enable dark mode with class strategy
             theme: {
                 extend: {
                     colors: {
@@ -77,6 +78,51 @@
             overscroll-behavior-y: contain;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark Mode Styles */
+        .dark body {
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+        }
+
+        .dark .bg-brown-50 {
+            background-color: #1a1a1a !important;
+        }
+
+        .dark .bg-white {
+            background-color: #2a2a2a !important;
+        }
+
+        .dark .bg-gray-50 {
+            background-color: #2a2a2a !important;
+        }
+
+        .dark .text-brown-800 {
+            color: #e5e5e5 !important;
+        }
+
+        .dark .text-gray-600,
+        .dark .text-gray-700 {
+            color: #a0a0a0 !important;
+        }
+
+        .dark .text-gray-500 {
+            color: #808080 !important;
+        }
+
+        .dark .text-gray-400 {
+            color: #606060 !important;
+        }
+
+        .dark .border-gray-200,
+        .dark .border-gray-300 {
+            border-color: #404040 !important;
+        }
+
+        .dark .border-gold-200 {
+            border-color: #775820 !important;
         }
 
         h1, h2, h3, .serif {
@@ -279,11 +325,11 @@
 
         // メニューマスタ
         const menus = [
-            { id: 1, name: "剥離ありハーブピーリング(顔)", price: 18000, availableStores: [1, 2] },
-            { id: 2, name: "剥離なしハーブピーリング(顔)", price: 15000, availableStores: [1, 2] },
-            { id: 3, name: "剥離なしハーブピーリング(ボディ)", price: 20000, availableStores: [1, 2] },
-            { id: 4, name: "よもぎ蒸し", price: 8000, availableStores: [2] }, // 新宿南口店のみ
-            { id: 5, name: "セルフホワイトニング", price: 5000, availableStores: [2] } // 新宿南口店のみ
+            { id: 1, name: "剥離ありハーブピーリング(顔)", price: 18000, cost: 3000, availableStores: [1, 2] },
+            { id: 2, name: "剥離なしハーブピーリング(顔)", price: 15000, cost: 2500, availableStores: [1, 2] },
+            { id: 3, name: "剥離なしハーブピーリング(ボディ)", price: 20000, cost: 3500, availableStores: [1, 2] },
+            { id: 4, name: "よもぎ蒸し", price: 8000, cost: 1500, availableStores: [2] }, // 新宿南口店のみ
+            { id: 5, name: "セルフホワイトニング", price: 5000, cost: 800, availableStores: [2] } // 新宿南口店のみ
         ];
 
         // 全角数字を半角数字に変換するヘルパー関数
@@ -485,6 +531,60 @@
                 console.error('スプレッドシート保存エラー:', error);
                 return { success: false, message: error.toString() };
             }
+        };
+
+        /**
+         * CSVエクスポート機能
+         */
+        const exportToCSV = (data, filename) => {
+            if (!data || data.length === 0) {
+                alert('エクスポートするデータがありません');
+                return;
+            }
+
+            // ヘッダー行を取得
+            const headers = Object.keys(data[0]);
+
+            // CSVコンテンツを生成
+            let csv = '\uFEFF'; // UTF-8 BOM（Excelで文字化け防止）
+            csv += headers.join(',') + '\n';
+
+            data.forEach(row => {
+                const values = headers.map(header => {
+                    let value = row[header];
+
+                    // 配列の場合はJSON文字列に変換
+                    if (Array.isArray(value)) {
+                        value = JSON.stringify(value);
+                    }
+
+                    // null/undefinedの場合は空文字
+                    if (value === null || value === undefined) {
+                        value = '';
+                    }
+
+                    // 文字列の場合、カンマや改行を含む場合はダブルクォートで囲む
+                    value = String(value);
+                    if (value.includes(',') || value.includes('\n') || value.includes('"')) {
+                        value = '"' + value.replace(/"/g, '""') + '"';
+                    }
+
+                    return value;
+                });
+                csv += values.join(',') + '\n';
+            });
+
+            // Blobを作成してダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         };
 
         /**
@@ -1317,12 +1417,20 @@
                             <h2 className="text-xl font-bold text-brown-800 serif">スタッフ管理・分析</h2>
                             <p className="text-sm text-gray-500">個人のパフォーマンス管理と評価データの編集</p>
                         </div>
-                        <button 
-                            onClick={handleAddClick}
-                            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
-                        >
-                            <Icon name="plus" size={16} className="mr-2" />
-                            スタッフ新規登録
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => exportToCSV(staffList, 'スタッフ実績.csv')}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
+                            >
+                                <Icon name="download" size={16} className="mr-2" />
+                                CSV出力
+                            </button>
+                            <button
+                                onClick={handleAddClick}
+                                className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
+                            >
+                                <Icon name="plus" size={16} className="mr-2" />
+                                スタッフ新規登録
                         </button>
                     </div>
 
@@ -1658,13 +1766,22 @@
                                 顧客・購入者管理
                             </button>
                         </div>
-                        <button
-                            onClick={activeView === 'master' ? handleAddTicketMaster : handleAddCustomer}
-                            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
-                        >
-                            <Icon name="plus" size={16} className="mr-2" />
-                            {activeView === 'master' ? '回数券マスター追加' : '顧客追加'}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => exportToCSV(activeView === 'master' ? ticketMasterList : customerList, activeView === 'master' ? '回数券マスター.csv' : '顧客リスト.csv')}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
+                            >
+                                <Icon name="download" size={16} className="mr-2" />
+                                CSV出力
+                            </button>
+                            <button
+                                onClick={activeView === 'master' ? handleAddTicketMaster : handleAddCustomer}
+                                className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg shadow-sm flex items-center text-sm font-medium transition-colors"
+                            >
+                                <Icon name="plus" size={16} className="mr-2" />
+                                {activeView === 'master' ? '回数券マスター追加' : '顧客追加'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Master Ticket List */}
@@ -1924,6 +2041,7 @@
             const [formData, setFormData] = useState({
                 name: '',
                 price: 0,
+                cost: 0,
                 availableStores: []
             });
 
@@ -1932,6 +2050,7 @@
                 setFormData({
                     name: menu.name,
                     price: menu.price,
+                    cost: menu.cost || 0,
                     availableStores: Array.isArray(menu.availableStores) ? menu.availableStores : []
                 });
                 setIsEditing(true);
@@ -1942,6 +2061,7 @@
                 setFormData({
                     name: '',
                     price: 0,
+                    cost: 0,
                     availableStores: []
                 });
                 setIsEditing(true);
@@ -2043,6 +2163,27 @@
                                         </div>
                                         <h3 className="font-bold text-brown-800 text-lg mb-1">{menu.name}</h3>
                                         <p className="text-2xl font-bold text-purple-600">¥{menu.price.toLocaleString()}</p>
+
+                                        {/* 原価・粗利表示 */}
+                                        {menu.cost !== undefined && menu.cost > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-purple-100 space-y-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-gray-500">原価</span>
+                                                    <span className="text-gray-700">¥{menu.cost.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-gray-500">粗利</span>
+                                                    <span className={`font-bold ${
+                                                        ((menu.price - menu.cost) / menu.price * 100) >= 70 ? 'text-green-600' :
+                                                        ((menu.price - menu.cost) / menu.price * 100) >= 50 ? 'text-yellow-600' :
+                                                        'text-rose-600'
+                                                    }`}>
+                                                        ¥{(menu.price - menu.cost).toLocaleString()}
+                                                        ({Math.round((menu.price - menu.cost) / menu.price * 100)}%)
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="pt-3 border-t border-gray-100">
@@ -2094,6 +2235,24 @@
                                             onChange={handleChange}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
                                         />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">原価（円）</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            name="cost"
+                                            value={formData.cost}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 outline-none"
+                                        />
+                                        {formData.price > 0 && formData.cost > 0 && (
+                                            <p className="text-xs text-gray-600 mt-1">
+                                                粗利: ¥{(formData.price - formData.cost).toLocaleString()}
+                                                ({Math.round((formData.price - formData.cost) / formData.price * 100)}%)
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -3005,6 +3164,215 @@
         };
 
         // --- Simulation View (Reused but Styled) ---
+        // --- Calendar View Component ---
+        const CalendarView = ({ dailySalesData }) => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedDate, setSelectedDate] = useState(null);
+
+            // 月の最初の日と最後の日を取得
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+
+            // カレンダーグリッドを生成
+            const startingDayOfWeek = firstDay.getDay(); // 0 (日曜) ~ 6 (土曜)
+            const daysInMonth = lastDay.getDate();
+
+            // 月を変更
+            const changeMonth = (offset) => {
+                setCurrentDate(new Date(year, month + offset, 1));
+                setSelectedDate(null);
+            };
+
+            // 日付から売上データを取得
+            const getSalesForDay = (day) => {
+                if (!dailySalesData || dailySalesData.length === 0) return null;
+                const dayStr = `${day}日`;
+                return dailySalesData.find(d => d.day === dayStr);
+            };
+
+            // 売上額に応じた色を返す
+            const getSalesColor = (sales) => {
+                if (!sales) return 'bg-gray-50 border-gray-200';
+                if (sales.cashIn >= 250000) return 'bg-rose-50 border-rose-300';
+                if (sales.cashIn >= 180000) return 'bg-orange-50 border-orange-300';
+                if (sales.cashIn >= 120000) return 'bg-yellow-50 border-yellow-300';
+                if (sales.cashIn >= 60000) return 'bg-blue-50 border-blue-300';
+                return 'bg-gray-50 border-gray-200';
+            };
+
+            // カレンダーグリッドを作成
+            const calendarDays = [];
+
+            // 空白セル（月の最初の曜日まで）
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                calendarDays.push(<div key={`empty-${i}`} className="min-h-24"></div>);
+            }
+
+            // 日付セル
+            for (let day = 1; day <= daysInMonth; day++) {
+                const salesData = getSalesForDay(day);
+                const colorClass = getSalesColor(salesData);
+                const isSelected = selectedDate === day;
+
+                calendarDays.push(
+                    <div
+                        key={day}
+                        onClick={() => setSelectedDate(day)}
+                        className={`min-h-24 border-2 rounded-lg p-2 cursor-pointer transition-all ${colorClass} ${
+                            isSelected ? 'ring-2 ring-gold-500 scale-105' : 'hover:shadow-md'
+                        }`}
+                    >
+                        <div className="font-bold text-brown-800 text-sm mb-1">{day}</div>
+                        {salesData ? (
+                            <div className="space-y-1">
+                                <div className="text-xs text-gray-600">
+                                    ¥{salesData.cashIn.toLocaleString()}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {salesData.storeData && salesData.storeData.length > 0 ? (
+                                        salesData.storeData.map((store, idx) => (
+                                            <div key={idx}>{store.storeName}: ¥{store.cashIn.toLocaleString()}</div>
+                                        ))
+                                    ) : null}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-xs text-gray-400">休業</div>
+                        )}
+                    </div>
+                );
+            }
+
+            const selectedDayData = selectedDate ? getSalesForDay(selectedDate) : null;
+
+            return (
+                <div className="space-y-6">
+                    <Card>
+                        {/* ヘッダー */}
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-brown-800 serif">カレンダービュー</h2>
+                                <p className="text-sm text-gray-500 mt-1">月間売上を一目で確認</p>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    onClick={() => changeMonth(-1)}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <Icon name="chevron-left" size={20} />
+                                </button>
+                                <h3 className="text-xl font-bold text-brown-800 min-w-[160px] text-center">
+                                    {year}年{month + 1}月
+                                </h3>
+                                <button
+                                    onClick={() => changeMonth(1)}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <Icon name="chevron-right" size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 曜日ヘッダー */}
+                        <div className="grid grid-cols-7 gap-2 mb-2">
+                            {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+                                <div key={day} className="text-center font-bold text-sm text-gray-600 py-2">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* カレンダーグリッド */}
+                        <div className="grid grid-cols-7 gap-2">
+                            {calendarDays}
+                        </div>
+
+                        {/* 凡例 */}
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                            <p className="text-xs text-gray-600 mb-2 font-semibold">売上レベル</p>
+                            <div className="flex flex-wrap gap-3 text-xs">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-4 h-4 rounded bg-gray-50 border border-gray-200"></div>
+                                    <span className="text-gray-600">休業</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-4 h-4 rounded bg-blue-50 border border-blue-300"></div>
+                                    <span className="text-gray-600">~¥60k</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-4 h-4 rounded bg-yellow-50 border border-yellow-300"></div>
+                                    <span className="text-gray-600">¥60k~¥120k</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-4 h-4 rounded bg-orange-50 border border-orange-300"></div>
+                                    <span className="text-gray-600">¥120k~¥180k</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-4 h-4 rounded bg-rose-50 border border-rose-300"></div>
+                                    <span className="text-gray-600">¥180k~</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* 選択された日の詳細 */}
+                    {selectedDayData && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4">
+                                {month + 1}月{selectedDate}日の詳細
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">都度払い</p>
+                                    <p className="text-xl font-bold text-blue-700">¥{selectedDayData.spotSales.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">回数券販売</p>
+                                    <p className="text-xl font-bold text-purple-700">¥{selectedDayData.ticketSales.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">回数券消化</p>
+                                    <p className="text-xl font-bold text-emerald-700">¥{selectedDayData.ticketUsage.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">物販</p>
+                                    <p className="text-xl font-bold text-amber-700">¥{selectedDayData.product.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">会計上売上</p>
+                                    <p className="text-xl font-bold text-rose-700">¥{selectedDayData.accountingSales.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-gold-50 border border-gold-200 rounded-lg p-4">
+                                    <p className="text-xs text-gray-600 mb-1">キャッシュイン</p>
+                                    <p className="text-xl font-bold text-gold-600">¥{selectedDayData.cashIn.toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            {/* 店舗別データ */}
+                            {selectedDayData.storeData && selectedDayData.storeData.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-gray-200">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-3">店舗別</h4>
+                                    <div className="space-y-3">
+                                        {selectedDayData.storeData.map((store, idx) => (
+                                            <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                                                <p className="font-bold text-brown-800 mb-2">{store.storeName}</p>
+                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                    <div>キャッシュイン: ¥{store.cashIn.toLocaleString()}</div>
+                                                    <div>会計上売上: ¥{store.accountingSales.toLocaleString()}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+                </div>
+            );
+        };
+
         const SimulationView = ({ staffList, onUpdateStaff }) => {
             const [selectedStaffId, setSelectedStaffId] = useState(null);
             const [targetSales, setTargetSales] = useState(0);
@@ -3406,6 +3774,10 @@
             const [mobileOptimized, setMobileOptimized] = useState(false);
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
             const [selectedMaster, setSelectedMaster] = useState(null);
+            const [darkMode, setDarkMode] = useState(() => {
+                const saved = localStorage.getItem('darkMode');
+                return saved ? JSON.parse(saved) : false;
+            });
             const [staffList, setStaffList] = useState(initialStaffData);
             const [menuList, setMenuList] = useState(menus);
             const [ticketMasterList, setTicketMasterList] = useState(initialTicketMasterData);
@@ -3585,6 +3957,24 @@
                 setIsLoading(false);
             };
 
+            // ダークモード切り替え
+            const toggleDarkMode = () => {
+                setDarkMode(prev => {
+                    const newMode = !prev;
+                    localStorage.setItem('darkMode', JSON.stringify(newMode));
+                    return newMode;
+                });
+            };
+
+            // ダークモード適用
+            useEffect(() => {
+                if (darkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [darkMode]);
+
             // 初回ロード時にデータを自動取得（全モード対応）
             useEffect(() => {
                 // GAS URLが設定されている場合、自動的にデータを読み込む
@@ -3652,6 +4042,7 @@
                                     <NavItem id="dashboard" icon="layout-dashboard" label="ダッシュボード" />
                                     <NavItem id="input" icon="edit" label="実績入力" />
                                     <NavItem id="simulation" icon="target" label="目標シミュレーション" />
+                                    <NavItem id="calendar" icon="calendar" label="カレンダービュー" />
                                     <NavItem id="sales" icon="bar-chart-2" label="売上・媒体分析" />
                                     <NavItem id="menus" icon="package" label="メニュー別分析" />
                                     <NavItem id="staff" icon="users" label="スタッフ管理" />
@@ -3759,6 +4150,21 @@
                                         </span>
                                     )}
                                 </div>
+                                {!mobileOptimized && <div className="h-8 w-px bg-gold-200"></div>}
+                                {/* Dark Mode Toggle */}
+                                <button
+                                    onClick={toggleDarkMode}
+                                    className={`flex items-center rounded-lg font-semibold transition-all touch-feedback ${
+                                        mobileOptimized
+                                            ? 'bg-gray-700 text-yellow-300 shadow-md px-2.5 py-2.5'
+                                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 px-3 py-2 text-sm'
+                                    }`}
+                                    title={darkMode ? 'ライトモードに切替' : 'ダークモードに切替'}
+                                    aria-label={darkMode ? 'ライトモードに切替' : 'ダークモードに切替'}
+                                >
+                                    <Icon name={darkMode ? "sun" : "moon"} size={mobileOptimized ? 20 : 16} className={mobileOptimized ? '' : 'mr-2'} />
+                                    {!mobileOptimized && <span className="hidden lg:inline">{darkMode ? 'Light' : 'Dark'}</span>}
+                                </button>
                                 {!mobileOptimized && <div className="h-8 w-px bg-gold-200"></div>}
                                 {/* Mobile/PC Toggle */}
                                 <button
@@ -3914,6 +4320,7 @@
                                         onDeleteMenu={deleteMenu}
                                     />
                                 )}
+                                {!isStaffMode && activeTab === 'calendar' && <CalendarView dailySalesData={dailySalesData} />}
                                 {!isStaffMode && activeTab === 'menus' && !selectedMaster && <MenuAnalysisView menuSalesData={menuSalesData} />}
                                 {!isStaffMode && activeTab === 'media' && (
                                     <MediaSourceManagementView
