@@ -534,60 +534,6 @@
         };
 
         /**
-         * CSVエクスポート機能
-         */
-        const exportToCSV = (data, filename) => {
-            if (!data || data.length === 0) {
-                alert('エクスポートするデータがありません');
-                return;
-            }
-
-            // ヘッダー行を取得
-            const headers = Object.keys(data[0]);
-
-            // CSVコンテンツを生成
-            let csv = '\uFEFF'; // UTF-8 BOM（Excelで文字化け防止）
-            csv += headers.join(',') + '\n';
-
-            data.forEach(row => {
-                const values = headers.map(header => {
-                    let value = row[header];
-
-                    // 配列の場合はJSON文字列に変換
-                    if (Array.isArray(value)) {
-                        value = JSON.stringify(value);
-                    }
-
-                    // null/undefinedの場合は空文字
-                    if (value === null || value === undefined) {
-                        value = '';
-                    }
-
-                    // 文字列の場合、カンマや改行を含む場合はダブルクォートで囲む
-                    value = String(value);
-                    if (value.includes(',') || value.includes('\n') || value.includes('"')) {
-                        value = '"' + value.replace(/"/g, '""') + '"';
-                    }
-
-                    return value;
-                });
-                csv += values.join(',') + '\n';
-            });
-
-            // Blobを作成してダウンロード
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-
-        /**
          * 日次売上データを保存
          */
         const saveDailySalesData = (dailySalesData) => {
@@ -1318,7 +1264,13 @@
 
         // --- Staff Management Section (Enhanced) ---
 
-        const StaffManagementView = ({ staffList, onUpdateStaff, onAddStaff, onDeleteStaff, exportToCSV }) => {
+        const StaffManagementView = ({
+            staffList,
+            onUpdateStaff,
+            onAddStaff,
+            onDeleteStaff,
+            exportToCSV
+        }) => {
             const [isEditing, setIsEditing] = useState(false);
             const [editingId, setEditingId] = useState(null);
             const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1616,7 +1568,17 @@
         };
 
         // --- Customer & Ticket Management View ---
-        const CustomerTicketManagementView = ({ ticketMasterList, customerList, onUpdateTicketMaster, onAddTicketMaster, onDeleteTicketMaster, onUpdateCustomer, onAddCustomer, onDeleteCustomer, exportToCSV }) => {
+        const CustomerTicketManagementView = ({
+            ticketMasterList,
+            customerList,
+            onUpdateTicketMaster,
+            onAddTicketMaster,
+            onDeleteTicketMaster,
+            onUpdateCustomer,
+            onAddCustomer,
+            onDeleteCustomer,
+            exportToCSV
+        }) => {
             const [activeView, setActiveView] = useState('master'); // 'master' or 'customers'
             const [isEditing, setIsEditing] = useState(false);
             const [editingId, setEditingId] = useState(null);
