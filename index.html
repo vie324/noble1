@@ -81,48 +81,298 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* Dark Mode Styles */
+        /* Dark Mode Styles - Enhanced for Better Visibility */
         .dark body {
-            background-color: #1a1a1a;
-            color: #e5e5e5;
+            background-color: #0f0f0f;
+            color: #e8e8e8;
         }
 
-        .dark .bg-brown-50 {
-            background-color: #1a1a1a !important;
+        /* Background Colors */
+        .dark .bg-brown-50,
+        .dark .bg-\[#f9f8f4\] {
+            background-color: #0f0f0f !important;
         }
 
         .dark .bg-white {
-            background-color: #2a2a2a !important;
+            background-color: #1a1a1a !important;
         }
 
         .dark .bg-gray-50 {
+            background-color: #1f1f1f !important;
+        }
+
+        .dark .bg-gray-100 {
+            background-color: #252525 !important;
+        }
+
+        .dark .bg-gray-200 {
             background-color: #2a2a2a !important;
         }
 
+        /* Text Colors - Improved Contrast */
         .dark .text-brown-800 {
-            color: #e5e5e5 !important;
+            color: #f5f5f5 !important;
         }
 
-        .dark .text-gray-600,
+        .dark .text-gray-900 {
+            color: #f0f0f0 !important;
+        }
+
+        .dark .text-gray-800 {
+            color: #e8e8e8 !important;
+        }
+
         .dark .text-gray-700 {
-            color: #a0a0a0 !important;
+            color: #d0d0d0 !important;
+        }
+
+        .dark .text-gray-600 {
+            color: #b8b8b8 !important;
         }
 
         .dark .text-gray-500 {
-            color: #808080 !important;
+            color: #a0a0a0 !important;
         }
 
         .dark .text-gray-400 {
-            color: #606060 !important;
+            color: #888888 !important;
         }
 
-        .dark .border-gray-200,
+        .dark .text-gray-300 {
+            color: #707070 !important;
+        }
+
+        /* Border Colors - Better Definition */
+        .dark .border-gray-100 {
+            border-color: #2a2a2a !important;
+        }
+
+        .dark .border-gray-200 {
+            border-color: #333333 !important;
+        }
+
         .dark .border-gray-300 {
             border-color: #404040 !important;
         }
 
+        .dark .border-gold-100 {
+            border-color: #4a3820 !important;
+        }
+
         .dark .border-gold-200 {
-            border-color: #775820 !important;
+            border-color: #5a4428 !important;
+        }
+
+        .dark .divide-gray-100 > * + * {
+            border-color: #2a2a2a !important;
+        }
+
+        /* Gold Accent Colors */
+        .dark .bg-gold-50 {
+            background-color: #2a2418 !important;
+        }
+
+        .dark .bg-gold-100 {
+            background-color: #342d20 !important;
+        }
+
+        .dark .text-gold-600 {
+            color: #e5b745 !important;
+        }
+
+        .dark .text-gold-500 {
+            color: #f0c24e !important;
+        }
+
+        /* Form Inputs - Much Better Visibility */
+        .dark input,
+        .dark select,
+        .dark textarea {
+            background-color: #252525 !important;
+            border-color: #404040 !important;
+            color: #e8e8e8 !important;
+        }
+
+        .dark input:focus,
+        .dark select:focus,
+        .dark textarea:focus {
+            background-color: #2a2a2a !important;
+            border-color: #d4af37 !important;
+        }
+
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: #707070 !important;
+        }
+
+        /* Hover States */
+        .dark .hover\:bg-gray-100:hover {
+            background-color: #252525 !important;
+        }
+
+        .dark .hover\:bg-gray-50:hover {
+            background-color: #1f1f1f !important;
+        }
+
+        .dark .hover\:bg-white:hover {
+            background-color: #1f1f1f !important;
+        }
+
+        .dark .hover\:bg-gold-50:hover {
+            background-color: #2a2418 !important;
+        }
+
+        /* Charts and Data Visualization */
+        .dark .recharts-cartesian-grid-horizontal line,
+        .dark .recharts-cartesian-grid-vertical line {
+            stroke: #333333 !important;
+        }
+
+        .dark .recharts-text {
+            fill: #b8b8b8 !important;
+        }
+
+        .dark .recharts-tooltip-wrapper {
+            background-color: #1a1a1a !important;
+        }
+
+        /* Color Variants for Data Display */
+        .dark .bg-blue-50 {
+            background-color: #1a2332 !important;
+        }
+
+        .dark .bg-purple-50 {
+            background-color: #281a32 !important;
+        }
+
+        .dark .bg-emerald-50 {
+            background-color: #1a2e23 !important;
+        }
+
+        .dark .bg-amber-50 {
+            background-color: #2e2619 !important;
+        }
+
+        .dark .bg-rose-50 {
+            background-color: #2e1a1e !important;
+        }
+
+        .dark .bg-orange-50 {
+            background-color: #2e221a !important;
+        }
+
+        .dark .bg-yellow-50 {
+            background-color: #2e2a1a !important;
+        }
+
+        .dark .text-blue-700 {
+            color: #6ba3ff !important;
+        }
+
+        .dark .text-purple-700 {
+            color: #b896ff !important;
+        }
+
+        .dark .text-emerald-700 {
+            color: #6dd4a8 !important;
+        }
+
+        .dark .text-amber-700 {
+            color: #ffb84d !important;
+        }
+
+        .dark .text-rose-700 {
+            color: #ff8fa3 !important;
+        }
+
+        /* Border Colors for Data Cards */
+        .dark .border-blue-200 {
+            border-color: #2a3f5f !important;
+        }
+
+        .dark .border-purple-200 {
+            border-color: #3f2a5f !important;
+        }
+
+        .dark .border-emerald-200 {
+            border-color: #2a5f42 !important;
+        }
+
+        .dark .border-amber-200 {
+            border-color: #5f4a2a !important;
+        }
+
+        .dark .border-rose-200 {
+            border-color: #5f2a35 !important;
+        }
+
+        .dark .border-orange-200 {
+            border-color: #5f3a2a !important;
+        }
+
+        .dark .border-yellow-200 {
+            border-color: #5f552a !important;
+        }
+
+        .dark .border-blue-300 {
+            border-color: #3a5a8f !important;
+        }
+
+        .dark .border-rose-300 {
+            border-color: #8f3a50 !important;
+        }
+
+        .dark .border-orange-300 {
+            border-color: #8f5a3a !important;
+        }
+
+        .dark .border-yellow-300 {
+            border-color: #8f7f3a !important;
+        }
+
+        /* Shadows - Subtle but Visible */
+        .dark .shadow-sm {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .dark .shadow {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .dark .shadow-md {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .dark .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        .dark .shadow-2xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+        }
+
+        /* Backdrop and Overlays */
+        .dark .bg-black\/50 {
+            background-color: rgba(0, 0, 0, 0.8) !important;
+        }
+
+        .dark .bg-white\/20 {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .dark .bg-white\/95 {
+            background-color: rgba(26, 26, 26, 0.95) !important;
+        }
+
+        /* Header and Navigation */
+        .dark header {
+            background-color: rgba(26, 26, 26, 0.95) !important;
+            border-bottom-color: #2a2a2a !important;
+        }
+
+        /* Icons - Better Visibility */
+        .dark svg {
+            opacity: 0.95;
         }
 
         h1, h2, h3, .serif {
@@ -892,7 +1142,7 @@
                     <div className={`grid gap-6 ${mobileOptimized ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
                         {/* Main Chart: Sales Breakdown */}
                         <div className={mobileOptimized ? '' : 'lg:col-span-2'}>
-                            <Card className={mobileOptimized ? 'h-72' : 'h-96'} mobileOptimized={mobileOptimized}>
+                            <Card mobileOptimized={mobileOptimized}>
                                 <div className={`flex justify-between items-center ${mobileOptimized ? 'mb-3' : 'mb-6'}`}>
                                     <div>
                                         <h2 className={`font-bold text-brown-800 serif ${fontSize.title}`}>売上構造分析</h2>
@@ -901,7 +1151,7 @@
                                         )}
                                     </div>
                                 </div>
-                                <ResponsiveContainer width="100%" height={mobileOptimized ? "82%" : "85%"}>
+                                <ResponsiveContainer width="100%" height={mobileOptimized ? 220 : 280}>
                                     <BarChart data={filteredDailySales}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                         <XAxis dataKey="day" tick={{fontSize: mobileOptimized ? 9 : 10}} interval={mobileOptimized ? 3 : 2} />
@@ -922,6 +1172,125 @@
                                         <Bar dataKey="ticketSales" name="回数券販売(入金)" fill="#10b981" radius={[4, 4, 0, 0]} opacity={0.3} />
                                     </BarChart>
                                 </ResponsiveContainer>
+
+                                {/* 売上構造の詳細テーブル */}
+                                <div className={`border-t border-gray-200 ${mobileOptimized ? 'mt-4 pt-4' : 'mt-6 pt-6'}`}>
+                                    <h3 className={`font-bold text-brown-800 mb-4 ${mobileOptimized ? 'text-sm' : 'text-base'}`}>期間合計の内訳</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {/* 都度払い */}
+                                        <div className="bg-gradient-to-br from-gold-50 to-gold-100 border border-gold-200 rounded-lg p-4">
+                                            <div className="flex items-center mb-2">
+                                                <div className="w-3 h-3 rounded-full bg-[#d4af37] mr-2"></div>
+                                                <span className="text-xs text-gray-600 font-medium">都度払い</span>
+                                            </div>
+                                            <p className="text-xl font-bold text-brown-800 mb-1">
+                                                ¥{filteredDailySales.reduce((sum, d) => sum + (d.spotSales || 0), 0).toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {totalAccountingSales > 0 ?
+                                                    `${Math.round((filteredDailySales.reduce((sum, d) => sum + (d.spotSales || 0), 0) / totalAccountingSales) * 100)}%` :
+                                                    '0%'
+                                                } of 会計上売上
+                                            </p>
+                                        </div>
+
+                                        {/* 物販 */}
+                                        <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-4">
+                                            <div className="flex items-center mb-2">
+                                                <div className="w-3 h-3 rounded-full bg-[#b48e26] mr-2"></div>
+                                                <span className="text-xs text-gray-600 font-medium">物販</span>
+                                            </div>
+                                            <p className="text-xl font-bold text-brown-800 mb-1">
+                                                ¥{filteredDailySales.reduce((sum, d) => sum + (d.product || 0), 0).toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {totalAccountingSales > 0 ?
+                                                    `${Math.round((filteredDailySales.reduce((sum, d) => sum + (d.product || 0), 0) / totalAccountingSales) * 100)}%` :
+                                                    '0%'
+                                                } of 会計上売上
+                                            </p>
+                                        </div>
+
+                                        {/* 回数券消化 */}
+                                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-300 rounded-lg p-4">
+                                            <div className="flex items-center mb-2">
+                                                <div className="w-3 h-3 rounded-full bg-[#4a3b32] mr-2"></div>
+                                                <span className="text-xs text-gray-600 font-medium">回数券消化</span>
+                                            </div>
+                                            <p className="text-xl font-bold text-brown-800 mb-1">
+                                                ¥{totalTicketUsage.toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {totalAccountingSales > 0 ?
+                                                    `${Math.round((totalTicketUsage / totalAccountingSales) * 100)}%` :
+                                                    '0%'
+                                                } of 会計上売上
+                                            </p>
+                                        </div>
+
+                                        {/* 回数券販売 */}
+                                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-4">
+                                            <div className="flex items-center mb-2">
+                                                <div className="w-3 h-3 rounded-full bg-[#10b981] mr-2"></div>
+                                                <span className="text-xs text-gray-600 font-medium">回数券販売</span>
+                                            </div>
+                                            <p className="text-xl font-bold text-emerald-700 mb-1">
+                                                ¥{totalTicketSales.toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                現金収入（売上外）
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* 合計サマリー */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                        <div className="bg-gradient-to-br from-rose-50 to-rose-100 border-2 border-rose-300 rounded-lg p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs text-gray-600 font-medium mb-1">会計上売上（PL）</p>
+                                                    <p className="text-2xl font-bold text-brown-800">¥{totalAccountingSales.toLocaleString()}</p>
+                                                </div>
+                                                <Icon name="file-text" size={28} className="text-rose-300" />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                都度払い + 物販 + 回数券消化
+                                            </p>
+                                        </div>
+                                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs text-gray-600 font-medium mb-1">キャッシュイン（現金）</p>
+                                                    <p className="text-2xl font-bold text-blue-700">¥{totalCashIn.toLocaleString()}</p>
+                                                </div>
+                                                <Icon name="dollar-sign" size={28} className="text-blue-300" />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                都度払い + 物販 + 回数券販売
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* 乖離説明 */}
+                                    {totalAccountingSales !== totalCashIn && (
+                                        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <div className="flex items-start">
+                                                <Icon name="info" size={16} className="text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                                                <div className="text-xs text-gray-700">
+                                                    <p className="font-bold text-amber-800 mb-1">売上とキャッシュインの乖離について</p>
+                                                    <p>
+                                                        <span className="font-bold">差額: ¥{Math.abs(totalAccountingSales - totalCashIn).toLocaleString()}</span>
+                                                        {totalCashIn > totalAccountingSales ? ' キャッシュインが多い' : ' 会計上売上が多い'}
+                                                    </p>
+                                                    <p className="mt-1 text-gray-600">
+                                                        回数券販売は現金収入ですが、会計上は前受金（負債）として処理されます。
+                                                        回数券消化時に売上として計上されるため、PLとキャッシュフローに差が生じます。
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </Card>
                         </div>
 
@@ -3128,7 +3497,7 @@
 
         // --- Simulation View (Reused but Styled) ---
         // --- Calendar View Component ---
-        const CalendarView = ({ dailySalesData }) => {
+        const CalendarView = ({ dailySalesData, staffId = null }) => {
             const [currentDate, setCurrentDate] = useState(new Date());
             const [selectedDate, setSelectedDate] = useState(null);
 
@@ -3148,11 +3517,67 @@
                 setSelectedDate(null);
             };
 
-            // 日付から売上データを取得
+            // 日付から売上データを取得（date形式: '2026-01-15'に対応）
             const getSalesForDay = (day) => {
                 if (!dailySalesData || dailySalesData.length === 0) return null;
-                const dayStr = `${day}日`;
-                return dailySalesData.find(d => d.day === dayStr);
+
+                // 現在の年月と日から日付文字列を生成
+                const targetDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                // その日の売上データをすべて取得してフィルタリング
+                let dayData = dailySalesData.filter(d => {
+                    if (!d.date) return false;
+                    return d.date === targetDate;
+                });
+
+                // スタッフIDでフィルタリング（スタッフモードの場合）
+                if (staffId) {
+                    dayData = dayData.filter(d => d.staffId === staffId);
+                }
+
+                if (dayData.length === 0) return null;
+
+                // 同じ日の複数データを合算
+                const aggregated = {
+                    date: targetDate,
+                    spotSales: 0,
+                    ticketSales: 0,
+                    ticketUsage: 0,
+                    product: 0,
+                    accountingSales: 0,
+                    cashIn: 0,
+                    storeData: []
+                };
+
+                // 店舗別データを集計
+                const storeMap = {};
+
+                dayData.forEach(d => {
+                    aggregated.spotSales += d.spotSales || 0;
+                    aggregated.ticketSales += d.ticketSales || 0;
+                    aggregated.ticketUsage += d.ticketUsage || 0;
+                    aggregated.product += d.product || 0;
+                    aggregated.accountingSales += d.accountingSales || 0;
+                    aggregated.cashIn += d.cashIn || 0;
+
+                    // 店舗別データを集計
+                    if (d.storeId && d.storeName) {
+                        if (!storeMap[d.storeId]) {
+                            storeMap[d.storeId] = {
+                                storeId: d.storeId,
+                                storeName: d.storeName,
+                                cashIn: 0,
+                                accountingSales: 0
+                            };
+                        }
+                        storeMap[d.storeId].cashIn += d.cashIn || 0;
+                        storeMap[d.storeId].accountingSales += d.accountingSales || 0;
+                    }
+                });
+
+                aggregated.storeData = Object.values(storeMap);
+
+                return aggregated;
             };
 
             // 売上額に応じた色を返す
@@ -3216,8 +3641,12 @@
                         {/* ヘッダー */}
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h2 className="text-2xl font-bold text-brown-800 serif">カレンダービュー</h2>
-                                <p className="text-sm text-gray-500 mt-1">月間売上を一目で確認</p>
+                                <h2 className="text-2xl font-bold text-brown-800 serif">
+                                    {staffId ? 'マイカレンダー' : 'カレンダービュー'}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {staffId ? '個人の月間売上を確認' : '月間売上を一目で確認'}
+                                </p>
                             </div>
                             <div className="flex items-center space-x-4">
                                 <button
@@ -4051,6 +4480,7 @@
                                 <>
                                     <NavItem id="dashboard" icon="layout-dashboard" label="マイダッシュボード" />
                                     <NavItem id="input" icon="edit" label="実績入力" />
+                                    <NavItem id="calendar" icon="calendar" label="マイカレンダー" />
                                 </>
                             ) : (
                                 <>
@@ -4335,7 +4765,7 @@
                                         onDeleteMenu={deleteMenu}
                                     />
                                 )}
-                                {!isStaffMode && activeTab === 'calendar' && <CalendarView dailySalesData={dailySalesData} />}
+                                {activeTab === 'calendar' && <CalendarView dailySalesData={dailySalesData} staffId={isStaffMode ? currentStaffId : null} />}
                                 {!isStaffMode && activeTab === 'menus' && !selectedMaster && <MenuAnalysisView menuSalesData={menuSalesData} />}
                                 {!isStaffMode && activeTab === 'media' && (
                                     <MediaSourceManagementView
