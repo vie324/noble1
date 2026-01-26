@@ -4718,11 +4718,13 @@
             }, [darkMode]);
 
             // 初回ロード時にデータを自動取得（全モード対応）
+            // 注意: 初回自動読み込みは無効化されています。必要に応じて手動で「読み込み」ボタンを使用してください。
             useEffect(() => {
                 // GAS URLが設定されている場合、自動的にデータを読み込む
-                if (GAS_WEB_APP_URL && GAS_WEB_APP_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
-                    handleLoadFromSpreadsheet();
-                }
+                // 一時的に無効化: GAS設定が完了してから有効化してください
+                // if (GAS_WEB_APP_URL && GAS_WEB_APP_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+                //     handleLoadFromSpreadsheet();
+                // }
             }, []); // 初回マウント時のみ実行
 
             const NavItem = ({ id, icon, label }) => (
