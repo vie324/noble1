@@ -4465,8 +4465,17 @@
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
             const [selectedMaster, setSelectedMaster] = useState(null);
             const [darkMode, setDarkMode] = useState(() => {
-                const saved = localStorage.getItem('darkMode');
-                return saved ? JSON.parse(saved) : false;
+                try {
+                    const saved = localStorage.getItem('darkMode');
+                    if (!saved) return false;
+                    // JSONとして解析を試みる
+                    return JSON.parse(saved);
+                } catch (error) {
+                    // エラーが発生した場合はlocalStorageをクリアしてデフォルト値を返す
+                    console.warn('darkMode設定の読み込みに失敗しました。デフォルト値を使用します。', error);
+                    localStorage.removeItem('darkMode');
+                    return false;
+                }
             });
             const [staffList, setStaffList] = useState(initialStaffData);
             const [menuList, setMenuList] = useState(menus);
