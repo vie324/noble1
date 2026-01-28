@@ -726,8 +726,169 @@
             }
         }
     </style>
+
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════════╗
+    ║                                                                           ║
+    ║  LuxeMetrics - エステサロン経営ダッシュボード                               ║
+    ║  Copyright (c) 2026 [あなたの会社名またはお名前]                            ║
+    ║  All Rights Reserved.                                                     ║
+    ║                                                                           ║
+    ║  このソフトウェアは著作権法により保護されています。                          ║
+    ║  無断での複製、改変、配布、商用利用を固く禁止します。                        ║
+    ║                                                                           ║
+    ║  This software is protected by copyright law.                            ║
+    ║  Unauthorized copying, modification, distribution,                       ║
+    ║  or commercial use is strictly prohibited.                               ║
+    ║                                                                           ║
+    ║  不正利用は法的措置の対象となる場合があります。                              ║
+    ║  Unauthorized use may result in legal action.                            ║
+    ║                                                                           ║
+    ╚═══════════════════════════════════════════════════════════════════════════╝
+    -->
 </head>
 <body>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- コード保護スクリプト（レベル2: 著作権 + 基本防御）                    -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+        (function() {
+            'use strict';
+
+            // 著作権情報
+            const COPYRIGHT = {
+                owner: 'あなたの会社名またはお名前',  // ← ここを変更してください
+                year: 2026,
+                product: 'LuxeMetrics',
+                version: '1.0'
+            };
+
+            // コンソールに警告を表示
+            console.log('%c⚠️ 警告 / WARNING', 'color: red; font-size: 20px; font-weight: bold;');
+            console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+このアプリケーションは著作権法により保護されています。
+
+Copyright (c) ${COPYRIGHT.year} ${COPYRIGHT.owner}
+Product: ${COPYRIGHT.product} v${COPYRIGHT.version}
+
+無断での複製、改変、配布、商用利用を固く禁止します。
+
+This software is protected by copyright law.
+Unauthorized copying, modification, or distribution
+is strictly prohibited.
+
+不正利用は法的措置の対象となる場合があります。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'font-size: 14px; line-height: 1.6;');
+
+            // 右クリック禁止
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                alert('⚠️ 右クリックは無効化されています。\n\nThis action is disabled.');
+                return false;
+            });
+
+            // キーボードショートカット禁止
+            document.addEventListener('keydown', function(e) {
+                // Ctrl+U (ソース表示)
+                if (e.ctrlKey && e.keyCode === 85) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+                // Ctrl+S (保存)
+                if (e.ctrlKey && e.keyCode === 83) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+                // Ctrl+Shift+I (デベロッパーツール)
+                if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+                // F12 (デベロッパーツール)
+                if (e.keyCode === 123) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+                // Ctrl+Shift+J (コンソール)
+                if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+                // Ctrl+Shift+C (要素の検証)
+                if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
+                    e.preventDefault();
+                    alert('⚠️ この操作は無効化されています。\n\nThis action is disabled.');
+                    return false;
+                }
+            });
+
+            // デベロッパーツール検知
+            let devtoolsOpen = false;
+            const element = new Image();
+
+            Object.defineProperty(element, 'id', {
+                get: function() {
+                    if (!devtoolsOpen) {
+                        devtoolsOpen = true;
+
+                        // 警告画面を表示
+                        setTimeout(() => {
+                            document.body.innerHTML = `
+                                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: 'Arial', sans-serif;">
+                                    <div style="text-align: center; color: white; padding: 60px 40px; background: rgba(0,0,0,0.4); border-radius: 20px; max-width: 700px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); backdrop-filter: blur(10px);">
+                                        <div style="font-size: 80px; margin-bottom: 20px; animation: pulse 2s infinite;">⚠️</div>
+                                        <h1 style="font-size: 42px; margin-bottom: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">アクセス制限</h1>
+                                        <div style="width: 80px; height: 4px; background: white; margin: 0 auto 30px; border-radius: 2px;"></div>
+                                        <p style="font-size: 20px; line-height: 1.8; margin-bottom: 30px;">
+                                            このアプリケーションは著作権により保護されています。<br>
+                                            デベロッパーツールの使用は禁止されています。
+                                        </p>
+                                        <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 10px; margin: 30px 0;">
+                                            <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">Copyright Information</p>
+                                            <p style="font-size: 14px; opacity: 0.9;">
+                                                <strong>Copyright © ${COPYRIGHT.year} ${COPYRIGHT.owner}</strong><br>
+                                                ${COPYRIGHT.product} v${COPYRIGHT.version}<br>
+                                                All Rights Reserved.
+                                            </p>
+                                        </div>
+                                        <p style="font-size: 14px; margin-top: 30px; opacity: 0.8; line-height: 1.6;">
+                                            不正な利用は法的措置の対象となる場合があります。<br>
+                                            Unauthorized use may result in legal action.
+                                        </p>
+                                    </div>
+                                </div>
+                                <style>
+                                    @keyframes pulse {
+                                        0%, 100% { transform: scale(1); opacity: 1; }
+                                        50% { transform: scale(1.1); opacity: 0.8; }
+                                    }
+                                </style>
+                            `;
+                        }, 100);
+                    }
+                }
+            });
+
+            // 定期的にデベロッパーツールをチェック
+            setInterval(function() {
+                console.log(element);
+                console.clear();
+            }, 1000);
+
+            // ページ読み込み完了時のメッセージ
+            window.addEventListener('load', function() {
+                console.log(`%c✓ ${COPYRIGHT.product} が正常に読み込まれました`, 'color: green; font-size: 14px; font-weight: bold;');
+            });
+
+        })();
+    </script>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
     <div id="root"></div>
 
     <script type="text/babel">
