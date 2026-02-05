@@ -2823,6 +2823,462 @@ is strictly prohibited.
             );
         };
 
+        // --- LINE Integration View ---
+        const LineIntegrationView = ({ customerList }) => {
+            const [activeLineTab, setActiveLineTab] = useState('individual'); // 'individual', 'broadcast', 'received', 'reminder'
+            const [lineConfig, setLineConfig] = useState(() => {
+                const saved = localStorage.getItem('lineConfig');
+                return saved ? JSON.parse(saved) : {
+                    channelAccessToken: '',
+                    channelSecret: '',
+                    isConnected: false
+                };
+            });
+            const [selectedCustomer, setSelectedCustomer] = useState(null);
+            const [messageContent, setMessageContent] = useState('');
+            const [broadcastMessage, setBroadcastMessage] = useState('');
+            const [receivedMessages, setReceivedMessages] = useState([]);
+            const [reminderSettings, setReminderSettings] = useState(() => {
+                const saved = localStorage.getItem('reminderSettings');
+                return saved ? JSON.parse(saved) : {
+                    enabled: false,
+                    daysBefore: 1,
+                    message: 'ご予約の確認をお願いいたします。明日のご来店をお待ちしております。'
+                };
+            });
+            const [sendStatus, setSendStatus] = useState('');
+            const [isSending, setIsSending] = useState(false);
+
+            // LINE設定を保存
+            const saveLineConfig = () => {
+                localStorage.setItem('lineConfig', JSON.stringify(lineConfig));
+                setSendStatus('✓ LINE設定を保存しました');
+                setTimeout(() => setSendStatus(''), 3000);
+            };
+
+            // リマインド設定を保存
+            const saveReminderSettings = () => {
+                localStorage.setItem('reminderSettings', JSON.stringify(reminderSettings));
+                setSendStatus('✓ リマインド設定を保存しました');
+                setTimeout(() => setSendStatus(''), 3000);
+            };
+
+            // 個別メッセージ送信（シミュレーション）
+            const sendIndividualMessage = async () => {
+                if (!selectedCustomer || !messageContent.trim()) {
+                    setSendStatus('✗ 顧客とメッセージを入力してください');
+                    return;
+                }
+                setIsSending(true);
+                // 実際のLINE API連携はバックエンドで行う
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                setSendStatus(`✓ ${selectedCustomer.name}様にメッセージを送信しました`);
+                setMessageContent('');
+                setIsSending(false);
+                setTimeout(() => setSendStatus(''), 3000);
+            };
+
+            // 一斉配信（シミュレーション）
+            const sendBroadcastMessage = async () => {
+                if (!broadcastMessage.trim()) {
+                    setSendStatus('✗ メッセージを入力してください');
+                    return;
+                }
+                setIsSending(true);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                setSendStatus(`✓ ${customerList.length}名の顧客に一斉配信しました`);
+                setBroadcastMessage('');
+                setIsSending(false);
+                setTimeout(() => setSendStatus(''), 3000);
+            };
+
+            const LineTabButton = ({ id, icon, label }) => (
+                <button
+                    onClick={() => setActiveLineTab(id)}
+                    className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all ${
+                        activeLineTab === id
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-green-50 border border-gray-200'
+                    }`}
+                >
+                    <Icon name={icon} size={18} />
+                    <span className="font-medium">{label}</span>
+                </button>
+            );
+
+            return (
+                <div className="space-y-6">
+                    {/* LINE設定セクション */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                                    <Icon name="message-circle" size={24} className="text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-brown-800 serif">LINE公式アカウント連携</h2>
+                                    <p className="text-sm text-gray-500">顧客とのコミュニケーションを管理</p>
+                                </div>
+                            </div>
+                            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full ${lineConfig.channelAccessToken ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                <div className={`w-2 h-2 rounded-full ${lineConfig.channelAccessToken ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                <span className="text-sm font-medium">{lineConfig.channelAccessToken ? '設定済み' : '未設定'}</span>
+                            </div>
+                        </div>
+
+                        {/* API設定 */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                                <Icon name="settings" size={16} className="mr-2" />
+                                LINE Messaging API 設定
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">チャネルアクセストークン</label>
+                                    <input
+                                        type="password"
+                                        value={lineConfig.channelAccessToken}
+                                        onChange={(e) => setLineConfig({...lineConfig, channelAccessToken: e.target.value})}
+                                        placeholder="チャネルアクセストークンを入力"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">チャネルシークレット</label>
+                                    <input
+                                        type="password"
+                                        value={lineConfig.channelSecret}
+                                        onChange={(e) => setLineConfig({...lineConfig, channelSecret: e.target.value})}
+                                        placeholder="チャネルシークレットを入力"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={saveLineConfig}
+                                className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                                設定を保存
+                            </button>
+                        </div>
+
+                        {/* タブナビゲーション */}
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            <LineTabButton id="individual" icon="user" label="個別メッセージ" />
+                            <LineTabButton id="broadcast" icon="megaphone" label="一斉配信" />
+                            <LineTabButton id="received" icon="inbox" label="受信メッセージ" />
+                            <LineTabButton id="reminder" icon="bell" label="自動リマインド" />
+                        </div>
+
+                        {/* ステータスメッセージ */}
+                        {sendStatus && (
+                            <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${sendStatus.includes('✓') ? 'bg-green-50 text-green-700' : 'bg-rose-50 text-rose-700'}`}>
+                                {sendStatus}
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* 個別メッセージ送信 */}
+                    {activeLineTab === 'individual' && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4 flex items-center">
+                                <Icon name="user" size={20} className="mr-2 text-green-600" />
+                                個別メッセージ送信
+                            </h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-2">送信先顧客を選択</label>
+                                    <select
+                                        value={selectedCustomer?.id || ''}
+                                        onChange={(e) => {
+                                            const customer = customerList.find(c => c.id === Number(e.target.value));
+                                            setSelectedCustomer(customer || null);
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    >
+                                        <option value="">顧客を選択してください</option>
+                                        {customerList.map(customer => (
+                                            <option key={customer.id} value={customer.id}>
+                                                {customer.name} ({customer.phone || 'LINE未登録'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-2">メッセージ内容</label>
+                                    <textarea
+                                        value={messageContent}
+                                        onChange={(e) => setMessageContent(e.target.value)}
+                                        placeholder="送信するメッセージを入力してください..."
+                                        rows={4}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">{messageContent.length} / 2000文字</p>
+                                </div>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={sendIndividualMessage}
+                                        disabled={isSending || !selectedCustomer || !messageContent.trim()}
+                                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+                                    >
+                                        <Icon name={isSending ? "loader" : "send"} size={18} className={isSending ? 'animate-spin' : ''} />
+                                        <span>{isSending ? '送信中...' : 'メッセージを送信'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            {/* テンプレート */}
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3">クイックテンプレート</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {['ご来店ありがとうございました', 'ご予約の確認', 'キャンペーンのご案内', '次回ご予約のお願い'].map((template, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setMessageContent(template === 'ご来店ありがとうございました'
+                                                ? 'いつもご利用いただき、誠にありがとうございます。\n\n本日はご来店いただきありがとうございました。\nまたのご来店を心よりお待ちしております。'
+                                                : template === 'ご予約の確認'
+                                                ? '○○様\n\nご予約の確認をさせていただきます。\n\n【ご予約内容】\n日時：\nメニュー：\n\nご不明な点がございましたら、お気軽にお問い合わせください。'
+                                                : template === 'キャンペーンのご案内'
+                                                ? '【期間限定キャンペーン】\n\nいつもご愛顧いただきありがとうございます。\n\n只今、特別キャンペーンを実施中です！\n\n詳しくはスタッフまでお問い合わせください。'
+                                                : '○○様\n\nいつもご利用いただきありがとうございます。\n\n次回のご予約はいかがでしょうか？\nご希望の日時がございましたら、お気軽にご連絡ください。'
+                                            )}
+                                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-full transition-colors"
+                                        >
+                                            {template}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* 一斉配信 */}
+                    {activeLineTab === 'broadcast' && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4 flex items-center">
+                                <Icon name="megaphone" size={20} className="mr-2 text-green-600" />
+                                一斉配信
+                            </h3>
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                <p className="text-sm text-amber-800">
+                                    <Icon name="alert-circle" size={16} className="inline mr-1" />
+                                    登録されている全顧客（{customerList.length}名）にメッセージが送信されます
+                                </p>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-2">配信メッセージ</label>
+                                    <textarea
+                                        value={broadcastMessage}
+                                        onChange={(e) => setBroadcastMessage(e.target.value)}
+                                        placeholder="一斉配信するメッセージを入力してください..."
+                                        rows={6}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">{broadcastMessage.length} / 2000文字</p>
+                                </div>
+                                <button
+                                    onClick={sendBroadcastMessage}
+                                    disabled={isSending || !broadcastMessage.trim()}
+                                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    <Icon name={isSending ? "loader" : "send"} size={18} className={isSending ? 'animate-spin' : ''} />
+                                    <span>{isSending ? '配信中...' : '一斉配信を実行'}</span>
+                                </button>
+                            </div>
+                            {/* 配信履歴（サンプル） */}
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3">最近の配信履歴</h4>
+                                <div className="space-y-2 text-sm text-gray-500">
+                                    <p className="text-center py-4">配信履歴はまだありません</p>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* 受信メッセージ確認 */}
+                    {activeLineTab === 'received' && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4 flex items-center">
+                                <Icon name="inbox" size={20} className="mr-2 text-green-600" />
+                                受信メッセージ
+                            </h3>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <p className="text-sm text-blue-800">
+                                    <Icon name="info" size={16} className="inline mr-1" />
+                                    LINE Messaging APIのWebhookを設定すると、顧客からのメッセージをリアルタイムで受信できます。
+                                </p>
+                            </div>
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-gray-700">受信トレイ</span>
+                                        <button className="text-sm text-green-600 hover:text-green-700 font-medium">
+                                            更新
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="divide-y divide-gray-100">
+                                    {receivedMessages.length === 0 ? (
+                                        <div className="p-8 text-center text-gray-500">
+                                            <Icon name="mail" size={48} className="mx-auto mb-3 text-gray-300" />
+                                            <p className="text-sm">受信メッセージはありません</p>
+                                            <p className="text-xs text-gray-400 mt-1">Webhook設定後、メッセージが表示されます</p>
+                                        </div>
+                                    ) : (
+                                        receivedMessages.map((msg, i) => (
+                                            <div key={i} className="p-4 hover:bg-gray-50 cursor-pointer">
+                                                <div className="flex items-start space-x-3">
+                                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                                        <Icon name="user" size={20} className="text-green-600" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm font-medium text-gray-900">{msg.sender}</p>
+                                                            <p className="text-xs text-gray-400">{msg.time}</p>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600 truncate">{msg.content}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* 自動リマインド設定 */}
+                    {activeLineTab === 'reminder' && (
+                        <Card>
+                            <h3 className="text-lg font-bold text-brown-800 mb-4 flex items-center">
+                                <Icon name="bell" size={20} className="mr-2 text-green-600" />
+                                自動リマインド送信
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-6">
+                                予約日の前に自動でリマインドメッセージを送信します。
+                            </p>
+                            <div className="space-y-6">
+                                {/* 有効/無効トグル */}
+                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <p className="font-medium text-gray-800">自動リマインドを有効にする</p>
+                                        <p className="text-sm text-gray-500">予約前に自動でメッセージを送信</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setReminderSettings({...reminderSettings, enabled: !reminderSettings.enabled})}
+                                        className={`relative w-14 h-7 rounded-full transition-colors ${reminderSettings.enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${reminderSettings.enabled ? 'translate-x-7' : 'translate-x-0.5'}`}></div>
+                                    </button>
+                                </div>
+
+                                {/* 送信タイミング */}
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-2">送信タイミング</label>
+                                    <select
+                                        value={reminderSettings.daysBefore}
+                                        onChange={(e) => setReminderSettings({...reminderSettings, daysBefore: Number(e.target.value)})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    >
+                                        <option value={1}>予約日の1日前</option>
+                                        <option value={2}>予約日の2日前</option>
+                                        <option value={3}>予約日の3日前</option>
+                                        <option value={7}>予約日の1週間前</option>
+                                    </select>
+                                </div>
+
+                                {/* リマインドメッセージ */}
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-2">リマインドメッセージ</label>
+                                    <textarea
+                                        value={reminderSettings.message}
+                                        onChange={(e) => setReminderSettings({...reminderSettings, message: e.target.value})}
+                                        rows={4}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        ※ 顧客名は自動で挿入されます
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={saveReminderSettings}
+                                    className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    設定を保存
+                                </button>
+                            </div>
+
+                            {/* 設定プレビュー */}
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3">メッセージプレビュー</h4>
+                                <div className="bg-green-50 rounded-lg p-4">
+                                    <div className="flex items-start space-x-3">
+                                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <Icon name="message-circle" size={16} className="text-white" />
+                                        </div>
+                                        <div className="bg-white rounded-lg p-3 shadow-sm flex-1">
+                                            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                                ○○様へ{'\n\n'}{reminderSettings.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* ヘルプセクション */}
+                    <Card>
+                        <h3 className="text-lg font-bold text-brown-800 mb-4 flex items-center">
+                            <Icon name="help-circle" size={20} className="mr-2 text-gold-600" />
+                            LINE連携の設定方法
+                        </h3>
+                        <div className="space-y-4 text-sm text-gray-600">
+                            <div className="flex items-start space-x-3">
+                                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-green-600 text-xs font-bold">1</span>
+                                </div>
+                                <div>
+                                    <p className="font-medium text-gray-800">LINE Developersでチャネルを作成</p>
+                                    <p className="text-gray-500">LINE Developers Consoleでプロバイダーとチャネルを作成します。</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-green-600 text-xs font-bold">2</span>
+                                </div>
+                                <div>
+                                    <p className="font-medium text-gray-800">アクセストークンを取得</p>
+                                    <p className="text-gray-500">Messaging APIの設定からチャネルアクセストークンを発行します。</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-green-600 text-xs font-bold">3</span>
+                                </div>
+                                <div>
+                                    <p className="font-medium text-gray-800">上記フォームに設定を入力</p>
+                                    <p className="text-gray-500">取得したトークンとシークレットを入力して保存します。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <a
+                                href="https://developers.line.biz/console/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-green-600 hover:text-green-700 text-sm font-medium"
+                            >
+                                <Icon name="external-link" size={14} className="mr-1" />
+                                LINE Developers Consoleを開く
+                            </a>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
         // --- Menu Management View ---
         const MenuManagementView = ({ menuList, onUpdateMenu, onAddMenu, onDeleteMenu }) => {
             const [isEditing, setIsEditing] = useState(false);
@@ -4962,6 +5418,7 @@ is strictly prohibited.
                                     <NavItem id="menus" icon="package" label="メニュー別分析" />
                                     <NavItem id="staff" icon="users" label="スタッフ管理" />
                                     <NavItem id="customers" icon="heart" label="顧客・回数券管理" />
+                                    <NavItem id="line" icon="message-circle" label="LINE連携" />
                                 </>
                             )}
                         </div>
@@ -5017,6 +5474,7 @@ is strictly prohibited.
                                         {activeTab === 'staff' && (mobileOptimized ? 'スタッフ管理' : 'Staff Performance & Management')}
                                         {activeTab === 'customers' && (mobileOptimized ? '顧客管理' : 'Customer & Ticket Management')}
                                         {activeTab === 'master' && (mobileOptimized ? 'マスター管理' : 'Master Data Management')}
+                                        {activeTab === 'line' && (mobileOptimized ? 'LINE連携' : 'LINE Integration')}
                                     </h2>
                                     {!mobileOptimized && (
                                         <p className="text-xs text-gold-600 font-medium tracking-widest uppercase mt-1">
@@ -5028,11 +5486,24 @@ is strictly prohibited.
                                             {activeTab === 'staff' && 'スタッフ管理・編集'}
                                             {activeTab === 'customers' && '顧客リスト・回数券管理'}
                                             {activeTab === 'master' && 'マスターデータ管理'}
+                                            {activeTab === 'line' && 'LINE公式アカウント連携'}
                                         </p>
                                     )}
                                 </div>
                             </div>
                             <div className={`flex items-center ${mobileOptimized ? 'space-x-2' : 'space-x-6'}`}>
+                                {/* 予約管理ボタン */}
+                                <button
+                                    onClick={() => window.open('https://salonboard.com/login/', '_blank')}
+                                    className={`flex items-center bg-gold-600 hover:bg-gold-700 text-white font-medium rounded-lg shadow-sm transition-colors touch-feedback ${
+                                        mobileOptimized ? 'px-2.5 py-2.5' : 'px-4 py-2 text-sm'
+                                    }`}
+                                    aria-label="予約管理を開く"
+                                >
+                                    <Icon name="calendar-check" size={mobileOptimized ? 16 : 16} className={mobileOptimized ? '' : 'mr-2'} />
+                                    {!mobileOptimized && '予約管理'}
+                                </button>
+                                {!mobileOptimized && <div className="h-8 w-px bg-gold-200"></div>}
                                 {/* スプレッドシート保存・読み込みボタン */}
                                 <div className="flex flex-col items-end">
                                     <div className="flex gap-2">
@@ -5256,6 +5727,11 @@ is strictly prohibited.
                                         onAddCustomer={addCustomer}
                                         exportToCSV={handleExportToCSV}
                                         onDeleteCustomer={deleteCustomer}
+                                    />
+                                )}
+                                {!isStaffMode && activeTab === 'line' && (
+                                    <LineIntegrationView
+                                        customerList={customerList}
                                     />
                                 )}
                             </div>
