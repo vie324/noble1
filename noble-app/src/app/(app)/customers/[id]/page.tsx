@@ -15,6 +15,7 @@ import {
   TextField,
 } from "@/components/ui";
 import { FlagBadges } from "@/components/flags";
+import { CustomerDocuments } from "@/components/customer-documents";
 import {
   addDays,
   dateSlash,
@@ -172,6 +173,9 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
         defaultStoreId={customer.primary_store_id ?? stores[0]?.id ?? null}
         onChanged={load}
       />
+
+      {/* カウンセリング・同意書（電子化） */}
+      <CustomerDocuments customerId={customerId} lineChatUrl={customer.line_chat_url} />
 
       {/* 来店履歴タイムライン */}
       <Card className="p-4 space-y-3">

@@ -12,6 +12,7 @@ const tabs = [
   { href: "/admin/staff-performance", label: "スタッフ実績" },
   { href: "/admin/tickets", label: "回数券残高" },
   { href: "/admin/simulation", label: "シミュレーション" },
+  { href: "/admin/masters", label: "マスタ管理" },
 ];
 
 export function AdminTabs() {

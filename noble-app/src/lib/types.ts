@@ -218,6 +218,111 @@ export const REQUEST_TYPE_META: Record<RequestType, { label: string }> = {
   any: { label: "お任せ" },
 };
 
+/* ---------------- フェーズ3: カウンセリング・同意書・掲示板・在庫 ---------------- */
+
+export interface CounselingQuestion {
+  id: number;
+  label: string;
+  field_type: "text" | "textarea" | "choice" | "multi" | "yes_no";
+  options: string | null; // カンマ区切り
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CounselingSheet {
+  id: number;
+  customer_id: number;
+  token: string;
+  status: "pending" | "submitted";
+  answers: Record<string, string> | null;
+  submitted_at: string | null;
+  created_at: string;
+}
+
+export interface ConsentTemplate {
+  id: number;
+  title: string;
+  body: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface ConsentDocument {
+  id: number;
+  customer_id: number;
+  template_id: number | null;
+  token: string;
+  title: string;
+  body_snapshot: string;
+  status: "pending" | "signed";
+  signer_name: string | null;
+  signature_path: string | null;
+  signed_at: string | null;
+  created_at: string;
+}
+
+export const BOARD_CATEGORIES = [
+  "スタッフ割引価格",
+  "店舗ルール",
+  "FAQ",
+  "研修資料",
+  "ブログ・動画のネタ",
+  "月末・締め作業手順",
+  "その他",
+] as const;
+
+export interface BoardPost {
+  id: number;
+  category: (typeof BOARD_CATEGORIES)[number];
+  title: string;
+  body: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  board_attachments?: BoardAttachment[];
+}
+
+export interface BoardAttachment {
+  id: number;
+  post_id: number;
+  file_path: string;
+  file_name: string;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  unit: string;
+  category: "商品" | "備品";
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface StockEntry {
+  id: number;
+  product_id: number;
+  store_id: number;
+  date: string;
+  quantity: number;
+  note: string | null;
+  invoice_path: string | null;
+}
+
+export interface MenuConsumption {
+  menu_id: number;
+  product_id: number;
+  amount: number;
+}
+
+export interface StockCount {
+  id: number;
+  product_id: number;
+  store_id: number;
+  month: string;
+  counted_qty: number;
+  diff_reason: string | null;
+}
+
 // 1回あたりの単価（購入金額 ÷ 総回数）
 export function ticketUnitPrice(t: Pick<CustomerTicket, "price" | "total_count">): number {
   return t.price / t.total_count;
