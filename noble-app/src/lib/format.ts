@@ -60,6 +60,24 @@ export function jstToISO(isoDate: string, hm: string): string {
   return new Date(`${isoDate}T${hm}:00+09:00`).toISOString();
 }
 
+// 今月の月初 "YYYY-MM-01"（東京時間）
+export function thisMonthJST(): string {
+  return `${todayJST().slice(0, 7)}-01`;
+}
+
+// 月初日付を n ヶ月ずらす
+export function addMonths(monthFirst: string, n: number): string {
+  const [y, m] = monthFirst.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+// "2026年6月"
+export function monthLabelJa(monthFirst: string): string {
+  const [y, m] = monthFirst.split("-").map(Number);
+  return `${y}年${m}月`;
+}
+
 // 回数券の表示名 例: "5回券（2026/01/15購入）"
 export function ticketLabel(t: {
   purchased_at: string;

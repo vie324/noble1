@@ -12,8 +12,15 @@ const navItems = [
   { href: "/customers", label: "お客様", icon: IconUsers, exact: false },
 ];
 
+// 経営 = /admin 配下の分析系すべて（マスタ管理を除く）
 const adminItems = [
-  { href: "/admin/tickets", label: "回数券残高", icon: IconTicket, exact: false },
+  {
+    href: "/admin/dashboard",
+    label: "経営",
+    icon: IconChart,
+    exact: false,
+    match: (p: string) => p.startsWith("/admin") && !p.startsWith("/admin/masters"),
+  },
   { href: "/admin/masters", label: "マスタ", icon: IconSettings, exact: false },
 ];
 
@@ -30,8 +37,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  const isActive = (href: string, exact: boolean) =>
-    exact ? pathname === href : pathname.startsWith(href);
+  const isActive = (item: {
+    href: string;
+    exact: boolean;
+    match?: (p: string) => boolean;
+  }) =>
+    item.match
+      ? item.match(pathname)
+      : item.exact
+        ? pathname === item.href
+        : pathname.startsWith(item.href);
 
   return (
     <div className="flex-1 flex flex-col min-h-dvh">
@@ -46,17 +61,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* PC/iPad横向け ナビ */}
             <nav className="hidden md:flex items-center gap-1">
-              {items.map(({ href, label, exact }) => (
+              {items.map((item) => (
                 <Link
-                  key={href}
-                  href={href}
+                  key={item.href}
+                  href={item.href}
                   className={`min-h-11 inline-flex items-center px-4 rounded-full text-sm transition-colors ${
-                    isActive(href, exact)
+                    isActive(item)
                       ? "bg-gold-soft text-gold-dk font-semibold"
                       : "text-muted hover:text-ink"
                   }`}
                 >
-                  {label}
+                  {item.label}
                 </Link>
               ))}
             </nav>
@@ -111,8 +126,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="メインナビゲーション"
       >
         <div className="flex">
-          {items.map(({ href, label, icon: Icon, exact }) => {
-            const active = isActive(href, exact);
+          {items.map((item) => {
+            const { href, label, icon: Icon } = item;
+            const active = isActive(item);
             return (
               <Link
                 key={href}
@@ -188,11 +204,11 @@ function IconUsers({ className = "" }: { className?: string }) {
   );
 }
 
-function IconTicket({ className = "" }: { className?: string }) {
+function IconChart({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6Z" />
-      <path d="M13 5v2m0 4v2m0 4v2" strokeDasharray="0.1 3" strokeLinecap="round" />
+      <path d="M3 3v17a1 1 0 0 0 1 1h17" />
+      <path d="M7 14l4-4 3 3 5-6" />
     </svg>
   );
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Card, CountUp, EmptyState, ListSkeleton, SectionTitle } from "@/components/ui";
+import { AdminTabs } from "@/components/admin-tabs";
 import { dateSlash, daysUntil, ticketLabel, yen } from "@/lib/format";
 import { ticketUnusedAmount } from "@/lib/types";
 import type { CustomerTicket } from "@/lib/types";
@@ -58,6 +59,7 @@ export default function AdminTicketsPage() {
 
   return (
     <div className="space-y-5 fade-in">
+      <AdminTabs />
       <div>
         <h1 className="serif text-3xl text-ink">回数券残高</h1>
         <p className="text-sm text-muted mt-1">
