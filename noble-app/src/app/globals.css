@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ノーブル デザイントークン（指示書 §3.1）
+   ============================================================ */
+:root {
+  --noble-base:    #FBF8F3;
+  --noble-surface: #FFFFFF;
+  --noble-gold:    #B89B5E;
+  --noble-gold-dk: #96793F;
+  --noble-gold-soft: #F3ECDD;
+  --noble-rose:    #C98D8D;
+  --noble-rose-soft: #F7ECEC;
+  --noble-text:    #3D352E;
+  --noble-muted:   #8E8276;
+  --noble-line:    #E8E0D4;
+  --noble-caution: #A6393F;
+  --noble-caution-soft: #F6E7E8;
+  --noble-warn:    #C2762F;
+  --noble-warn-soft: #F8EEDF;
+  --noble-ok:      #6F8F6B;
+  --noble-ok-soft: #EBF1EA;
+}
+
+@theme inline {
+  --color-base:    var(--noble-base);
+  --color-surface: var(--noble-surface);
+  --color-gold:    var(--noble-gold);
+  --color-gold-dk: var(--noble-gold-dk);
+  --color-gold-soft: var(--noble-gold-soft);
+  --color-rose:    var(--noble-rose);
+  --color-rose-soft: var(--noble-rose-soft);
+  --color-ink:     var(--noble-text);
+  --color-muted:   var(--noble-muted);
+  --color-hairline: var(--noble-line);
+  --color-caution: var(--noble-caution);
+  --color-caution-soft: var(--noble-caution-soft);
+  --color-warn:    var(--noble-warn);
+  --color-warn-soft: var(--noble-warn-soft);
+  --color-ok:      var(--noble-ok);
+  --color-ok-soft: var(--noble-ok-soft);
+
+  --font-serif: var(--font-cormorant), var(--font-shippori), serif;
+  --font-sans: var(--font-noto-sans), sans-serif;
+
+  --radius-card: 14px;
+  --shadow-card: 0 1px 2px rgba(61, 53, 46, 0.04), 0 6px 24px rgba(61, 53, 46, 0.06);
+  --shadow-card-hover: 0 2px 4px rgba(61, 53, 46, 0.06), 0 10px 32px rgba(61, 53, 46, 0.10);
+}
+
+html {
+  background: var(--noble-base);
+}
+
+body {
+  background: var(--noble-base);
+  color: var(--noble-text);
+  font-family: var(--font-noto-sans), sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 数値の桁揃え（金額・残回数・KPI） */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* 見出し（欧文セリフ＋和文明朝） */
+.serif {
+  font-family: var(--font-cormorant), var(--font-shippori), serif;
+}
+
+/* ============================================================
+   シグネチャー要素: ゴールドヘアライン ＋ ダイヤ型オーナメント（◆）
+   カード上辺・セクション区切り・選択中チップに一貫して使用
+   ============================================================ */
+.gold-hairline {
+  position: relative;
+}
+.gold-hairline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--noble-gold) 20%,
+    var(--noble-gold) 80%,
+    transparent
+  );
+  opacity: 0.55;
+}
+
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--noble-gold);
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--noble-line));
+}
+.ornament-divider::after {
+  background: linear-gradient(to left, transparent, var(--noble-line));
+}
+
+/* カード共通 */
+.noble-card {
+  background: var(--noble-surface);
+  border: 1px solid var(--noble-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* ============================================================
+   モーション（reduced-motion 尊重）
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: noble-fade-in 220ms ease-out both;
+  }
+  .stagger > * {
+    animation: noble-rise-in 240ms ease-out both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(8) { animation-delay: 280ms; }
+  .stagger > *:nth-child(n + 9) { animation-delay: 320ms; }
+}
+
+@keyframes noble-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes noble-rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* スケルトンローディング */
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--noble-line) 40%,
+    #f3ede2 50%,
+    var(--noble-line) 60%
+  );
+  background-size: 200% 100%;
+  border-radius: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: noble-shimmer 1.4s ease-in-out infinite;
+  }
+}
+@keyframes noble-shimmer {
+  from { background-position: 120% 0; }
+  to   { background-position: -80% 0; }
+}
