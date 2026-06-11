@@ -78,6 +78,25 @@ export function monthLabelJa(monthFirst: string): string {
   return `${y}年${m}月`;
 }
 
+// "10:00:00"/"10:00" → "10"、"10:30:00" → "10:30"（TimeTree式チップ用の短縮表記）
+export function timeShort(t: string): string {
+  const [h, m] = t.split(":");
+  return m === "00" ? String(Number(h)) : `${Number(h)}:${m}`;
+}
+
+// "🐨 10-19" 形式のチップラベル
+export function shiftChipLabel(emoji: string, start: string, end: string): string {
+  return `${emoji} ${timeShort(start)}-${timeShort(end)}`;
+}
+
+// "HH:MM(:SS)" → 分
+export function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+export const WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
+
 // 回数券の表示名 例: "5回券（2026/01/15購入）"
 export function ticketLabel(t: {
   purchased_at: string;

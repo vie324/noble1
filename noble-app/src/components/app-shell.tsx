@@ -10,6 +10,7 @@ const navItems = [
   { href: "/", label: "今日", icon: IconSun, exact: true },
   { href: "/visits", label: "カルテ", icon: IconBook, exact: false },
   { href: "/customers", label: "お客様", icon: IconUsers, exact: false },
+  { href: "/calendar", label: "予定", icon: IconCalendar, exact: false },
 ];
 
 // 経営 = /admin 配下の分析系すべて（マスタ管理を除く）
@@ -200,6 +201,15 @@ function IconUsers({ className = "" }: { className?: string }) {
       <path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5" />
       <circle cx="17" cy="9" r="2.5" />
       <path d="M16.5 14.5c2.4.2 4.3 1.7 5 4" />
+    </svg>
+  );
+}
+
+function IconCalendar({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M8 3v4m8-4v4M3 10h18" />
     </svg>
   );
 }
