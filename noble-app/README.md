@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Noble — ノーブル業務統合システム
 
-## Getting Started
+エステサロン「ノーブル」（新宿店・新宿南口店・恵比寿店）の業務統合システム。
+フェーズ1では KaruteKun 代替（カルテ・来店記録・回数券・顧客対応メモ）を提供します。
 
-First, run the development server:
+既存の経営ダッシュボード（リポジトリ直下の `index.html`）には一切手を加えていません。
+
+## 技術スタック
+
+- Next.js 16（App Router）+ TypeScript + Tailwind CSS v4
+- Supabase（Postgres / Auth / Storage / RLS）
+- デプロイ想定: Vercel（または任意の Node ホスティング）
+
+## セットアップ手順
+
+### 1. Supabase プロジェクトの作成
+
+1. https://supabase.com で新規プロジェクトを作成
+2. SQL Editor で `supabase/migrations/` の SQL を **001 → 008 の順に**実行
+   - 各ファイル冒頭にロールバック手順を記載しています
+   - 008 はシードデータ（動作確認用）。本番では実行せず、マスタ管理画面から登録してください
+
+### 2. スタッフのログインアカウント作成
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+SUPABASE_URL=https://xxxx.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=（Project Settings → API の service_role） \
+node scripts/create-users.mjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+シードの4名分の auth ユーザーが作成され、`staff.auth_user_id` に紐付きます。
+初期パスワードはスクリプト内に記載。**本番運用前に必ず変更してください。**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| ロール | メール | 名前 |
+|---|---|---|
+| 管理者 | admin@noble.example.com | 坂井 オーナー |
+| スタッフ | misaki@noble.example.com | 田中 美咲 🐨 |
+| スタッフ | hanako@noble.example.com | 佐藤 花子 🐱 |
+| スタッフ | ayaka@noble.example.com | 鈴木 彩香 🦄 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. アプリの起動
 
-## Learn More
+```bash
+cp .env.example .env.local   # URL と anon key を記入
+pnpm install
+pnpm dev                     # http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 画面一覧（フェーズ1）
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| ルート | 画面 | 権限 |
+|---|---|---|
+| `/login` | サインイン | — |
+| `/` | 今日ボード（本日のご予約・未記入アンバー強調・日付送り） | 全員 |
+| `/visits/new` | 来店予定（空カルテ）の作成。顧客検索＋新規顧客の最低限登録 | 全員 |
+| `/visits/[id]` | カルテ入力（メニュー・部位・回数券消化・写真・メモ・📌重要事項） | 全員 |
+| `/visits` | カルテ一覧（期間・担当・未記入で絞り込み、ページング） | 全員 |
+| `/customers` | 顧客検索（名前・カナ・電話の部分一致インクリメンタルサーチ） | 全員 |
+| `/customers/[id]` | 顧客ページ（フラグ・申し送りが最上部／回数券／来店タイムライン／LINE導線） | 全員 |
+| `/admin/tickets` | 回数券未消化残高 KPI・要フォロー一覧 | 管理者 |
+| `/admin/masters` | マスタ管理（メニュー・部位・フラグ・回数券商品・スタッフ） | 管理者 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+全画面共通でヘッダーに「全店舗 ⇔ 新宿店 ⇔ 新宿南口店 ⇔ 恵比寿店」のワンタップ切替があります。
 
-## Deploy on Vercel
+## 動作確認手順（受け入れ条件）
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **朝の箱作成（30秒以内）**: 今日ボード →「＋来店予定を作る」→ 顧客名の一部を入力 → 候補タップ → 時間チップ → 担当チップ →「この内容で箱を作る」
+2. **未記入の即判別**: 今日ボードで左端がアンバーの行＝未記入。上部カードに未記入件数
+3. **カルテ入力（1〜2分）**: 未記入行をタップ →「カルテを記入する」→ メニュー・部位をチップで選択（「前回と同じ」で複製可）→ 回数券をタップで1回消化 →「記入を完了する」
+4. **回数券の整合性**: 消化→顧客ページ・`/admin/tickets` の残回数・未消化金額が即時一致。「取り消す」で復元
+5. **要注意顧客**: シード顧客「佐藤 結衣」を開く → フラグ＋📌申し送りが最上部に表示
+6. **店舗切替**: ヘッダーのタブをタップ → 今日ボード・一覧・残高がすべて切替
+7. **権限**: スタッフ（misaki 等）でログイン → `/admin/tickets` に直接アクセスしても `/` へリダイレクト。API レベルでも RLS と `is_admin()` で遮断
+8. **レイアウト**: iPad 縦・横、スマホ（ボトムナビ）で崩れないこと
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## データベース・ロールバック
+
+各マイグレーションの冒頭コメントにロールバック SQL を記載しています。
+全削除する場合は 008 → 001 の逆順で実行してください。
+
+## セキュリティ設計
+
+- 全テーブルで RLS 有効。`staff` 行が存在する有効なログインユーザーのみアクセス可
+- マスタ変更・回数券の直接修正・各種削除は管理者のみ
+- 回数券の消化／取消は行ロック付きの `use_ticket` / `cancel_ticket_usage` 関数経由（二重消化防止・監査証跡）
+- スタッフ別の分析データ（リピート率・販売実績）はフェーズ1では画面を提供せず、
+  集計関数（例: `admin_ticket_summary`）はすべて関数内で `is_admin()` を強制
+- 施術写真は非公開バケット＋署名付きURL（クライアント側で圧縮してからアップロード）
