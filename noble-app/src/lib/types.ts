@@ -131,6 +131,93 @@ export interface TicketUsage {
   canceled_at: string | null;
 }
 
+/* ---------------- フェーズ2: シフト・カレンダー ---------------- */
+
+export type ShiftStatus = "draft" | "confirmed";
+export type RequestType = "ok" | "ng" | "time" | "usual" | "any";
+export type EventType =
+  | "off"
+  | "task"
+  | "training"
+  | "meeting"
+  | "practice"
+  | "shooting"
+  | "closing"
+  | "todo"
+  | "change";
+
+export interface ShiftRecruitment {
+  id: number;
+  month: string;
+  status: "open" | "closed";
+  note: string | null;
+}
+
+export interface ShiftRequest {
+  id: number;
+  staff_id: number;
+  month: string;
+  date: string;
+  type: RequestType;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+}
+
+export interface Shift {
+  id: number;
+  staff_id: number;
+  store_id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: ShiftStatus;
+  acknowledged_at: string | null;
+  staff?: Pick<Staff, "id" | "name" | "icon_emoji" | "theme_color">;
+}
+
+export interface AttendanceRecord {
+  id: number;
+  shift_id: number;
+  actual_start: string;
+  actual_end: string;
+  diff_reason: string | null;
+}
+
+export interface CalendarEvent {
+  id: number;
+  store_id: number | null;
+  date: string;
+  type: EventType;
+  title: string;
+  repeat_weekday: number | null;
+  repeat_until: string | null;
+  created_by: string | null;
+}
+
+export const EVENT_TYPE_META: Record<
+  EventType,
+  { label: string; color: FlagColorKey }
+> = {
+  off: { label: "休み", color: "rose" },
+  task: { label: "定期タスク", color: "ok" },
+  training: { label: "研修", color: "gold" },
+  meeting: { label: "ミーティング", color: "gold" },
+  practice: { label: "練習モデル", color: "rose" },
+  shooting: { label: "撮影", color: "warn" },
+  closing: { label: "月末・締め", color: "warn" },
+  todo: { label: "TODO", color: "ok" },
+  change: { label: "変更", color: "caution" },
+};
+
+export const REQUEST_TYPE_META: Record<RequestType, { label: string }> = {
+  ok: { label: "○" },
+  ng: { label: "×" },
+  time: { label: "時間指定" },
+  usual: { label: "いつも通り" },
+  any: { label: "お任せ" },
+};
+
 // 1回あたりの単価（購入金額 ÷ 総回数）
 export function ticketUnitPrice(t: Pick<CustomerTicket, "price" | "total_count">): number {
   return t.price / t.total_count;
