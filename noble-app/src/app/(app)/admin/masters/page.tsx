@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
-import { Badge, Button, Card, Chip, ListSkeleton, TextField } from "@/components/ui";
+import { Badge, Button, Card, Chip, ListSkeleton, TextArea, TextField } from "@/components/ui";
+import { AdminTabs } from "@/components/admin-tabs";
 import type { FlagColorKey } from "@/lib/types";
 
 /* ============================================================
@@ -11,7 +12,7 @@ import type { FlagColorKey } from "@/lib/types";
    テーブルごとのフィールド定義でフォームを生成する汎用CRUD
    ============================================================ */
 
-type FieldType = "text" | "number" | "stores" | "color_key" | "role";
+type FieldType = "text" | "textarea" | "number" | "stores" | "color_key" | "role" | "choice";
 
 interface FieldDef {
   key: string;
@@ -19,6 +20,7 @@ interface FieldDef {
   type: FieldType;
   required?: boolean;
   hint?: string;
+  choices?: string[]; // type='choice' の選択肢
 }
 
 interface TabDef {
@@ -79,6 +81,50 @@ const TABS: TabDef[] = [
     ],
   },
   {
+    key: "counseling_questions",
+    table: "counseling_questions",
+    label: "カウンセリング項目",
+    orderBy: "sort_order",
+    note: "お客様向けフォーム（LINEで送るリンク）に表示される質問です。",
+    fields: [
+      { key: "label", label: "質問文", type: "text", required: true },
+      {
+        key: "field_type",
+        label: "回答形式",
+        type: "choice",
+        choices: ["text", "textarea", "choice", "multi", "yes_no"],
+        hint: "text=1行 / textarea=複数行 / choice=単一選択 / multi=複数選択 / yes_no=はい・いいえ",
+      },
+      { key: "options", label: "選択肢（カンマ区切り・choice/multi用）", type: "text" },
+      { key: "sort_order", label: "表示順", type: "number" },
+    ],
+  },
+  {
+    key: "consent_templates",
+    table: "consent_templates",
+    label: "同意書テンプレ",
+    orderBy: "sort_order",
+    note: "発行済みの同意書には影響しません（署名時点の本文が保存されます）。",
+    fields: [
+      { key: "title", label: "タイトル", type: "text", required: true },
+      { key: "body", label: "本文", type: "textarea", required: true },
+      { key: "sort_order", label: "表示順", type: "number" },
+    ],
+  },
+  {
+    key: "products",
+    table: "products",
+    label: "商品・備品",
+    orderBy: "sort_order",
+    note: "在庫管理の対象です。メニューごとの標準消費量は「在庫 > 消費量設定」で設定します。",
+    fields: [
+      { key: "name", label: "名称", type: "text", required: true },
+      { key: "unit", label: "単位（個・本・g など）", type: "text", required: true },
+      { key: "category", label: "区分", type: "choice", choices: ["商品", "備品"] },
+      { key: "sort_order", label: "表示順", type: "number" },
+    ],
+  },
+  {
     key: "staff",
     table: "staff",
     label: "スタッフ",
@@ -111,6 +157,7 @@ export default function MastersPage() {
 
   return (
     <div className="space-y-5 fade-in">
+      <AdminTabs />
       <div>
         <h1 className="serif text-3xl text-ink">マスタ管理</h1>
         <p className="text-sm text-muted mt-1">管理者専用</p>
@@ -182,7 +229,7 @@ function MasterTable({ tab }: { tab: TabDef }) {
                   <div className={`min-w-0 ${row.is_active ? "" : "opacity-50"}`}>
                     <p className="font-medium text-ink">
                       {tab.table === "staff" && `${row.icon_emoji ?? ""} `}
-                      {String(row.name ?? "")}
+                      {String(row.name ?? row.title ?? row.label ?? "")}
                       {!row.is_active && (
                         <span className="ml-2 align-middle">
                           <Badge color="caution">無効</Badge>
@@ -248,6 +295,12 @@ function summaryLine(tab: TabDef, row: Row): string {
       return `色: ${COLOR_KEYS.find((c) => c.key === row.color_key)?.label ?? row.color_key}`;
     case "staff":
       return `${row.email ?? ""}`;
+    case "counseling_questions":
+      return `形式: ${row.field_type}${row.options ? ` ・ 選択肢: ${row.options}` : ""}`;
+    case "consent_templates":
+      return String(row.body ?? "").slice(0, 50) + "…";
+    case "products":
+      return `${row.category} ・ 単位: ${row.unit}`;
     default:
       return `表示順: ${row.sort_order ?? 0}`;
   }
@@ -273,7 +326,17 @@ function MasterForm({
     for (const f of tab.fields) {
       init[f.key] =
         initial?.[f.key] ??
-        (f.type === "number" ? 0 : f.type === "stores" ? [] : f.type === "color_key" ? "warn" : f.type === "role" ? "staff" : "");
+        (f.type === "number"
+          ? 0
+          : f.type === "stores"
+            ? []
+            : f.type === "color_key"
+              ? "warn"
+              : f.type === "role"
+                ? "staff"
+                : f.type === "choice"
+                  ? (f.choices?.[0] ?? "")
+                  : "");
     }
     return init;
   });
@@ -343,6 +406,38 @@ function MasterForm({
                     />
                   ))}
                 </div>
+              </div>
+            );
+          }
+          if (f.type === "choice") {
+            return (
+              <div key={f.key} className="sm:col-span-2">
+                <p className="text-xs font-semibold text-muted mb-1">
+                  {f.label}
+                  {f.hint && <span className="font-normal">（{f.hint}）</span>}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {(f.choices ?? []).map((c) => (
+                    <Chip
+                      key={c}
+                      label={c}
+                      selected={form[f.key] === c}
+                      onClick={() => setForm({ ...form, [f.key]: c })}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          if (f.type === "textarea") {
+            return (
+              <div key={f.key} className="sm:col-span-2">
+                <TextArea
+                  label={f.label}
+                  rows={8}
+                  value={String(form[f.key] ?? "")}
+                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                />
               </div>
             );
           }

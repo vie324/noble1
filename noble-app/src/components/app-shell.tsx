@@ -11,18 +11,19 @@ const navItems = [
   { href: "/visits", label: "カルテ", icon: IconBook, exact: false },
   { href: "/customers", label: "お客様", icon: IconUsers, exact: false },
   { href: "/calendar", label: "予定", icon: IconCalendar, exact: false },
+  { href: "/board", label: "掲示板", icon: IconBoard, exact: false },
+  { href: "/inventory", label: "在庫", icon: IconBox, exact: false },
 ];
 
-// 経営 = /admin 配下の分析系すべて（マスタ管理を除く）
+// 経営 = /admin 配下すべて（マスタ管理は経営サブタブ内）
 const adminItems = [
   {
     href: "/admin/dashboard",
     label: "経営",
     icon: IconChart,
     exact: false,
-    match: (p: string) => p.startsWith("/admin") && !p.startsWith("/admin/masters"),
+    match: (p: string) => p.startsWith("/admin"),
   },
-  { href: "/admin/masters", label: "マスタ", icon: IconSettings, exact: false },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -52,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex-1 flex flex-col min-h-dvh">
       {/* ヘッダー */}
-      <header className="sticky top-0 z-30 bg-base/90 backdrop-blur border-b border-hairline">
+      <header className="sticky top-0 z-30 bg-base/90 backdrop-blur border-b border-hairline print:hidden">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex items-center justify-between h-14">
             <Link href="/" className="flex items-baseline gap-2">
@@ -122,7 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* スマホ・iPad縦向け ボトムナビ */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface/95 backdrop-blur border-t border-hairline"
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface/95 backdrop-blur border-t border-hairline print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="メインナビゲーション"
       >
@@ -223,11 +224,21 @@ function IconChart({ className = "" }: { className?: string }) {
   );
 }
 
-function IconSettings({ className = "" }: { className?: string }) {
+function IconBoard({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+      <rect x="4" y="3" width="16" height="18" rx="2.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
     </svg>
   );
 }
+
+function IconBox({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" />
+      <path d="M3 8l9 5 9-5M12 13v8" />
+    </svg>
+  );
+}
+

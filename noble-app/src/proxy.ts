@@ -32,8 +32,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+  // /f/... はお客様向け公開フォーム（カウンセリング・同意書）。認証不要
+  const isPublicForm = request.nextUrl.pathname.startsWith("/f/");
 
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isPublicForm) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
