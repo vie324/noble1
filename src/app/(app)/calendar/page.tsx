@@ -14,8 +14,7 @@ import {
   thisMonthJST,
   timeShort,
   todayJST,
-  WEEKDAYS_JA,
-} from "@/lib/format";
+  WEEKDAYS_JA, staffLabel } from "@/lib/format";
 import { EVENT_TYPE_META } from "@/lib/types";
 import type { CalendarEvent, EventType, Shift } from "@/lib/types";
 
@@ -206,7 +205,7 @@ function DayCell({
               color: "var(--noble-text)",
             }}
           >
-            {shiftChipLabel(s.staff?.icon_emoji ?? "👤", s.start_time, s.end_time)}
+            {shiftChipLabel(s.staff?.icon_emoji ?? "", s.start_time, s.end_time)}
           </div>
         ))}
         {events.slice(0, Math.max(0, visible - shifts.length)).map((e) => (
@@ -302,7 +301,7 @@ function DayDetail({
                 aria-hidden
               />
               <span className="text-ink">
-                {s.staff?.icon_emoji} {s.staff?.name}
+                {staffLabel(s.staff)}
               </span>
               <span className="text-muted tnum">
                 {timeShort(s.start_time)}〜{timeShort(s.end_time)}
@@ -352,7 +351,7 @@ function DayDetail({
             label="タイトル"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例: 🔥 燃えるゴミ / 練習モデル 19時〜"
+            placeholder="例: 燃えるゴミ / 練習モデル 19時〜"
             autoFocus
           />
           <p className="text-xs font-semibold text-muted">種別</p>

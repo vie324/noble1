@@ -14,8 +14,7 @@ import {
   timeShort,
   timeToMinutes,
   todayJST,
-  WEEKDAYS_JA,
-} from "@/lib/format";
+  WEEKDAYS_JA, staffLabel } from "@/lib/format";
 import { REQUEST_TYPE_META } from "@/lib/types";
 import type {
   AttendanceRecord,
@@ -96,7 +95,7 @@ export default function MyShiftPage() {
       <div>
         <h1 className="serif text-3xl text-ink">マイシフト</h1>
         <p className="text-sm text-muted mt-1">
-          {me.icon_emoji} {me.name} ・ 主所属 {storeName(me.store_id)}
+          {staffLabel(me)} ・ 主所属 {storeName(me.store_id)}
         </p>
       </div>
 
@@ -210,7 +209,7 @@ function RequestSection({
       <SectionTitle>
         シフト希望の提出（{monthLabelJa(recruitment.month)}・受付中）
       </SectionTitle>
-      {recruitment.note && <p className="text-sm text-warn font-medium">📣 {recruitment.note}</p>}
+      {recruitment.note && <p className="text-sm text-warn font-medium">{recruitment.note}</p>}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted tnum">
           {submitted}/{days.length} 日 入力済み

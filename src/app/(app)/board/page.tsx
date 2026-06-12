@@ -131,7 +131,7 @@ export default function BoardPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {p.pinned && <Badge color="gold">📌 ピン留め</Badge>}
+                        {p.pinned && <Badge color="gold">ピン留め</Badge>}
                         <Badge color="rose">{p.category}</Badge>
                         <span className="text-xs text-muted tnum">
                           {dateSlash(p.updated_at)}
@@ -161,7 +161,7 @@ export default function BoardPage() {
                               onClick={() => downloadAttachment(a.file_path, a.file_name)}
                               className="inline-flex items-center gap-1.5 min-h-10 rounded-full border border-gold/50 bg-gold-soft px-4 text-sm text-gold-dk hover:bg-gold-soft/70 transition-colors"
                             >
-                              📎 {a.file_name}
+                              {a.file_name}
                             </button>
                           ))}
                         </div>
@@ -266,9 +266,9 @@ function PostForm({
       </div>
       <TextArea label="本文" rows={6} value={body} onChange={(e) => setBody(e.target.value)} />
       <div className="flex items-center gap-3 flex-wrap">
-        <Chip label="📌 ピン留め" selected={pinned} onClick={() => setPinned(!pinned)} />
+        <Chip label="ピン留め" selected={pinned} onClick={() => setPinned(!pinned)} />
         <label className="inline-flex items-center min-h-11 px-4 rounded-full border border-dashed border-gold/60 text-sm text-gold-dk cursor-pointer hover:bg-gold-soft transition-colors">
-          📎 ファイルを添付
+          ファイルを添付
           <input
             type="file"
             multiple

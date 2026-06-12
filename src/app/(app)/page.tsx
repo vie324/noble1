@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, CountUp, EmptyState, ListSkeleton } from "@/components/ui";
 import { FlagBadges, TicketAlertBadges } from "@/components/flags";
-import { addDays, dateLabelJa, jstToISO, timeHM, todayJST } from "@/lib/format";
+import { addDays, dateLabelJa, jstToISO, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type {
   Customer,
   CustomerFlag,
@@ -225,7 +225,7 @@ function VisitRow({
               <span className="font-semibold text-ink">{c.name} 様</span>
               {visit.staff && (
                 <span className="text-xs text-muted">
-                  {visit.staff.icon_emoji} {visit.staff.name}
+                  {staffLabel(visit.staff)}
                 </span>
               )}
             </div>
@@ -238,7 +238,7 @@ function VisitRow({
               <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
                 <FlagBadges flags={activeFlags} />
                 {pinnedNotes.length > 0 && (
-                  <Badge color="rose">📌 申し送り{pinnedNotes.length}件</Badge>
+                  <Badge color="rose">申し送り{pinnedNotes.length}件</Badge>
                 )}
                 <TicketAlertBadges tickets={c.customer_tickets} />
               </div>
@@ -267,12 +267,12 @@ function VisitRow({
                     .filter((f) => f.note)
                     .map((f) => (
                       <p key={f.id} className="text-sm text-caution font-medium">
-                        ⚠ {f.flag_types?.name}：{f.note}
+                        {f.flag_types?.name}：{f.note}
                       </p>
                     ))}
                   {pinnedNotes.map((n) => (
                     <p key={n.id} className="text-sm text-ink">
-                      📌 {n.body}
+                      {n.body}
                     </p>
                   ))}
                   {c.booking_memo && (

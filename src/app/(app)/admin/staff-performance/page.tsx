@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ListSkeleton, SectionTitle } from "@/components/ui";
 import { AdminTabs, MonthNav } from "@/components/admin-tabs";
-import { monthLabelJa, thisMonthJST, yen } from "@/lib/format";
+import { monthLabelJa, thisMonthJST, yen, staffLabel } from "@/lib/format";
 import type { Staff } from "@/lib/types";
 
 // スタッフ別実績（管理者専用 — スタッフ本人にも非公開。RLSでも遮断）
@@ -112,7 +112,7 @@ export default function StaffPerformancePage() {
                 <li key={r.staff_id} className="rounded-xl border border-hairline p-3 space-y-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <p className="font-semibold text-ink">
-                      {staff?.icon_emoji} {staff?.name}
+                      {staffLabel(staff)}
                       <span className="ml-2 text-xs text-muted font-normal">
                         達成率{" "}
                         <span

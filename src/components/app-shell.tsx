@@ -1,5 +1,7 @@
 "use client";
 
+import { staffLabel } from "@/lib/format";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/app-context";
@@ -80,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline text-sm text-muted">
-                {me.icon_emoji} {me.name}
+                {staffLabel(me)}
               </span>
               <button
                 onClick={handleLogout}

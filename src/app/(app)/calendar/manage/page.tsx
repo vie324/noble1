@@ -12,8 +12,7 @@ import {
   thisMonthJST,
   timeShort,
   timeToMinutes,
-  WEEKDAYS_JA,
-} from "@/lib/format";
+  WEEKDAYS_JA, staffLabel } from "@/lib/format";
 import type {
   AttendanceRecord,
   Shift,
@@ -282,7 +281,7 @@ export default function ShiftManagePage() {
                   {staffList.map((st) => (
                     <tr key={st.id} className="border-t border-hairline">
                       <td className="sticky left-0 bg-surface text-sm text-ink whitespace-nowrap pr-2 py-1">
-                        {st.icon_emoji} {st.name}
+                        {staffLabel(st)}
                         {(unacknowledged.get(st.id) ?? 0) > 0 && (
                           <span className="ml-1 align-middle">
                             <Badge color="warn">未確認{unacknowledged.get(st.id)}</Badge>
@@ -341,8 +340,7 @@ export default function ShiftManagePage() {
             {cell && (
               <div className="rounded-xl border border-gold/40 bg-gold-soft/30 p-3 space-y-3 fade-in">
                 <p className="text-sm font-semibold text-ink">
-                  {staffList.find((s) => s.id === cell.staffId)?.icon_emoji}{" "}
-                  {staffList.find((s) => s.id === cell.staffId)?.name} ・{" "}
+                  {staffLabel(staffList.find((s) => s.id === cell.staffId))} ・{" "}
                   {Number(cell.date.slice(8))}日(
                   {WEEKDAYS_JA[new Date(`${cell.date}T12:00:00+09:00`).getUTCDay()]})
                   {(() => {
@@ -428,7 +426,7 @@ export default function ShiftManagePage() {
                   {planVsActual.map(({ staff, planned, actual, reasons }) => (
                     <tr key={staff.id}>
                       <td className="py-2 text-ink whitespace-nowrap">
-                        {staff.icon_emoji} {staff.name}
+                        {staffLabel(staff)}
                       </td>
                       <td className="text-right tnum">{fmtH(planned)}</td>
                       <td className="text-right tnum">{actual ? fmtH(actual) : "—"}</td>
