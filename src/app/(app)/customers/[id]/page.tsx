@@ -23,8 +23,7 @@ import {
   ticketLabel,
   timeHM,
   todayJST,
-  yen,
-} from "@/lib/format";
+  yen, staffLabel } from "@/lib/format";
 import { ticketUnusedAmount } from "@/lib/types";
 import type {
   Customer,
@@ -204,7 +203,7 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
                     ) : null}
                     {v.staff && (
                       <span className="text-xs text-muted">
-                        {v.staff.icon_emoji} {v.staff.name}
+                        {staffLabel(v.staff)}
                       </span>
                     )}
                   </div>
@@ -214,7 +213,7 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
                     </p>
                   )}
                   {v.important_memo && (
-                    <p className="text-xs text-rose mt-0.5">📌 {v.important_memo}</p>
+                    <p className="text-xs text-rose mt-0.5">重要: {v.important_memo}</p>
                   )}
                   {v.visit_photos.length > 0 && (
                     <div className="flex gap-1.5 mt-1.5">
@@ -333,7 +332,7 @@ function FlagAndNoteSection({
             <div key={f.id} className="flex items-start justify-between gap-2">
               <div className="space-y-1">
                 <FlagBadges flags={[f]} />
-                {f.note && <p className="text-sm text-caution font-medium">⚠ {f.note}</p>}
+                {f.note && <p className="text-sm text-caution font-medium">{f.note}</p>}
               </div>
               <Button variant="ghost" disabled={busy} onClick={() => resolveFlag(f.id)}>
                 解除
@@ -349,7 +348,7 @@ function FlagAndNoteSection({
           {notes.map((n) => (
             <li key={n.id} className="flex items-start justify-between gap-2">
               <p className={`text-sm ${n.pinned ? "text-ink font-medium" : "text-muted"}`}>
-                {n.pinned && "📌 "}
+                
                 {n.body}
                 <span className="ml-2 text-xs text-muted tnum">{dateSlash(n.created_at)}</span>
               </p>
@@ -405,7 +404,7 @@ function FlagAndNoteSection({
           />
           <div className="flex items-center gap-3">
             <Chip
-              label="📌 ピン留めする"
+              label="ピン留めする"
               selected={newNotePinned}
               onClick={() => setNewNotePinned(!newNotePinned)}
             />

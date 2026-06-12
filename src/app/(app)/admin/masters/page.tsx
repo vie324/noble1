@@ -135,7 +135,7 @@ const TABS: TabDef[] = [
       { key: "kana", label: "カナ", type: "text" },
       { key: "email", label: "メールアドレス", type: "text", required: true },
       { key: "role", label: "ロール", type: "role" },
-      { key: "icon_emoji", label: "絵文字アイコン", type: "text", hint: "🐨 🐱 🦄 など" },
+      { key: "icon_emoji", label: "アイコン（任意・カレンダーチップ用）", type: "text" },
       { key: "theme_color", label: "テーマカラー", type: "text", hint: "#B89B5E 形式" },
     ],
   },

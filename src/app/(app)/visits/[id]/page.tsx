@@ -16,7 +16,7 @@ import {
 } from "@/components/ui";
 import { FlagBadges } from "@/components/flags";
 import { BeforeAfterPhotos } from "@/components/before-after-photos";
-import { dateLabelJa, daysUntil, timeHM, yen, ticketLabel } from "@/lib/format";
+import { dateLabelJa, daysUntil, timeHM, yen, ticketLabel, staffLabel } from "@/lib/format";
 import { ticketUnusedAmount } from "@/lib/types";
 import type {
   BodyPart,
@@ -259,12 +259,12 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
             .filter((f) => f.note)
             .map((f) => (
               <p key={f.id} className="text-sm text-caution font-medium">
-                ⚠ {f.note}
+                {f.note}
               </p>
             ))}
           {pinnedNotes.map((n) => (
             <p key={n.id} className="text-sm text-ink">
-              📌 {n.body}
+              {n.body}
             </p>
           ))}
         </Card>
@@ -318,7 +318,7 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
           {staffList.map((s) => (
             <Chip
               key={s.id}
-              label={`${s.icon_emoji} ${s.name}`}
+              label={staffLabel(s)}
               selected={staffId === s.id}
               onClick={() => setStaffId(s.id)}
             />
@@ -404,7 +404,7 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
           placeholder="施術の所感、お客様との会話など"
         />
         <TextArea
-          label="📌 重要事項（次回来店時に必ず表示されます）"
+          label="重要事項（次回来店時に必ず表示されます）"
           rows={2}
           value={importantMemo}
           onChange={(e) => setImportantMemo(e.target.value)}

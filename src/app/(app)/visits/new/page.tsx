@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Button, Card, Chip, SectionTitle, TextField } from "@/components/ui";
-import { dateLabelJa, jstToISO, todayJST } from "@/lib/format";
+import { dateLabelJa, jstToISO, todayJST, staffLabel } from "@/lib/format";
 import type { Customer, Menu, Staff } from "@/lib/types";
 
 export default function NewVisitPage() {
@@ -290,7 +290,7 @@ function NewVisitForm() {
           {staffList.map((s) => (
             <Chip
               key={s.id}
-              label={`${s.icon_emoji} ${s.name}`}
+              label={staffLabel(s)}
               selected={staffId === s.id}
               onClick={() => setStaffId(s.id)}
             />

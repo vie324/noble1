@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, EmptyState, ListSkeleton } from "@/components/ui";
-import { addDays, dateSlash, timeHM, todayJST } from "@/lib/format";
+import { addDays, dateSlash, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type { Customer, Staff, Visit } from "@/lib/types";
 
 const PAGE_SIZE = 30;
@@ -116,7 +116,7 @@ export default function VisitListPage() {
           {staffList.map((s) => (
             <Chip
               key={s.id}
-              label={`${s.icon_emoji} ${s.name}`}
+              label={staffLabel(s)}
               selected={staffId === s.id}
               onClick={() => setStaffId(s.id)}
             />
@@ -151,7 +151,7 @@ export default function VisitListPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-ink">{v.customers.name} 様</p>
                       <p className="text-xs text-muted truncate">
-                        {v.staff ? `${v.staff.icon_emoji} ${v.staff.name}` : "担当未定"}
+                        {v.staff ? staffLabel(v.staff) : "担当未定"}
                         {v.visit_menus.length > 0 &&
                           ` ・ ${v.visit_menus.map((m) => m.menus?.name).filter(Boolean).join("・")}`}
                       </p>

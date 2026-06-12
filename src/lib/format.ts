@@ -84,9 +84,17 @@ export function timeShort(t: string): string {
   return m === "00" ? String(Number(h)) : `${Number(h)}:${m}`;
 }
 
-// "🐨 10-19" 形式のチップラベル
+// "🐨 10-19" 形式のチップラベル（絵文字未設定なら時間のみ）
 export function shiftChipLabel(emoji: string, start: string, end: string): string {
-  return `${emoji} ${timeShort(start)}-${timeShort(end)}`;
+  return [emoji, `${timeShort(start)}-${timeShort(end)}`].filter(Boolean).join(" ");
+}
+
+// スタッフ表示名（絵文字が設定されていれば前置）
+export function staffLabel(
+  s: { name: string; icon_emoji?: string | null } | null | undefined
+): string {
+  if (!s) return "";
+  return [s.icon_emoji, s.name].filter(Boolean).join(" ");
 }
 
 // "HH:MM(:SS)" → 分

@@ -325,7 +325,7 @@ function EntryTab({
           />
           <TextField label="メモ（任意）" value={note} onChange={(e) => setNote(e.target.value)} />
           <label className="inline-flex items-center justify-center min-h-11 rounded-full border border-dashed border-gold/60 text-sm text-gold-dk cursor-pointer hover:bg-gold-soft transition-colors px-3">
-            {invoice ? `📷 ${invoice.name.slice(0, 14)}…` : "📷 納品書を撮影/添付"}
+            {invoice ? `${invoice.name.slice(0, 14)}…` : "納品書を撮影/添付"}
             <input
               type="file"
               accept="image/*"
