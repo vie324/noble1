@@ -66,6 +66,11 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [counseling, setCounseling] = useState<{
+    answers: Record<string, string>;
+    submitted_at: string | null;
+  } | null>(null);
+  const [counselingOpen, setCounselingOpen] = useState(true);
 
   const loadTickets = useCallback(
     async (customerId: number) => {
@@ -114,6 +119,30 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
       setMemo(detail.memo ?? "");
       setImportantMemo(detail.important_memo ?? "");
       await loadTickets(detail.customer_id);
+
+      // カウンセリング回答（このカルテに紐付くもの → なければ直近の回答済み）
+      const { data: linked } = await supabase
+        .from("counseling_sheets")
+        .select("answers, submitted_at")
+        .eq("visit_id", visitId)
+        .eq("status", "submitted")
+        .maybeSingle();
+      if (linked?.answers) {
+        setCounseling(linked as { answers: Record<string, string>; submitted_at: string | null });
+      } else {
+        const { data: latest } = await supabase
+          .from("counseling_sheets")
+          .select("answers, submitted_at")
+          .eq("customer_id", detail.customer_id)
+          .eq("status", "submitted")
+          .order("submitted_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latest?.answers) {
+          setCounseling(latest as { answers: Record<string, string>; submitted_at: string | null });
+          setCounselingOpen(false); // 過去の回答は折りたたんで表示
+        }
+      }
     })();
   }, [supabase, visitId, loadTickets]);
 
@@ -267,6 +296,35 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
               {n.body}
             </p>
           ))}
+        </Card>
+      )}
+
+      {/* カウンセリングシートの回答（確認しながらカルテ記入できる） */}
+      {counseling && (
+        <Card className="p-4 space-y-2 border-gold/50">
+          <button
+            type="button"
+            onClick={() => setCounselingOpen(!counselingOpen)}
+            aria-expanded={counselingOpen}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <SectionTitle className="flex-1">カウンセリングシートの回答</SectionTitle>
+            <span className="text-muted text-sm shrink-0 ml-2" aria-hidden>
+              {counselingOpen ? "▲" : "▼"}
+            </span>
+          </button>
+          {counselingOpen && (
+            <dl className="space-y-2 fade-in">
+              {Object.entries(counseling.answers).map(([q, a]) => (
+                <div key={q}>
+                  <dt className="text-[11px] text-muted">{q}</dt>
+                  <dd className="text-sm text-ink whitespace-pre-wrap">
+                    {a === "確認済み" ? "確認済み（注意事項）" : a || "—"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </Card>
       )}
 

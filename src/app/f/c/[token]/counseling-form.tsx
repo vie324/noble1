@@ -30,6 +30,14 @@ export function CounselingForm({
 
   function handleSubmit() {
     setError(null);
+    // 注意事項（ack）はすべて確認チェック必須
+    const unchecked = questions.filter(
+      (q) => q.field_type === "ack" && answers[q.label] !== "確認済み"
+    );
+    if (unchecked.length > 0) {
+      setError("注意事項の「確認しました」にすべてチェックを入れてください");
+      return;
+    }
     startTransition(async () => {
       const res = await submitCounseling(token, answers);
       if (res.ok) setDone(true);
@@ -94,6 +102,21 @@ export function CounselingForm({
                   onClick={() => set(q.label, o)}
                 />
               ))}
+            </div>
+          )}
+
+          {q.field_type === "ack" && (
+            <div className="space-y-3">
+              <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed rounded-lg bg-base border border-hairline p-3">
+                {q.options}
+              </p>
+              <FormChip
+                label="内容を確認しました"
+                selected={answers[q.label] === "確認済み"}
+                onClick={() =>
+                  set(q.label, answers[q.label] === "確認済み" ? "" : "確認済み")
+                }
+              />
             </div>
           )}
 

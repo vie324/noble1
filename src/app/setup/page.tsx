@@ -1,14 +1,13 @@
+import Image from "next/image";
+
 // Supabase 未設定時のセットアップ案内（環境変数が設定されると自動的に / へ戻る）
 export default function SetupPage() {
   return (
     <main className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-lg fade-in">
         <div className="text-center mb-8">
-          <p className="text-gold text-xs tracking-[0.5em] mb-3" aria-hidden>
-            ◆ ◆ ◆
-          </p>
-          <h1 className="serif text-4xl text-ink tracking-wide">Noble</h1>
-          <p className="mt-3 text-sm text-muted tracking-widest">セットアップが必要です</p>
+          <Image src="/logo.png" alt="ESTHETIC BY NOBLE" width={150} height={141} priority className="mx-auto" />
+          <p className="mt-4 text-sm text-muted tracking-widest">セットアップが必要です</p>
         </div>
 
         <div className="noble-card gold-hairline p-6 space-y-4 text-sm text-ink leading-relaxed">

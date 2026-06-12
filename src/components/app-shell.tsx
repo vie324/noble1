@@ -3,6 +3,7 @@
 import { staffLabel } from "@/lib/format";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
@@ -58,9 +59,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 bg-base/90 backdrop-blur border-b border-hairline print:hidden">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex items-center justify-between h-14">
-            <Link href="/" className="flex items-baseline gap-2">
-              <span className="serif text-2xl tracking-wide text-ink">Noble</span>
-              <span className="text-gold text-[8px]" aria-hidden>◆</span>
+            <Link href="/" className="flex items-center gap-2.5" aria-label="Noble ホーム">
+              <Image src="/logo.png" alt="" width={38} height={36} priority />
+              <span className="serif text-xl tracking-wide text-ink hidden sm:inline">
+                Noble
+              </span>
             </Link>
 
             {/* PC/iPad横向け ナビ */}
