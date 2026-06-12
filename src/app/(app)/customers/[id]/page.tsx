@@ -174,7 +174,11 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
       />
 
       {/* カウンセリング・同意書（電子化） */}
-      <CustomerDocuments customerId={customerId} lineChatUrl={customer.line_chat_url} />
+      <CustomerDocuments
+        customerId={customerId}
+        lineChatUrl={customer.line_chat_url}
+        primaryStoreId={customer.primary_store_id}
+      />
 
       {/* 来店履歴タイムライン */}
       <Card className="p-4 space-y-3">

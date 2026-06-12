@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
 import "./globals.css";
+import { Splash } from "@/components/splash";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -25,6 +26,10 @@ const notoSans = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Noble | ノーブル業務システム",
   description: "エステサロン ノーブルの業務統合システム",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     title: "Noble",
@@ -49,7 +54,10 @@ export default function RootLayout({
       lang="ja"
       className={`${cormorant.variable} ${shippori.variable} ${notoSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Splash />
+        {children}
+      </body>
     </html>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button, TextField } from "@/components/ui";
 
@@ -34,11 +35,15 @@ export default function LoginPage() {
     <main className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm fade-in">
         <div className="text-center mb-10">
-          <p className="text-gold text-xs tracking-[0.5em] mb-3" aria-hidden>
-            ◆ ◆ ◆
-          </p>
-          <h1 className="serif text-5xl text-ink tracking-wide">Noble</h1>
-          <p className="mt-3 text-sm text-muted tracking-widest">
+          <Image
+            src="/logo.png"
+            alt="ESTHETIC BY NOBLE"
+            width={210}
+            height={198}
+            priority
+            className="mx-auto"
+          />
+          <p className="mt-4 text-sm text-muted tracking-widest">
             ノーブル業務システム
           </p>
         </div>

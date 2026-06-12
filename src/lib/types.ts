@@ -223,7 +223,7 @@ export const REQUEST_TYPE_META: Record<RequestType, { label: string }> = {
 export interface CounselingQuestion {
   id: number;
   label: string;
-  field_type: "text" | "textarea" | "choice" | "multi" | "yes_no";
+  field_type: "text" | "textarea" | "choice" | "multi" | "yes_no" | "ack";
   options: string | null; // カンマ区切り
   sort_order: number;
   is_active: boolean;
@@ -236,6 +236,7 @@ export interface CounselingSheet {
   status: "pending" | "submitted";
   answers: Record<string, string> | null;
   submitted_at: string | null;
+  visit_id: number | null;
   created_at: string;
 }
 

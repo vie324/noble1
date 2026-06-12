@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, SectionTitle } from "@/components/ui";
 import { dateTimeLabel } from "@/lib/format";
 import type { ConsentDocument, ConsentTemplate, CounselingSheet } from "@/lib/types";
@@ -11,11 +13,15 @@ import type { ConsentDocument, ConsentTemplate, CounselingSheet } from "@/lib/ty
 export function CustomerDocuments({
   customerId,
   lineChatUrl,
+  primaryStoreId,
 }: {
   customerId: number;
   lineChatUrl: string | null;
+  primaryStoreId: number | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const { me, stores, storeFilter } = useApp();
   const [sheets, setSheets] = useState<CounselingSheet[]>([]);
   const [docs, setDocs] = useState<ConsentDocument[]>([]);
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
@@ -66,6 +72,34 @@ export function CustomerDocuments({
     await supabase.from("counseling_sheets").insert({ customer_id: customerId });
     await load();
     setBusy(false);
+  }
+
+  // 回答を見ながらそのままカルテへ: visit を作成してシートを紐付け、カルテ画面へ移動
+  async function createKarteFromSheet(sheet: CounselingSheet) {
+    setBusy(true);
+    try {
+      const storeId = storeFilter ?? primaryStoreId ?? stores[0]?.id;
+      const { data: visit, error } = await supabase
+        .from("visits")
+        .insert({
+          customer_id: customerId,
+          store_id: storeId,
+          staff_id: me.id,
+          scheduled_at: new Date().toISOString(),
+          status: "scheduled",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await supabase
+        .from("counseling_sheets")
+        .update({ visit_id: visit.id })
+        .eq("id", sheet.id);
+      router.push(`/visits/${visit.id}`);
+    } catch (e) {
+      console.error(e);
+      setBusy(false);
+    }
   }
 
   async function issueConsent() {
@@ -126,12 +160,23 @@ export function CustomerDocuments({
                       )}
                     </>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      onClick={() => setOpenSheetId(openSheetId === s.id ? null : s.id)}
-                    >
-                      {openSheetId === s.id ? "閉じる" : "回答を見る"}
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setOpenSheetId(openSheetId === s.id ? null : s.id)}
+                      >
+                        {openSheetId === s.id ? "閉じる" : "回答を見る"}
+                      </Button>
+                      {s.visit_id ? (
+                        <Link href={`/visits/${s.visit_id}`}>
+                          <Button variant="secondary">カルテを開く</Button>
+                        </Link>
+                      ) : (
+                        <Button disabled={busy} onClick={() => createKarteFromSheet(s)}>
+                          カルテを作成
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
                 {openSheetId === s.id && s.answers && (
