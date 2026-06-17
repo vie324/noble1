@@ -231,12 +231,17 @@ export interface CounselingQuestion {
 
 export interface CounselingSheet {
   id: number;
-  customer_id: number;
+  customer_id: number | null;
   token: string;
   status: "pending" | "submitted";
   answers: Record<string, string> | null;
   submitted_at: string | null;
   visit_id: number | null;
+  // 受付（LINE等の固定URL）経由で本人が入力する情報。紐付け前の照合用
+  applicant_name: string | null;
+  applicant_kana: string | null;
+  applicant_phone: string | null;
+  store_id: number | null;
   created_at: string;
 }
 

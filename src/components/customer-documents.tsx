@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, SectionTitle } from "@/components/ui";
+import { CounselingAnswers } from "@/components/counseling-answers";
 import { dateTimeLabel } from "@/lib/format";
 import type { ConsentDocument, ConsentTemplate, CounselingSheet } from "@/lib/types";
 
@@ -180,14 +181,9 @@ export function CustomerDocuments({
                   )}
                 </div>
                 {openSheetId === s.id && s.answers && (
-                  <dl className="mt-2 rounded-lg bg-base border border-hairline p-3 space-y-2 fade-in">
-                    {Object.entries(s.answers).map(([q, a]) => (
-                      <div key={q}>
-                        <dt className="text-[11px] text-muted">{q}</dt>
-                        <dd className="text-sm text-ink whitespace-pre-wrap">{a || "—"}</dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <div className="mt-2 rounded-lg bg-base border border-hairline p-3 fade-in">
+                    <CounselingAnswers answers={s.answers} />
+                  </div>
                 )}
               </li>
             ))}

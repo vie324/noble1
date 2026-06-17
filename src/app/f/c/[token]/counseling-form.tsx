@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { submitCounseling } from "../../actions";
+import { CounselingFields, hasUncheckedAck } from "@/components/counseling-fields";
 import type { CounselingQuestion } from "@/lib/types";
 
-// チップタップ中心・キーボード入力最小のお客様向けフォーム
+// 特定のお客様あてに発行したトークン付きフォーム
 export function CounselingForm({
   token,
   questions,
@@ -20,21 +21,9 @@ export function CounselingForm({
   const set = (label: string, value: string) =>
     setAnswers((a) => ({ ...a, [label]: value }));
 
-  const toggleMulti = (label: string, option: string) => {
-    const current = answers[label] ? answers[label].split(",") : [];
-    const next = current.includes(option)
-      ? current.filter((o) => o !== option)
-      : [...current, option];
-    set(label, next.join(","));
-  };
-
   function handleSubmit() {
     setError(null);
-    // 注意事項（ack）はすべて確認チェック必須
-    const unchecked = questions.filter(
-      (q) => q.field_type === "ack" && answers[q.label] !== "確認済み"
-    );
-    if (unchecked.length > 0) {
+    if (hasUncheckedAck(questions, answers)) {
       setError("注意事項の「確認しました」にすべてチェックを入れてください");
       return;
     }
@@ -57,83 +46,7 @@ export function CounselingForm({
 
   return (
     <div className="space-y-4">
-      {questions.map((q) => (
-        <div key={q.id} className="noble-card gold-hairline p-4 space-y-2.5">
-          <p className="text-sm font-semibold text-ink">{q.label}</p>
-
-          {q.field_type === "text" && (
-            <input
-              type="text"
-              value={answers[q.label] ?? ""}
-              onChange={(e) => set(q.label, e.target.value)}
-              className="w-full min-h-11 rounded-lg border border-hairline bg-surface px-3 text-base outline-none focus:border-gold"
-            />
-          )}
-
-          {q.field_type === "textarea" && (
-            <textarea
-              rows={3}
-              value={answers[q.label] ?? ""}
-              onChange={(e) => set(q.label, e.target.value)}
-              className="w-full rounded-lg border border-hairline bg-surface px-3 py-2.5 text-base outline-none focus:border-gold"
-            />
-          )}
-
-          {q.field_type === "yes_no" && (
-            <div className="flex gap-2">
-              {["はい", "いいえ"].map((o) => (
-                <FormChip
-                  key={o}
-                  label={o}
-                  selected={answers[q.label] === o}
-                  onClick={() => set(q.label, o)}
-                />
-              ))}
-            </div>
-          )}
-
-          {q.field_type === "choice" && (
-            <div className="flex gap-2 flex-wrap">
-              {(q.options ?? "").split(",").filter(Boolean).map((o) => (
-                <FormChip
-                  key={o}
-                  label={o}
-                  selected={answers[q.label] === o}
-                  onClick={() => set(q.label, o)}
-                />
-              ))}
-            </div>
-          )}
-
-          {q.field_type === "ack" && (
-            <div className="space-y-3">
-              <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed rounded-lg bg-base border border-hairline p-3">
-                {q.options}
-              </p>
-              <FormChip
-                label="内容を確認しました"
-                selected={answers[q.label] === "確認済み"}
-                onClick={() =>
-                  set(q.label, answers[q.label] === "確認済み" ? "" : "確認済み")
-                }
-              />
-            </div>
-          )}
-
-          {q.field_type === "multi" && (
-            <div className="flex gap-2 flex-wrap">
-              {(q.options ?? "").split(",").filter(Boolean).map((o) => (
-                <FormChip
-                  key={o}
-                  label={o}
-                  selected={(answers[q.label] ?? "").split(",").includes(o)}
-                  onClick={() => toggleMulti(q.label, o)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      <CounselingFields questions={questions} answers={answers} onChange={set} />
 
       {error && (
         <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2">{error}</p>
@@ -148,33 +61,5 @@ export function CounselingForm({
         {pending ? "送信中…" : "この内容で送信する"}
       </button>
     </div>
-  );
-}
-
-function FormChip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`min-h-11 px-4 rounded-full border text-sm transition-colors ${
-        selected
-          ? "border-gold bg-gold-soft text-gold-dk font-semibold shadow-[inset_0_0_0_1px_var(--noble-gold)]"
-          : "border-hairline bg-surface text-ink"
-      }`}
-    >
-      {selected && (
-        <span className="mr-1 text-[9px] text-gold" aria-hidden>◆</span>
-      )}
-      {label}
-    </button>
   );
 }

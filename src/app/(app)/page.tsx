@@ -30,6 +30,20 @@ export default function TodayBoardPage() {
   const [date, setDate] = useState(todayJST());
   const [visits, setVisits] = useState<BoardVisit[] | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [intakeCount, setIntakeCount] = useState(0);
+
+  // 新着カウンセリング（LINE等からの未紐付け受付）の件数
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("counseling_sheets")
+        .select("id", { count: "exact", head: true })
+        .is("customer_id", null)
+        .eq("status", "submitted");
+      setIntakeCount(count ?? 0);
+    })();
+  }, []);
 
   const load = useCallback(async () => {
     setVisits(null);
@@ -74,6 +88,23 @@ export default function TodayBoardPage() {
 
   return (
     <div className="space-y-5 fade-in">
+      {/* 新着カウンセリング受付バナー */}
+      {intakeCount > 0 && (
+        <Link href="/intake">
+          <Card className="p-4 flex items-center justify-between gap-3 border-gold/60 hover:shadow-[var(--shadow-card-hover)] transition-shadow">
+            <div className="flex items-center gap-3">
+              <Badge color="warn">新着 {intakeCount}件</Badge>
+              <span className="text-sm text-ink font-semibold">
+                カウンセリングが届いています
+              </span>
+            </div>
+            <span className="text-gold-dk text-sm font-semibold shrink-0" aria-hidden>
+              受付を確認 ›
+            </span>
+          </Card>
+        </Link>
+      )}
+
       {/* 日付ナビゲーション */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>

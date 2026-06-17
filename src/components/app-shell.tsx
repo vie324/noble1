@@ -83,8 +83,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline text-sm text-muted">
+            <div className="flex items-center gap-1.5">
+              <Link
+                href="/help"
+                aria-label="ヘルプ"
+                title="使い方ガイド"
+                className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-full transition-colors ${
+                  pathname.startsWith("/help")
+                    ? "bg-gold-soft text-gold-dk"
+                    : "text-muted hover:text-ink hover:bg-gold-soft"
+                }`}
+              >
+                <IconHelp className="w-5 h-5" />
+              </Link>
+              <span className="hidden sm:inline text-sm text-muted ml-1">
                 {staffLabel(me)}
               </span>
               <button
@@ -225,6 +237,16 @@ function IconChart({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
       <path d="M3 3v17a1 1 0 0 0 1 1h17" />
       <path d="M7 14l4-4 3 3 5-6" />
+    </svg>
+  );
+}
+
+function IconHelp({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.2 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 2.5" strokeLinecap="round" />
+      <path d="M12 17h.01" strokeLinecap="round" />
     </svg>
   );
 }
