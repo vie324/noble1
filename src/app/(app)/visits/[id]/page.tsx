@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { CounselingAnswers } from "@/components/counseling-answers";
 import { useApp } from "@/lib/app-context";
 import {
   Badge,
@@ -314,16 +315,9 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
             </span>
           </button>
           {counselingOpen && (
-            <dl className="space-y-2 fade-in">
-              {Object.entries(counseling.answers).map(([q, a]) => (
-                <div key={q}>
-                  <dt className="text-[11px] text-muted">{q}</dt>
-                  <dd className="text-sm text-ink whitespace-pre-wrap">
-                    {a === "確認済み" ? "確認済み（注意事項）" : a || "—"}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <div className="fade-in">
+              <CounselingAnswers answers={counseling.answers} />
+            </div>
           )}
         </Card>
       )}

@@ -42,6 +42,37 @@ export async function submitCounseling(
   }
 }
 
+// LINEリッチメニュー等の固定URL（/f/new）からの受付。
+// 送信時点では顧客台帳に紐付かず、スタッフが受信箱で確認・紐付けする。
+export async function submitIntake(payload: {
+  name: string;
+  kana: string;
+  phone: string;
+  storeId: number | null;
+  answers: Record<string, string>;
+}): Promise<{ ok: boolean; message?: string }> {
+  try {
+    if (!payload.name.trim()) return { ok: false, message: "お名前を入力してください" };
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("counseling_sheets").insert({
+      customer_id: null,
+      status: "submitted",
+      answers: payload.answers,
+      submitted_at: new Date().toISOString(),
+      applicant_name: payload.name.trim(),
+      applicant_kana: payload.kana.trim() || null,
+      applicant_phone: payload.phone.trim() || null,
+      store_id: payload.storeId,
+    });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "送信に失敗しました。時間をおいてお試しください" };
+  }
+}
+
 export async function signConsent(
   token: string,
   signerName: string,
