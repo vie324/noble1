@@ -5,6 +5,7 @@ import { MENU_CONSENT_TAGS, type ConsentTemplate } from "@/lib/types";
 import type { ConsentSignature } from "@/app/f/actions";
 
 // 回答（希望メニュー）から、署名が必要な同意書テンプレートを抽出
+//   menu_tag='all' は希望メニューに関わらず常に提示（統合同意書）
 export function matchedConsentTemplates(
   answers: Record<string, string>,
   templates: ConsentTemplate[]
@@ -16,7 +17,9 @@ export function matchedConsentTemplates(
       if (tag) tags.add(tag);
     }
   }
-  return templates.filter((t) => t.menu_tag && tags.has(t.menu_tag));
+  return templates.filter(
+    (t) => t.menu_tag === "all" || (!!t.menu_tag && tags.has(t.menu_tag))
+  );
 }
 
 // 署名パッド（canvas）。getDataUrl() で PNG dataURL を取得
