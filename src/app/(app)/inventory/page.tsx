@@ -33,6 +33,13 @@ interface UsageRow {
   visits: { store_id: number; scheduled_at: string; status: string } | null;
 }
 
+// カルテに手入力された実使用量の行
+interface ActualRow {
+  product_id: number;
+  amount: number;
+  visits: { store_id: number; scheduled_at: string } | null;
+}
+
 export default function InventoryPage() {
   const { isAdmin, storeFilter, storeName } = useApp();
   const supabase = useMemo(() => createClient(), []);
@@ -42,12 +49,13 @@ export default function InventoryPage() {
   const [entries, setEntries] = useState<StockEntry[]>([]);
   const [consumptions, setConsumptions] = useState<MenuConsumption[]>([]);
   const [usages, setUsages] = useState<UsageRow[]>([]);
+  const [actuals, setActuals] = useState<ActualRow[]>([]);
   const [counts, setCounts] = useState<StockCount[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
 
   const load = useCallback(async () => {
     setProducts(null);
-    const [p, e, c, u, sc, m] = await Promise.all([
+    const [p, e, c, u, a, sc, m] = await Promise.all([
       supabase.from("products").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("stock_entries").select("*").order("date", { ascending: false }),
       supabase.from("menu_consumptions").select("*"),
@@ -55,6 +63,9 @@ export default function InventoryPage() {
         .from("visit_menus")
         .select("menu_id, visits!inner (store_id, scheduled_at, status)")
         .eq("visits.status", "filled"),
+      supabase
+        .from("visit_consumptions")
+        .select("product_id, amount, visits!inner (store_id, scheduled_at)"),
       supabase.from("stock_counts").select("*").order("month", { ascending: false }),
       supabase.from("menus").select("*").eq("is_active", true).order("sort_order"),
     ]);
@@ -62,6 +73,7 @@ export default function InventoryPage() {
     setEntries((e.data as StockEntry[]) ?? []);
     setConsumptions((c.data as MenuConsumption[]) ?? []);
     setUsages((u.data as unknown as UsageRow[]) ?? []);
+    setActuals((a.data as unknown as ActualRow[]) ?? []);
     setCounts((sc.data as StockCount[]) ?? []);
     setMenus((m.data as Menu[]) ?? []);
   }, [supabase]);
@@ -70,10 +82,25 @@ export default function InventoryPage() {
     load();
   }, [load]);
 
-  // 理論消費量（商品別）: 記入済みカルテのメニュー回数 × 標準消費量
+  // 使用量（商品別）: カルテに手入力された実使用量を集計。
+  // 手入力が無い商品は メニュー標準消費量（参考値）にフォールバック
+  const hasActual = useCallback(
+    (productId: number) => actuals.some((a) => a.product_id === productId),
+    [actuals]
+  );
+
   const theoreticalUsed = useCallback(
     (productId: number, untilDate?: string) => {
       let total = 0;
+      if (hasActual(productId)) {
+        for (const a of actuals) {
+          if (a.product_id !== productId || !a.visits) continue;
+          if (storeFilter !== null && a.visits.store_id !== storeFilter) continue;
+          if (untilDate && a.visits.scheduled_at >= untilDate) continue;
+          total += Number(a.amount);
+        }
+        return total;
+      }
       for (const u of usages) {
         if (!u.visits) continue;
         if (storeFilter !== null && u.visits.store_id !== storeFilter) continue;
@@ -85,7 +112,7 @@ export default function InventoryPage() {
       }
       return total;
     },
-    [usages, consumptions, storeFilter]
+    [usages, actuals, consumptions, storeFilter, hasActual]
   );
 
   const entriesSum = useCallback(

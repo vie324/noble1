@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Button, Card, Chip, ListSkeleton, SectionTitle, TextField } from "@/components/ui";
@@ -34,6 +34,14 @@ export default function CalendarPage() {
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  // 日を選んだら詳細パネルへスムーズにスクロール（クリックでそのまま設定できる導線）
+  useEffect(() => {
+    if (selectedDate && detailRef.current) {
+      detailRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedDate]);
 
   const monthEnd = addMonths(month, 1);
 
@@ -145,17 +153,55 @@ export default function CalendarPage() {
 
       {/* 選択日の詳細＋予定追加 */}
       {selectedDate && (
-        <DayDetail
-          date={selectedDate}
-          shifts={shiftsFor(selectedDate)}
-          events={eventsFor(selectedDate)}
-          stores={stores}
-          isAdmin={isAdmin}
-          myAuthId={me.auth_user_id}
-          onChanged={load}
-        />
+        <div ref={detailRef}>
+          <DayDetail
+            key={selectedDate}
+            date={selectedDate}
+            shifts={shiftsFor(selectedDate)}
+            events={eventsFor(selectedDate)}
+            stores={stores}
+            isAdmin={isAdmin}
+            myAuthId={me.auth_user_id}
+            autoOpenAdd={
+              shiftsFor(selectedDate).length === 0 && eventsFor(selectedDate).length === 0
+            }
+            onChanged={load}
+          />
+        </div>
       )}
+
+      {/* Googleカレンダー連携（管理者） */}
+      {isAdmin && <GoogleSyncCard />}
     </div>
+  );
+}
+
+// Googleカレンダー購読（iCal）の案内
+function GoogleSyncCard() {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const url = `${origin}/api/ics?key=（設定したシークレット）`;
+  return (
+    <Card className="p-4 space-y-2">
+      <SectionTitle>Googleカレンダー連携</SectionTitle>
+      <p className="text-sm text-muted">
+        確定シフト・共有予定を Google カレンダーで購読できます（読み取り専用・自動更新）。
+      </p>
+      <ol className="text-sm text-ink list-decimal pl-5 space-y-1">
+        <li>
+          Vercel の環境変数 <code className="bg-base px-1 rounded">ICAL_FEED_SECRET</code>{" "}
+          に任意の文字列を設定して再デプロイ
+        </li>
+        <li>
+          Google カレンダー →「他のカレンダー」→「URL で追加」に次を貼り付け：
+          <span className="block mt-1 text-xs bg-base border border-hairline rounded-lg px-2 py-1.5 break-all tnum">
+            {url}
+          </span>
+        </li>
+      </ol>
+      <p className="text-[11px] text-muted">
+        ※ シフトを確定・変更すると、Google 側にも数時間以内に反映されます。
+      </p>
+    </Card>
   );
 }
 
@@ -233,6 +279,7 @@ function DayDetail({
   stores,
   isAdmin,
   myAuthId,
+  autoOpenAdd = false,
   onChanged,
 }: {
   date: string;
@@ -241,10 +288,11 @@ function DayDetail({
   stores: { id: number; name: string }[];
   isAdmin: boolean;
   myAuthId: string | null;
+  autoOpenAdd?: boolean;
   onChanged: () => Promise<void>;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(autoOpenAdd);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<EventType>("todo");
   const [storeId, setStoreId] = useState<number | null>(null);

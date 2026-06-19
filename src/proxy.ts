@@ -45,8 +45,10 @@ export async function proxy(request: NextRequest) {
   }
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
-  // /f/... はお客様向け公開フォーム（カウンセリング・同意書）。認証不要
-  const isPublicForm = request.nextUrl.pathname.startsWith("/f/");
+  // /f/... はお客様向け公開フォーム、/p/... はビフォーアフター公開ページ。認証不要
+  const isPublicForm =
+    request.nextUrl.pathname.startsWith("/f/") ||
+    request.nextUrl.pathname.startsWith("/p/");
 
   if (!user && !isLoginPage && !isPublicForm) {
     const url = request.nextUrl.clone();

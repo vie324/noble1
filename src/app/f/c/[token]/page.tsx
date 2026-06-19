@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CounselingForm } from "./counseling-form";
-import type { CounselingQuestion } from "@/lib/types";
+import type { ConsentTemplate, CounselingQuestion } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,11 @@ export default async function CounselingPage({
 
   let sheet: { id: number; status: string; customerName: string } | null = null;
   let questions: CounselingQuestion[] = [];
+  let consentTemplates: ConsentTemplate[] = [];
 
   try {
     const supabase = createAdminClient();
-    const [{ data: s }, { data: q }] = await Promise.all([
+    const [{ data: s }, { data: q }, { data: ct }] = await Promise.all([
       supabase
         .from("counseling_sheets")
         .select("id, status, customers (name)")
@@ -28,12 +29,18 @@ export default async function CounselingPage({
         .select("*")
         .eq("is_active", true)
         .order("sort_order"),
+      supabase
+        .from("consent_templates")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order"),
     ]);
     if (s) {
       const customers = s.customers as unknown as { name: string } | null;
       sheet = { id: s.id, status: s.status, customerName: customers?.name ?? "" };
     }
     questions = (q as CounselingQuestion[]) ?? [];
+    consentTemplates = (ct as ConsentTemplate[]) ?? [];
   } catch (e) {
     console.error(e);
   }
@@ -70,7 +77,12 @@ export default async function CounselingPage({
           {sheet.customerName} 様 ・ ご来店前にご記入をお願いいたします
         </p>
       </div>
-      <CounselingForm token={token} questions={questions} />
+      <CounselingForm
+        token={token}
+        questions={questions}
+        defaultName={sheet.customerName}
+        consentTemplates={consentTemplates}
+      />
     </div>
   );
 }

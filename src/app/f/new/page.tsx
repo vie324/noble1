@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { IntakeForm } from "./intake-form";
-import type { CounselingQuestion, Store } from "@/lib/types";
+import type { ConsentTemplate, CounselingQuestion, Store } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function IntakePage() {
   let questions: CounselingQuestion[] = [];
   let stores: Store[] = [];
+  let consentTemplates: ConsentTemplate[] = [];
 
   try {
     const supabase = createAdminClient();
-    const [{ data: q }, { data: s }] = await Promise.all([
+    const [{ data: q }, { data: s }, { data: ct }] = await Promise.all([
       supabase
         .from("counseling_questions")
         .select("*")
@@ -22,9 +23,15 @@ export default async function IntakePage() {
         .select("*")
         .eq("is_active", true)
         .order("sort_order"),
+      supabase
+        .from("consent_templates")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order"),
     ]);
     questions = (q as CounselingQuestion[]) ?? [];
     stores = (s as Store[]) ?? [];
+    consentTemplates = (ct as ConsentTemplate[]) ?? [];
   } catch (e) {
     console.error(e);
   }
@@ -37,7 +44,7 @@ export default async function IntakePage() {
           ご来店前にご記入いただくと、当日スムーズにご案内できます
         </p>
       </div>
-      <IntakeForm questions={questions} stores={stores} />
+      <IntakeForm questions={questions} stores={stores} consentTemplates={consentTemplates} />
     </div>
   );
 }

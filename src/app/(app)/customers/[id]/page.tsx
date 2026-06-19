@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { FlagBadges } from "@/components/flags";
 import { CustomerDocuments } from "@/components/customer-documents";
+import { CustomerGallery } from "@/components/customer-gallery";
 import {
   addDays,
   dateSlash,
@@ -179,6 +180,9 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
         lineChatUrl={customer.line_chat_url}
         primaryStoreId={customer.primary_store_id}
       />
+
+      {/* ビフォーアフター（お客様共有用） */}
+      <CustomerGallery customerId={customerId} lineChatUrl={customer.line_chat_url} />
 
       {/* 来店履歴タイムライン */}
       <Card className="p-4 space-y-3">
