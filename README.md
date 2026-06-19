@@ -69,6 +69,8 @@ pnpm dev                     # http://localhost:3000
 | `/documents/[id]/print` | 署名済み同意書の表示・印刷（ブラウザ印刷でPDF保存可） | 全員 |
 | `/f/new` | **お客様向けカウンセリング受付フォーム（固定URL・LINEリッチメニューの遷移先）** | 認証不要 |
 | `/f/c/[token]` `/f/s/[token]` | **お客様向け公開フォーム**（個別カウンセリング／同意書の電子署名。LINEでリンクを送付） | 認証不要（トークンURL） |
+| `/p/[token]` | **ビフォーアフター公開ページ**（お客様共有用。顧客ページから作成・LINE送付） | 認証不要（トークンURL） |
+| `/api/ics?key=…` | Googleカレンダー購読用 iCal フィード（`ICAL_FEED_SECRET` で保護） | シークレットURL |
 
 > 公開フォームはサーバー側で service role を使って読み書きします。
 > `.env.local` に `SUPABASE_SERVICE_ROLE_KEY` の設定が必要です。

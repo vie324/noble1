@@ -26,9 +26,11 @@ import type {
   CustomerNote,
   CustomerTicket,
   Menu,
+  Product,
   Staff,
   TicketUsage,
   Visit,
+  VisitConsumption,
 } from "@/lib/types";
 
 interface VisitDetail extends Visit {
@@ -59,6 +61,10 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
   const [staffId, setStaffId] = useState<number | null>(null);
   const [memo, setMemo] = useState("");
   const [importantMemo, setImportantMemo] = useState("");
+
+  // 使用量（商品ごとの g 等）。amounts は { productId: "数量文字列" }
+  const [products, setProducts] = useState<Product[]>([]);
+  const [amounts, setAmounts] = useState<Record<number, string>>({});
 
   // 回数券
   const [tickets, setTickets] = useState<CustomerTicket[]>([]);
@@ -109,6 +115,17 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
         setNotFound(true);
         return;
       }
+
+      // 商品マスタ＋このカルテの使用量
+      const [{ data: pr }, { data: vc }] = await Promise.all([
+        supabase.from("products").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("visit_consumptions").select("*").eq("visit_id", visitId),
+      ]);
+      setProducts((pr as Product[]) ?? []);
+      const amts: Record<number, string> = {};
+      for (const c of (vc as VisitConsumption[]) ?? []) amts[c.product_id] = String(c.amount);
+      setAmounts(amts);
+
       const detail = v as unknown as VisitDetail;
       setVisit(detail);
       setMenus((m as Menu[]) ?? []);
@@ -229,6 +246,16 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
           .from("visit_body_parts")
           .insert(partIds.map((body_part_id) => ({ visit_id: visitId, body_part_id })));
         if (e2) throw e2;
+      }
+
+      // 使用量も洗い替え（0・空は保存しない）
+      await supabase.from("visit_consumptions").delete().eq("visit_id", visitId);
+      const consRows = Object.entries(amounts)
+        .map(([pid, v]) => ({ visit_id: visitId, product_id: Number(pid), amount: Number(v) }))
+        .filter((r) => r.amount > 0);
+      if (consRows.length > 0) {
+        const { error: e3 } = await supabase.from("visit_consumptions").insert(consRows);
+        if (e3) throw e3;
       }
 
       router.push("/");
@@ -377,6 +404,34 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
           ))}
         </div>
       </Card>
+
+      {/* 使用量（g等） */}
+      {products.length > 0 && (
+        <Card className="p-4 space-y-3">
+          <SectionTitle>使用量</SectionTitle>
+          <p className="text-[11px] text-muted">
+            今回の施術で使用した量を入力してください（在庫・月次集計に反映されます）
+          </p>
+          <div className="space-y-2">
+            {products.map((p) => (
+              <div key={p.id} className="flex items-center gap-3">
+                <span className="flex-1 text-sm text-ink">{p.name}</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  min={0}
+                  value={amounts[p.id] ?? ""}
+                  placeholder="0"
+                  onChange={(e) => setAmounts({ ...amounts, [p.id]: e.target.value })}
+                  className="w-24 min-h-11 rounded-lg border border-hairline bg-surface px-2 text-right text-base text-ink outline-none focus:border-gold tnum"
+                />
+                <span className="w-8 text-sm text-muted">{p.unit}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* 回数券の利用 */}
       <Card className="p-4 space-y-3">

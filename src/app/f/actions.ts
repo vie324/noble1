@@ -1,6 +1,64 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export interface ConsentSignature {
+  templateId: number;
+  signerName: string;
+  signatureDataUrl: string;
+}
+
+// 署名済み同意書を作成（カウンセリングシートに紐付け）。テンプレ本文はサーバー側で取得・固定
+async function saveSignedConsents(
+  supabase: SupabaseClient,
+  args: { sheetId: number; customerId: number | null; consents: ConsentSignature[] }
+): Promise<void> {
+  for (const c of args.consents) {
+    if (!c.signatureDataUrl.startsWith("data:image/png;base64,")) continue;
+    const { data: tpl } = await supabase
+      .from("consent_templates")
+      .select("id, title, body")
+      .eq("id", c.templateId)
+      .maybeSingle();
+    if (!tpl) continue;
+
+    const { data: doc, error: insErr } = await supabase
+      .from("consent_documents")
+      .insert({
+        customer_id: args.customerId,
+        counseling_sheet_id: args.sheetId,
+        template_id: tpl.id,
+        title: tpl.title,
+        body_snapshot: tpl.body,
+        status: "pending",
+      })
+      .select("id, token")
+      .single();
+    if (insErr || !doc) continue;
+
+    const bytes = Buffer.from(
+      c.signatureDataUrl.replace("data:image/png;base64,", ""),
+      "base64"
+    );
+    if (bytes.byteLength > 1024 * 1024) continue;
+    const path = `consent/${doc.id}-${doc.token}.png`;
+    const { error: upErr } = await supabase.storage
+      .from("documents")
+      .upload(path, bytes, { contentType: "image/png", upsert: true });
+    if (upErr) continue;
+
+    await supabase
+      .from("consent_documents")
+      .update({
+        status: "signed",
+        signer_name: c.signerName.trim() || null,
+        signature_path: path,
+        signed_at: new Date().toISOString(),
+      })
+      .eq("id", doc.id);
+  }
+}
 
 // ============================================================
 // お客様向け公開フォームのサーバーアクション
@@ -66,6 +124,88 @@ export async function submitIntake(payload: {
       store_id: payload.storeId,
     });
     if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "送信に失敗しました。時間をおいてお試しください" };
+  }
+}
+
+// 受付（/f/new）: カウンセリング＋同意書署名を一括保存
+export async function submitIntakeWithConsents(
+  payload: {
+    name: string;
+    kana: string;
+    phone: string;
+    storeId: number | null;
+    answers: Record<string, string>;
+  },
+  consents: ConsentSignature[]
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    if (!payload.name.trim()) return { ok: false, message: "お名前を入力してください" };
+    const supabase = createAdminClient();
+    const { data: sheet, error } = await supabase
+      .from("counseling_sheets")
+      .insert({
+        customer_id: null,
+        status: "submitted",
+        answers: payload.answers,
+        submitted_at: new Date().toISOString(),
+        applicant_name: payload.name.trim(),
+        applicant_kana: payload.kana.trim() || null,
+        applicant_phone: payload.phone.trim() || null,
+        store_id: payload.storeId,
+      })
+      .select("id")
+      .single();
+    if (error || !sheet) throw error;
+
+    if (consents.length > 0) {
+      await saveSignedConsents(supabase, {
+        sheetId: sheet.id,
+        customerId: null,
+        consents,
+      });
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "送信に失敗しました。時間をおいてお試しください" };
+  }
+}
+
+// トークン発行フロー（/f/c/[token]）: カウンセリング＋同意書署名を一括保存
+export async function submitCounselingWithConsents(
+  token: string,
+  answers: Record<string, string>,
+  consents: ConsentSignature[]
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const supabase = createAdminClient();
+    const { data: sheet } = await supabase
+      .from("counseling_sheets")
+      .select("id, status, customer_id")
+      .eq("token", token)
+      .maybeSingle();
+    if (!sheet) return { ok: false, message: "フォームが見つかりません" };
+    if (sheet.status === "submitted")
+      return { ok: false, message: "このフォームは送信済みです" };
+
+    const { error } = await supabase
+      .from("counseling_sheets")
+      .update({ answers, status: "submitted", submitted_at: new Date().toISOString() })
+      .eq("id", sheet.id)
+      .eq("status", "pending");
+    if (error) throw error;
+
+    if (consents.length > 0) {
+      await saveSignedConsents(supabase, {
+        sheetId: sheet.id,
+        customerId: sheet.customer_id ?? null,
+        consents,
+      });
+    }
     return { ok: true };
   } catch (e) {
     console.error(e);

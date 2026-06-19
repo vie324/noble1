@@ -95,3 +95,9 @@ from (values
 where not exists (
   select 1 from public.consent_templates t where t.title = v.title
 );
+
+-- 希望メニュー → 同意書テンプレートの紐付けタグ（再実行で既存分にも反映）
+update public.consent_templates set menu_tag = 'peeling_with'    where title = 'ハーブピーリング（剥離あり）施術同意書';
+update public.consent_templates set menu_tag = 'peeling_without' where title = 'ハーブピーリング（剥離なし）施術同意書';
+update public.consent_templates set menu_tag = 'yomogi'          where title = 'よもぎ蒸し利用同意書';
+update public.consent_templates set menu_tag = 'hydra'           where title = 'ハイドラフェイシャル施術同意書';

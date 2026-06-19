@@ -249,13 +249,15 @@ export interface ConsentTemplate {
   id: number;
   title: string;
   body: string;
+  menu_tag: string | null; // 希望メニューとの紐付け（peeling_with 等）
   sort_order: number;
   is_active: boolean;
 }
 
 export interface ConsentDocument {
   id: number;
-  customer_id: number;
+  customer_id: number | null;
+  counseling_sheet_id: number | null;
   template_id: number | null;
   token: string;
   title: string;
@@ -265,6 +267,40 @@ export interface ConsentDocument {
   signature_path: string | null;
   signed_at: string | null;
   created_at: string;
+}
+
+// 希望メニューの選択肢 → 同意書テンプレートの menu_tag
+export const MENU_CONSENT_TAGS: Record<string, string> = {
+  "ハーブピーリング（剥離あり）": "peeling_with",
+  "ハーブピーリング（剥離なし）": "peeling_without",
+  よもぎ蒸し: "yomogi",
+  ハイドラフェイシャル: "hydra",
+};
+
+export interface GalleryPage {
+  id: number;
+  customer_id: number | null;
+  token: string;
+  title: string;
+  message: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface GalleryPhoto {
+  id: number;
+  gallery_id: number;
+  storage_path: string;
+  kind: "before" | "after";
+  caption: string | null;
+  sort_order: number;
+}
+
+export interface VisitConsumption {
+  id: number;
+  visit_id: number;
+  product_id: number;
+  amount: number;
 }
 
 export const BOARD_CATEGORIES = [

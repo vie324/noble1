@@ -3,14 +3,11 @@
 --
 -- 新規の Supabase プロジェクトで、SQL Editor にこのファイル全体を
 -- 貼り付けて1回実行するだけで、以下がすべて作成されます:
---   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜016）
---   ・カウンセリング項目・同意書テンプレート
---     （ハーブピーリング剥離あり/なし・よもぎ蒸し・ハイドラフェイシャル）
+--   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜020）
+--   ・カウンセリング項目・同意書テンプレート（メニュー紐付け含む）
+--   ・施術部位15種（剥離ありハーブピーリング対応）
 --   ・店舗3件（新宿店・新宿南口店・恵比寿店）
---   ・オーナーアカウント marin（管理者）
---       メール:     marin@noble.example.com
---       パスワード: noble-marin-2026
---       （変更したい場合は setup-production 部分の v_email / v_password を編集）
+--   ・オーナーアカウント marin（管理者 / marin@noble.example.com）
 --
 -- ※ 空のプロジェクト専用です。すでにテーブルがある場合は実行しないで
 --    ください（その場合は supabase/migrations/ を個別に適用）。
@@ -1396,6 +1393,167 @@ create index if not exists idx_counseling_sheets_pending
   on public.counseling_sheets (submitted_at desc)
   where customer_id is null and status = 'submitted';
 
+-- ████████ 017_consent_chain.sql ████████
+
+-- ============================================================
+-- 017_consent_chain.sql : カウンセリング → 同意書署名 の連結対応
+--   ・公開フロー（顧客台帳に未紐付け）でも同意書を発行・署名できるよう
+--     consent_documents.customer_id を nullable にし、counseling_sheet_id を追加
+--   ・希望メニューと同意書テンプレートを結びつける menu_tag を追加
+--
+-- ロールバック手順:
+--   alter table public.consent_documents drop column if exists counseling_sheet_id;
+--   alter table public.consent_templates drop column if exists menu_tag;
+--   -- customer_id を NOT NULL に戻す場合（紐付け済みであること）:
+--   -- alter table public.consent_documents alter column customer_id set not null;
+-- ============================================================
+
+alter table public.consent_documents alter column customer_id drop not null;
+
+alter table public.consent_documents
+  add column if not exists counseling_sheet_id bigint references public.counseling_sheets (id) on delete set null;
+
+create index if not exists idx_consent_documents_sheet
+  on public.consent_documents (counseling_sheet_id);
+
+-- 希望メニュー → テンプレート紐付け用タグ
+--   peeling_with / peeling_without / yomogi / hydra
+alter table public.consent_templates
+  add column if not exists menu_tag text;
+
+-- ████████ 018_gallery.sql ████████
+
+-- ============================================================
+-- 018_gallery.sql : お客様にお見せするビフォーアフターページ
+--   スタッフが選んだ写真で公開ページ（トークンURL）を作成し、
+--   LINE等でお客様に共有する。公開ページは service role + 署名URLで配信。
+--
+-- ロールバック手順:
+--   drop table if exists public.gallery_photos cascade;
+--   drop table if exists public.gallery_pages cascade;
+-- ============================================================
+
+create table public.gallery_pages (
+  id           bigint generated always as identity primary key,
+  customer_id  bigint references public.customers (id) on delete set null,
+  token        uuid not null unique default gen_random_uuid(),
+  title        text not null default 'Before / After',
+  message      text,                        -- お客様へのひとことメッセージ
+  is_active    boolean not null default true,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  created_by   uuid default auth.uid(),
+  updated_by   uuid default auth.uid()
+);
+
+create trigger trg_gallery_pages_audit before update on public.gallery_pages
+  for each row execute function public.set_audit_fields();
+
+create index idx_gallery_pages_customer on public.gallery_pages (customer_id);
+
+-- ページに載せる写真（visit_photos の storage_path をコピー保持）
+create table public.gallery_photos (
+  id            bigint generated always as identity primary key,
+  gallery_id    bigint not null references public.gallery_pages (id) on delete cascade,
+  storage_path  text not null,             -- visit-photos バケットのパス
+  kind          text not null check (kind in ('before', 'after')),
+  caption       text,
+  sort_order    int not null default 0,
+  created_at    timestamptz not null default now(),
+  created_by    uuid default auth.uid()
+);
+
+create index idx_gallery_photos_gallery on public.gallery_photos (gallery_id, sort_order);
+
+-- RLS: 作成・編集はスタッフ。公開ページは service role 経由で読むため anon ポリシーは作らない
+alter table public.gallery_pages enable row level security;
+create policy gallery_pages_staff on public.gallery_pages for all
+  using (public.is_active_staff()) with check (public.is_active_staff());
+
+alter table public.gallery_photos enable row level security;
+create policy gallery_photos_staff on public.gallery_photos for all
+  using (public.is_active_staff()) with check (public.is_active_staff());
+
+-- ████████ 019_visit_consumptions.sql ████████
+
+-- ============================================================
+-- 019_visit_consumptions.sql : カルテごとの実使用量（g等）記録
+--   施術ごとに使用した商品と使用量をスタッフが入力する。
+--   在庫の理論在庫計算や月次集計に利用する。
+--
+-- ロールバック手順:
+--   drop table if exists public.visit_consumptions cascade;
+-- ============================================================
+
+create table public.visit_consumptions (
+  id           bigint generated always as identity primary key,
+  visit_id     bigint not null references public.visits (id) on delete cascade,
+  product_id   bigint not null references public.products (id),
+  amount       numeric(10,2) not null check (amount >= 0),  -- 単位は product.unit（g等）
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  created_by   uuid default auth.uid(),
+  updated_by   uuid default auth.uid(),
+  unique (visit_id, product_id)
+);
+
+create trigger trg_visit_consumptions_audit before update on public.visit_consumptions
+  for each row execute function public.set_audit_fields();
+
+create index idx_visit_consumptions_visit on public.visit_consumptions (visit_id);
+create index idx_visit_consumptions_product on public.visit_consumptions (product_id);
+
+-- RLS: スタッフが入力（カルテ同様）
+alter table public.visit_consumptions enable row level security;
+create policy visit_consumptions_staff on public.visit_consumptions for all
+  using (public.is_active_staff()) with check (public.is_active_staff());
+
+-- ████████ 020_body_parts.sql ████████
+
+-- ============================================================
+-- 020_body_parts.sql : 施術部位マスタを15部位に更新（剥離ありハーブピーリング対応）
+--   顔／顔顎下／顔首／背中上／背中下／背中全体／二の腕／前腕／
+--   デコルテ／おしり／お腹／膝上表／膝上裏／膝下表／膝下裏
+--
+-- 既存の visit_body_parts（カルテの部位記録）を壊さないため、削除はせず
+-- 一覧にない部位を is_active=false にし、15部位を有効化・並べ替える。
+--
+-- ロールバック手順:
+--   （旧マスタへ戻す場合は手動で is_active と sort_order を調整してください）
+-- ============================================================
+
+-- 15部位を投入（同名があればスキップ）
+insert into public.body_parts (name, sort_order)
+select v.name, v.ord
+from (values
+  ('顔', 1), ('顔顎下', 2), ('顔首', 3),
+  ('背中上', 4), ('背中下', 5), ('背中全体', 6),
+  ('二の腕', 7), ('前腕', 8), ('デコルテ', 9),
+  ('おしり', 10), ('お腹', 11),
+  ('膝上表', 12), ('膝上裏', 13), ('膝下表', 14), ('膝下裏', 15)
+) as v(name, ord)
+where not exists (select 1 from public.body_parts b where b.name = v.name);
+
+-- 15部位を有効化＋並び順を更新
+update public.body_parts b
+set is_active = true, sort_order = v.ord, updated_at = now()
+from (values
+  ('顔', 1), ('顔顎下', 2), ('顔首', 3),
+  ('背中上', 4), ('背中下', 5), ('背中全体', 6),
+  ('二の腕', 7), ('前腕', 8), ('デコルテ', 9),
+  ('おしり', 10), ('お腹', 11),
+  ('膝上表', 12), ('膝上裏', 13), ('膝下表', 14), ('膝下裏', 15)
+) as v(name, ord)
+where b.name = v.name;
+
+-- 一覧にない旧部位（背中上部・腕・脚 など）は非表示に
+update public.body_parts
+set is_active = false, updated_at = now()
+where name not in (
+  '顔','顔顎下','顔首','背中上','背中下','背中全体','二の腕','前腕',
+  'デコルテ','おしり','お腹','膝上表','膝上裏','膝下表','膝下裏'
+);
+
 -- ████████ counseling-seed.sql ████████
 
 -- ============================================================
@@ -1495,6 +1653,12 @@ from (values
 where not exists (
   select 1 from public.consent_templates t where t.title = v.title
 );
+
+-- 希望メニュー → 同意書テンプレートの紐付けタグ（再実行で既存分にも反映）
+update public.consent_templates set menu_tag = 'peeling_with'    where title = 'ハーブピーリング（剥離あり）施術同意書';
+update public.consent_templates set menu_tag = 'peeling_without' where title = 'ハーブピーリング（剥離なし）施術同意書';
+update public.consent_templates set menu_tag = 'yomogi'          where title = 'よもぎ蒸し利用同意書';
+update public.consent_templates set menu_tag = 'hydra'           where title = 'ハイドラフェイシャル施術同意書';
 
 -- ████████ setup-production.sql ████████
 
