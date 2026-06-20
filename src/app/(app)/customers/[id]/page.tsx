@@ -17,6 +17,7 @@ import {
 import { FlagBadges } from "@/components/flags";
 import { CustomerDocuments } from "@/components/customer-documents";
 import { CustomerGallery } from "@/components/customer-gallery";
+import { CustomerLine } from "@/components/customer-line";
 import {
   addDays,
   dateSlash,
@@ -183,6 +184,9 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
 
       {/* ビフォーアフター（お客様共有用） */}
       <CustomerGallery customerId={customerId} lineChatUrl={customer.line_chat_url} />
+
+      {/* LINE送信（店舗公式アカウント・Messaging API） */}
+      <CustomerLine customerId={customerId} primaryStoreId={customer.primary_store_id} />
 
       {/* 来店履歴タイムライン */}
       <Card className="p-4 space-y-3">
