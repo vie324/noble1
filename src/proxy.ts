@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 静的アセットを除く全ルート
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // 静的アセット・API（Webhook/iCalフィードは独自に認証）を除く全ルート
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
