@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Card, SectionTitle, TextArea } from "@/components/ui";
 import {
   linkLineFriend,
+  sendLineGallery,
   sendLineLink,
   sendLineText,
 } from "@/app/(app)/customers/line-actions";
@@ -108,29 +109,12 @@ export function CustomerLine({
     setBusy(false);
   }
 
-  // 最新のビフォーアフターページをLINEで送る
+  // 最新のビフォーアフターを「カード（Flex）」としてLINEに送信
   async function sendGallery() {
     if (!friend) return;
     setBusy(true);
     setMessage(null);
-    const { data } = await supabase
-      .from("gallery_pages")
-      .select("token")
-      .eq("customer_id", customerId)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!data) {
-      setMessage("先に「ビフォーアフター」を作成してください");
-      setBusy(false);
-      return;
-    }
-    const res = await sendLineLink(
-      friend.id,
-      "施術のビフォーアフターです。ご覧ください。",
-      `${origin}/p/${data.token}`
-    );
+    const res = await sendLineGallery(friend.id, customerId);
     setMessage(res.ok ? "ビフォーアフターを送信しました" : res.message ?? "送信に失敗しました");
     setBusy(false);
   }
