@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import {
@@ -573,6 +574,7 @@ function BasicInfoSection({
   onChanged: () => Promise<void>;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
@@ -583,6 +585,26 @@ function BasicInfoSection({
     booking_memo: customer.booking_memo ?? "",
   });
   const [busy, setBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function remove() {
+    if (
+      !window.confirm(
+        `「${customer.name} 様」を削除します。\nこのお客様のカルテ・回数券・申し送り・写真などの記録もすべて削除され、元に戻せません。\n本当に削除しますか？`
+      )
+    )
+      return;
+    setBusy(true);
+    setDeleteError(null);
+    const { error } = await supabase.from("customers").delete().eq("id", customer.id);
+    if (error) {
+      setDeleteError("削除に失敗しました（管理者権限が必要です）");
+      setBusy(false);
+      return;
+    }
+    router.push("/customers");
+    router.refresh();
+  }
 
   async function save() {
     setBusy(true);
@@ -671,8 +693,23 @@ function BasicInfoSection({
           <InfoRow label="予約メモ" value={customer.booking_memo || "—"} />
         </dl>
       )}
-      {!isAdmin && (
-        <p className="text-xs text-muted">※ お客様情報の削除は管理者のみ行えます</p>
+      {/* 削除（管理者のみ） */}
+      {isAdmin ? (
+        <div className="pt-2 border-t border-hairline">
+          {deleteError && (
+            <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2 mb-2">
+              {deleteError}
+            </p>
+          )}
+          <Button variant="danger" disabled={busy} onClick={remove}>
+            このお客様を削除
+          </Button>
+          <p className="text-xs text-muted mt-2">
+            ※ カルテ・回数券・申し送り・写真も含めてすべて削除されます（元に戻せません）。
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">※ お客様の削除は管理者のみ行えます（編集は可能です）</p>
       )}
     </Card>
   );
