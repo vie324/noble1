@@ -37,15 +37,11 @@ export function verifyLineSignature(channelSecret: string, rawBody: string, sign
   }
 }
 
-type LineMessage =
-  | { type: "text"; text: string }
-  | { type: string; [k: string]: unknown };
-
-// push（特定ユーザーへ送信）。成功時 true
+// push（特定ユーザーへ送信）。messages は LINE のメッセージオブジェクト配列
 export async function linePush(
   token: string,
   to: string,
-  messages: LineMessage[]
+  messages: Record<string, unknown>[]
 ): Promise<{ ok: boolean; status: number; body?: string }> {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
     method: "POST",
