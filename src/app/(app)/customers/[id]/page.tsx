@@ -156,6 +156,16 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
+      {/* アレルギー等の注意事項（最上部・施術前に必ず目に入る位置） */}
+      {customer.allergy_note && (
+        <Card className="p-4 border-caution/40 bg-caution-soft">
+          <p className="text-sm font-semibold text-caution">
+            ⚠ アレルギー等の注意事項
+          </p>
+          <p className="text-sm text-ink mt-1 whitespace-pre-wrap">{customer.allergy_note}</p>
+        </Card>
+      )}
+
       {/* 注意フラグ・申し送り（最上部） */}
       <FlagAndNoteSection
         customerId={customerId}
@@ -248,6 +258,9 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
           </ul>
         )}
       </Card>
+
+      {/* お客様プロフィール（旧システムから取り込んだ情報） */}
+      <ProfileSection customer={customer} />
 
       {/* 基本情報の編集 */}
       <BasicInfoSection customer={customer} stores={stores} isAdmin={isAdmin} onChanged={load} />
@@ -676,6 +689,47 @@ function BasicInfoSection({
       )}
     </Card>
   );
+}
+
+/* ================= お客様プロフィール（取り込み情報） ================= */
+function ProfileSection({ customer }: { customer: Customer }) {
+  const rows: { label: string; value: string }[] = [];
+  if (customer.birthday) {
+    rows.push({ label: "生年月日", value: `${dateSlash(customer.birthday)}（${age(customer.birthday)}歳）` });
+  }
+  if (customer.gender) rows.push({ label: "性別", value: customer.gender });
+  if (customer.occupation) rows.push({ label: "ご職業", value: customer.occupation });
+  if (customer.address) {
+    const postal = customer.postal_code
+      ? `〒${customer.postal_code.replace(/^(\d{3})(\d{4})$/, "$1-$2")} `
+      : "";
+    rows.push({ label: "ご住所", value: postal + customer.address });
+  }
+  if (customer.acquisition_source) {
+    rows.push({ label: "来店動機", value: customer.acquisition_source.split(",").join("・") });
+  }
+  if (customer.karte_no) rows.push({ label: "旧カルテ番号", value: customer.karte_no });
+
+  if (rows.length === 0) return null;
+
+  return (
+    <Card className="p-4 space-y-3">
+      <SectionTitle>お客様情報</SectionTitle>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        {rows.map((r) => (
+          <InfoRow key={r.label} label={r.label} value={r.value} />
+        ))}
+      </dl>
+    </Card>
+  );
+}
+
+// 誕生日から満年齢（日本時間基準）
+function age(birthday: string): number {
+  const today = todayJST();
+  const [ty, tm, td] = today.split("-").map(Number);
+  const [by, bm, bd] = birthday.slice(0, 10).split("-").map(Number);
+  return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0);
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {

@@ -71,6 +71,17 @@ export interface Customer {
   booking_memo: string | null;
   first_visit_on: string | null;
   created_at: string;
+  // 旧システム（カルテくん）から取り込んだ項目。手入力の顧客では null
+  karte_no: string | null;
+  gender: "女性" | "男性" | "その他" | null;
+  birthday: string | null;
+  occupation: string | null;
+  postal_code: string | null;
+  address: string | null;
+  allergy_note: string | null;
+  acquisition_source: string | null; // 来店動機（カンマ区切り）
+  last_visit_at: string | null;
+  imported_at: string | null;
 }
 
 export interface CustomerFlag {
@@ -101,6 +112,8 @@ export interface Visit {
   memo: string | null;
   important_memo: string | null;
   filled_at: string | null;
+  nominated: boolean;
+  karte_visit_no?: string | null; // 旧システムの来店記録番号（取り込み分のみ）
 }
 
 export interface VisitPhoto {

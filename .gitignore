@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 旧システムから取り込む顧客データ（個人情報のためコミットしない）
+# scripts/karutekun-csv-to-sql.mjs の出力先
+/supabase/import/
