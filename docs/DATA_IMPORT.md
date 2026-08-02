@@ -16,22 +16,47 @@
 
 ---
 
-## 事前準備（1回だけ）
+## 方法A：データ入りの SQL を実行するだけ（おすすめ）
 
-`supabase/migrations/023_karutekun_import.sql` を Supabase の SQL Editor で実行します。
-これで次のものが作られます。
+CSV のアップロードも Node.js も不要です。**SQL を実行するだけ**で取り込みが終わります。
 
-- 取込テーブル `import_karte` / `import_visits` / `import_visit_items`
-  （列名は CSV のヘッダーと**完全に同じ**なので、そのまま流し込めます）
-- 施術名 → メニュー・部位の対応表 `import_menu_map`
-- 変換関数 `public.import_karutekun()`
-- 顧客・カルテの追加項目（生年月日・住所・アレルギー・指名 など）
+`scripts/karutekun-csv-to-sql.mjs` が、CSV の中身を INSERT 文として埋め込んだ SQL を
+出力します。この SQL には `023_karutekun_import.sql`（テーブル作成・変換関数）も
+丸ごと同梱されるため、**事前準備は要りません**。
+
+```bash
+node scripts/karutekun-csv-to-sql.mjs <CSVを置いたフォルダ> supabase/import
+```
+
+出力（`supabase/import/`）:
+
+| ファイル | 用途 |
+|---|---|
+| `import_all.sql` | 全部入りの1ファイル。psql が使えるならこれ1回で終わり |
+| `split/01_setup.sql` 〜 `99_run_import.sql` | SQL Editor に貼れる大きさ（1ファイル 600KB 以下）に分割したもの |
+| `README.md` | 実行順の一覧 |
+
+### psql が使えるとき
+
+```bash
+# 接続文字列は Supabase → Project Settings → Database → Connection string (URI)
+psql "<接続文字列>" -v ON_ERROR_STOP=1 -f supabase/import/import_all.sql
+```
+
+### SQL Editor に貼るとき
+
+`split/` の中を**番号順に**開き、中身を全選択して SQL Editor に貼り、1ファイルずつ
+Run します（実データで19ファイル）。最後の `99_run_import.sql` が処理件数の表を
+返せば完了です。
+
+> **出力には個人情報が含まれます。** `supabase/import/` は `.gitignore` 済みです。
+> コミットや共有はしないでください。
 
 ---
 
-## 取り込み（方法は2つ。どちらか一方でOK）
+## 方法B：CSV をそのままアップロード
 
-### 方法A：CSV をそのままアップロード（おすすめ・作業が一番少ない）
+`supabase/migrations/023_karutekun_import.sql` を SQL Editor で実行してから、
 
 1. Supabase の管理画面 → **Table Editor** → テーブル `import_karte` を開く
 2. 右上 **Insert → Import data from CSV** → `カルテデータ.csv` をアップロード
@@ -45,26 +70,8 @@
    select * from public.import_karutekun();
    ```
 
-### 方法B：CSV を SQL ファイルに変換して実行
-
-CSV を INSERT 文に変換します（Node.js が必要）。
-
-```bash
-node scripts/karutekun-csv-to-sql.mjs <CSVを置いたフォルダ> supabase/import
-```
-
-`supabase/import/` に番号付きの .sql が出力されるので、**番号順に**実行します。
-
-```bash
-# psql が使える場合（Supabase → Project Settings → Database の接続文字列）
-for f in supabase/import/*.sql; do
-  psql "<接続文字列>" -v ON_ERROR_STOP=1 -f "$f"
-done
-```
-
-psql が使えない場合は、生成された .sql を番号順に SQL Editor へ貼り付けて実行して
-ください（1ファイルが貼れるサイズに分割されています）。
-最後の `99_run_import.sql` が変換処理です。
+来店記録の CSV はメモが長く1ファイル4MB前後あるため、ブラウザからのアップロードが
+途中で止まることがあります。うまくいかないときは方法A に切り替えてください。
 
 ---
 
@@ -81,8 +88,9 @@ psql が使えない場合は、生成された .sql を番号順に SQL Editor 
  4. 来店記録      | 登録・更新                                     |     7056
  5. 施術メニュー  | カルテに紐付け                                 |     6422
  5. 施術部位      | カルテに紐付け                                 |     6061
- 6. 回数券        | コースを復元                                   |      569
- 6. 回数券消化    | 消化履歴を登録                                 |     1658
+ 6. 回数券        | コースを復元                                   |      560
+ 6. 回数券消化    | 消化履歴を登録                                 |     1649
+ 6. 回数券整理    | 前回取り込み分の不要な回数券を削除             |        0
  7. 初回/最終来店 | カルテ実データから再計算                       |     3239
  8. 集客媒体      | マスタを作成                                   |        8
  8. 媒体別新規    | 月次の新規数を登録                             |      373
@@ -147,7 +155,10 @@ values ('剥離ハーブピーリング（ふくらはぎ）', '剥離ハーブ�
 
 - 回数が **1回目に戻る／減る** ところを新しいコースの開始とみなします
 - 残回数 = 総回数 − 消化済み回数
-- 同じ来店で2回分消化しているケース（144件）もそのまま2回として記録します
+- 同じ来店で2回分消化しているケース（146件）もそのまま2回として記録します
+- 同じ来店に**同じ回数**の明細が2行ある場合（実データで9件。「回数券3回目（全3回）★終了」
+  が二重に記録されているなど）は1回として数えます。2行を別々に数えると、終わった
+  はずのコースがもう1本残っているように見えてしまうためです。
 
 ---
 
@@ -165,6 +176,37 @@ values ('剥離ハーブピーリング（ふくらはぎ）', '剥離ハーブ�
   取り込まれます（電話番号が重複しているのは30件）。統合したい場合は手作業でお願いします。
 - **再取り込みするとカルテのメモは CSV の内容で上書きされます。**
   取り込み後にアプリ側で追記した「📌重要事項」（`important_memo`）は上書きされません。
+
+---
+
+## うまくいかないとき
+
+### `ON CONFLICT DO UPDATE command cannot affect row a second time`
+
+取込テーブルに同じカルテ番号（または来店記録番号）が2行以上入っています。
+CSV のアップロードや SQL の貼り付けを**やり直したときに、前回の分が残ったまま
+二重に入る**のが原因です。
+
+現在の `import_karutekun()` は重複していても1行にまとめて処理するので、
+このエラーは出ません。以前のバージョンで取り込んだ場合は、
+`supabase/migrations/023_karutekun_import.sql` をもう一度実行して関数を更新して
+ください（何度実行しても安全です）。
+
+取込テーブルを空にしてやり直す場合:
+
+```sql
+truncate table public.import_karte, public.import_visits, public.import_visit_items;
+```
+
+### CSV のアップロードが途中で止まる
+
+来店記録の CSV はメモが長く1ファイル4MB前後あります。ブラウザからの取り込みが
+不安定なときは、**方法A**（データ入りの SQL を実行する）に切り替えてください。
+
+### `未知のサロン名です: ...`
+
+`stores` マスタに該当店舗がないか、CSV のサロン名が想定と違います。
+`023_karutekun_import.sql` の `_kk_store` の対応表を実際のサロン名に合わせてください。
 
 ---
 
