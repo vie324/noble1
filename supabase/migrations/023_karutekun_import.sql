@@ -503,10 +503,16 @@ begin
     nullif(btrim(k."来店動機"), ''),
     nullif(btrim(k."メモ"), ''),
     now()
-  from public.import_karte k
+  -- 取込テーブルに同じカルテ番号が2行以上あっても落ちないよう、
+  -- 先に1行へ絞る（CSVを二重に入れてしまったときの保険。最終更新が新しい方を採用）
+  from (
+    select distinct on (k2."カルテ番号") k2.*
+    from public.import_karte k2
+    where nullif(btrim(k2."カルテ番号"), '') is not null
+    order by k2."カルテ番号", public.kk_ts(k2."最終更新日時") desc nulls last
+  ) k
   join _kk_store st on st.salon = k."サロン名"
-  where nullif(btrim(k."カルテ番号"), '') is not null
-    and nullif(btrim(k."お客様名"), '') is not null
+  where nullif(btrim(k."お客様名"), '') is not null
   on conflict (karte_no) do update set
     name               = excluded.name,
     kana               = excluded.kana,
@@ -545,12 +551,17 @@ begin
          then coalesce(public.kk_ts(v."終了時刻"), public.kk_ts(v."開始時刻")) end,
     v."来店記録番号",
     coalesce(public.kk_int(v."指名フラグ"), 0) = 1
-  from public.import_visits v
+  -- 顧客と同様、同じ来店記録番号が2行以上あっても落ちないよう1行へ絞る
+  from (
+    select distinct on (v2."来店記録番号") v2.*
+    from public.import_visits v2
+    where nullif(btrim(v2."来店記録番号"), '') is not null
+    order by v2."来店記録番号", public.kk_ts(v2."最終更新日時") desc nulls last
+  ) v
   join _kk_store st on st.salon = v."サロン名"
   join public.customers c on c.karte_no = v."カルテ番号"
   left join _kk_staff sf on sf.norm = public.kk_norm(v."主担当")
-  where nullif(btrim(v."来店記録番号"), '') is not null
-    and public.kk_ts(v."開始時刻") is not null
+  where public.kk_ts(v."開始時刻") is not null
   on conflict (karte_visit_no) do update set
     customer_id  = excluded.customer_id,
     store_id     = excluded.store_id,
@@ -604,9 +615,15 @@ begin
         (regexp_match(i."小カテゴリ", '(\d+)\s*回コース'))[1]::int
       )                                                    as total,
       (i."名前" like '%よもぎ%' or i."小カテゴリ" like '%よもぎ%') as is_yomogi
-    from public.import_visit_items i
+    -- 同じ来店の同じ回数（例「回数券3回目（全5回）」）は1件だけ数える。
+    -- 二重に入れてしまった明細で残回数がずれるのを防ぐ。
+    from (
+      select distinct on (i2."来店記録番号", i2."名前") i2.*
+      from public.import_visit_items i2
+      where i2."名前" ~ '\d+\s*回目'
+      order by i2."来店記録番号", i2."名前", i2."小カテゴリ" nulls last
+    ) i
     join public.visits vi on vi.karte_visit_no = i."来店記録番号"
-    where i."名前" ~ '\d+\s*回目'
   ),
   ok as (
     select * from used where nth is not null and total between 1 and 100 and nth <= total
