@@ -186,12 +186,32 @@ export default function HelpPage() {
           お客様がLINEからカウンセリングに進めるよう、LINE公式アカウントのリッチメニューに
           リンクを設定します。一度設定すれば、以降はすべてのお客様が同じボタンから利用できます。
         </p>
-        <p className="font-semibold text-ink mt-3">設定するURL</p>
-        <div className="rounded-lg bg-base border border-hairline p-3 text-sm break-all">
-          <code>https://noble1.vercel.app/f/new</code>
+        <p className="font-semibold text-ink mt-3">設定するURL（ボタンごとに1つずつ）</p>
+        <div className="rounded-lg bg-base border border-hairline p-3 text-sm space-y-2">
+          <p>
+            <span className="text-xs font-semibold text-muted block">「ご予約」ボタン</span>
+            <code className="break-all">https://noble1.vercel.app/salons</code>
+          </p>
+          <p>
+            <span className="text-xs font-semibold text-muted block">「カウンセリング」ボタン</span>
+            <code className="break-all">https://noble1.vercel.app/f/new</code>
+          </p>
         </div>
         <p className="text-xs text-muted">
-          ※ 独自ドメインを設定している場合は、そのドメインの <code>/f/new</code> を指定してください。
+          ※ 独自ドメインを設定している場合は、そのドメインの <code>/salons</code> ・{" "}
+          <code>/f/new</code> を指定してください。
+        </p>
+        <p className="mt-2">
+          「ご予約」ボタンを押すと、
+          <Link href="/salons" target="_blank" className="text-gold-dk underline underline-offset-2">
+            店舗一覧・ご予約ページ
+          </Link>
+          が開きます。お客様がその場で店舗（新宿店 / 新宿南口店 / 恵比寿店）を選び、
+          地図・道案内・営業時間を確認してネット予約に進めます。掲載内容は{" "}
+          <Link href="/admin/stores" className="text-gold-dk underline underline-offset-2">
+            経営 &gt; 店舗紹介ページ
+          </Link>
+          で確認できます（管理者のみ）。
         </p>
         <p className="font-semibold text-ink mt-3">手順</p>
         <ol className="list-decimal pl-5 space-y-1.5">
@@ -212,11 +232,15 @@ export default function HelpPage() {
             タイトル・表示期間を設定し、テンプレートを選択（例：大きなボタンが並ぶレイアウト）。
           </li>
           <li>
-            背景画像を設定します（各ボタンの位置に「カウンセリング」などの文字を入れた画像を用意）。
+            背景画像を設定します（各ボタンの位置に「ご予約」「カウンセリング」などの文字を入れた画像を用意）。
           </li>
           <li>
-            「カウンセリング」のボタン枠を選び、<strong>アクションタイプを「リンク」</strong>にして、
-            上記のURL <code>https://noble1.vercel.app/f/new</code> を貼り付けます。
+            「ご予約」のボタン枠を選び、<strong>アクションタイプを「リンク」</strong>にして、
+            <code>https://noble1.vercel.app/salons</code> を貼り付けます。
+          </li>
+          <li>
+            同じように「カウンセリング」のボタン枠には{" "}
+            <code>https://noble1.vercel.app/f/new</code> を貼り付けます。
           </li>
           <li>「保存」して、メニューを「表示する」に設定すれば完了です。</li>
         </ol>

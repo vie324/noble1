@@ -13,6 +13,7 @@ const tabs = [
   { href: "/admin/tickets", label: "回数券残高" },
   { href: "/admin/simulation", label: "シミュレーション" },
   { href: "/admin/masters", label: "マスタ管理" },
+  { href: "/admin/stores", label: "店舗紹介ページ" },
   { href: "/admin/line", label: "LINE連携" },
 ];
 
