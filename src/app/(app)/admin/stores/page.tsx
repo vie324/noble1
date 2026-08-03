@@ -86,7 +86,7 @@ export default function AdminStoresPage() {
                 rel="noopener noreferrer"
                 className="text-gold-dk underline underline-offset-2 break-all"
               >
-                ホットペッパービューティー
+                {salon.reserveSite}
               </a>
             </Row>
             <Row label="地図">

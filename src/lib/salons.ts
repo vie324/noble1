@@ -7,6 +7,8 @@
 // code は Supabase の stores.code と一致させています
 //   （shinjuku / shinjuku-south / ebisu）
 // 出典: ホットペッパービューティー 各店舗ページ（hpbUrl）
+// ネット予約先（reserveUrl）は店舗ごとに異なります。
+//   新宿店・新宿南口店 … サロリザ / 恵比寿店 … ホットペッパービューティー
 // ============================================================
 
 export interface SalonInfo {
@@ -46,10 +48,12 @@ export interface SalonInfo {
   features: string[];
   /** ご来店時のお願い（注意事項） */
   notes: string[];
-  /** ホットペッパービューティーの店舗ページ */
+  /** ホットペッパービューティーの店舗ページ（メニュー・口コミの参照用） */
   hpbUrl: string;
-  /** ネット予約（クーポン選択）ページ */
+  /** ネット予約ページ */
   reserveUrl: string;
+  /** 予約ページの提供元。ボタン下の案内文に出します */
+  reserveSite: string;
   /** 地図検索に使う文字列（建物名まで入れると精度が上がる） */
   mapQuery: string;
 }
@@ -108,7 +112,8 @@ export const SALONS: SalonInfo[] = [
       "ご予約が取りにくい場合は新宿南口店もぜひご利用ください。",
     ],
     hpbUrl: "https://beauty.hotpepper.jp/kr/slnH000574408/",
-    reserveUrl: "https://beauty.hotpepper.jp/kr/slnH000574408/coupon/",
+    reserveUrl: "https://saloriza.com/provider/167/reserve/",
+    reserveSite: "サロリザ",
     mapQuery: "東京都渋谷区代々木2-11-5 アクティブ新宿",
   },
   {
@@ -147,7 +152,8 @@ export const SALONS: SalonInfo[] = [
       "ハーブピーリングはダウンタイムがございます。ご予定に余裕をもってご予約ください。",
     ],
     hpbUrl: "https://beauty.hotpepper.jp/kr/slnH000624712/",
-    reserveUrl: "https://beauty.hotpepper.jp/kr/slnH000624712/coupon/",
+    reserveUrl: "https://saloriza.com/provider/1066/reserve/",
+    reserveSite: "サロリザ",
     mapQuery: "東京都渋谷区代々木1-57-2 ドルミ代々木",
   },
   {
@@ -187,6 +193,7 @@ export const SALONS: SalonInfo[] = [
     ],
     hpbUrl: "https://beauty.hotpepper.jp/kr/slnH000817948/",
     reserveUrl: "https://beauty.hotpepper.jp/kr/slnH000817948/coupon/",
+    reserveSite: "ホットペッパービューティー",
     mapQuery: "東京都渋谷区恵比寿西1-15-2 アパルトマンイトウ",
   },
 ];
