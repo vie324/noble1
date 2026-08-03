@@ -45,12 +45,15 @@ export async function proxy(request: NextRequest) {
   }
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
-  // /f/... はお客様向け公開フォーム、/p/... はビフォーアフター公開ページ。認証不要
-  const isPublicForm =
+  // /f/... はお客様向け公開フォーム、/p/... はビフォーアフター公開ページ、
+  // /salons... は店舗紹介・ご予約ページ（LINEリッチメニューの遷移先）。いずれも認証不要
+  const isPublicPage =
     request.nextUrl.pathname.startsWith("/f/") ||
-    request.nextUrl.pathname.startsWith("/p/");
+    request.nextUrl.pathname.startsWith("/p/") ||
+    request.nextUrl.pathname === "/salons" ||
+    request.nextUrl.pathname.startsWith("/salons/");
 
-  if (!user && !isLoginPage && !isPublicForm) {
+  if (!user && !isLoginPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
