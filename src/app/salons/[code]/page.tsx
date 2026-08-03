@@ -74,7 +74,7 @@ export default async function SalonDetailPage({
           <span aria-hidden>›</span>
         </a>
         <p className="text-[11px] text-muted text-center mt-2">
-          ホットペッパービューティーの予約ページが開きます
+          {salon.reserveSite}の予約ページが開きます
         </p>
 
         {/* 電話番号のない店舗はLINEのみを大きく出す */}
