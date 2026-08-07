@@ -12,13 +12,20 @@ import {
   thisMonthJST,
   timeShort,
   timeToMinutes,
+  todayJST,
+  yen,
   WEEKDAYS_JA, staffLabel } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
+import { PAY_TAX_RATE } from "@/lib/types";
 import type {
   AttendanceRecord,
   Shift,
   ShiftRecruitment,
   ShiftRequest,
   Staff,
+  StaffPaySettings,
+  StaffTransportCost,
+  Store,
 } from "@/lib/types";
 
 const TIME_PRESETS = [
@@ -36,9 +43,49 @@ const REQUEST_SHORT: Record<string, string> = {
   any: "任",
 };
 
+const buildAttMap = (attendance: AttendanceRecord[]) =>
+  new Map(attendance.map((a) => [a.shift_id, a]));
+const buildCostMap = (costs: StaffTransportCost[]) =>
+  new Map(costs.map((c) => [`${c.staff_id}:${c.store_id}`, c.round_trip_cost]));
+
+// 報酬計算（1スタッフ分）。実績が記録された日は実績時間、なければ予定時間。
+// 交通費はその日の勤務店舗に設定された往復額を日数分積算する
+function calcPayFor(
+  st: Staff,
+  own: Shift[],
+  att: Map<number, AttendanceRecord>,
+  costByStaffStore: Map<string, number>,
+  hourlyWage: number | null
+) {
+  let minutes = 0;
+  let transport = 0;
+  const missingStores = new Set<number>();
+  for (const s of own) {
+    const a = att.get(s.id);
+    minutes += a
+      ? timeToMinutes(a.actual_end) - timeToMinutes(a.actual_start)
+      : timeToMinutes(s.end_time) - timeToMinutes(s.start_time);
+    const cost = costByStaffStore.get(`${st.id}:${s.store_id}`);
+    if (cost == null) missingStores.add(s.store_id);
+    else transport += cost;
+  }
+  const wagePart = hourlyWage === null ? null : Math.round((hourlyWage * minutes) / 60);
+  return {
+    staff: st,
+    days: own.length,
+    minutes,
+    hourlyWage,
+    transport,
+    missingStores: [...missingStores],
+    reward: wagePart === null ? null : wagePart + transport,
+    rewardTaxed:
+      wagePart === null ? null : Math.round(wagePart * (1 + PAY_TAX_RATE)) + transport,
+  };
+}
+
 // シフト管理（管理者専用）: 募集 → 希望を見ながらドラフト作成 → 確定 → 未確認者の把握
 export default function ShiftManagePage() {
-  const { stores } = useApp();
+  const { stores, storeName } = useApp();
   const supabase = useMemo(() => createClient(), []);
   const [month, setMonth] = useState(addMonths(thisMonthJST(), 1)); // 既定は来月（作成対象）
 
@@ -47,17 +94,25 @@ export default function ShiftManagePage() {
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [recruitment, setRecruitment] = useState<ShiftRecruitment | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [paySettings, setPaySettings] = useState<Map<number, StaffPaySettings>>(new Map());
+  const [transportCosts, setTransportCosts] = useState<StaffTransportCost[]>([]);
   const [busy, setBusy] = useState(false);
 
   // 編集中セル
   const [cell, setCell] = useState<{ staffId: number; date: string } | null>(null);
   const [draft, setDraft] = useState({ start: "10:00", end: "19:00", storeId: 0 });
 
+  // 時間給・交通費の設定エディタの開閉
+  const [showPaySettings, setShowPaySettings] = useState(false);
+
+  // 日別実績パネルで表示中のスタッフ
+  const [detailStaffId, setDetailStaffId] = useState<number | null>(null);
+
   const monthEnd = addMonths(month, 1);
 
   const load = useCallback(async () => {
     setShifts(null);
-    const [st, sh, rq, rc] = await Promise.all([
+    const [st, sh, rq, rc, ps, tc] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("id"),
       supabase
         .from("shifts")
@@ -67,12 +122,18 @@ export default function ShiftManagePage() {
         .order("date"),
       supabase.from("shift_requests").select("*").eq("month", month),
       supabase.from("shift_recruitments").select("*").eq("month", month).maybeSingle(),
+      supabase.from("staff_pay_settings").select("*"),
+      supabase.from("staff_transport_costs").select("*"),
     ]);
     setStaffList((st.data as Staff[]) ?? []);
     const shiftRows = (sh.data as Shift[]) ?? [];
     setShifts(shiftRows);
     setRequests((rq.data as ShiftRequest[]) ?? []);
     setRecruitment((rc.data as ShiftRecruitment) ?? null);
+    setPaySettings(
+      new Map(((ps.data as StaffPaySettings[]) ?? []).map((p) => [p.staff_id, p]))
+    );
+    setTransportCosts((tc.data as StaffTransportCost[]) ?? []);
 
     if (shiftRows.length > 0) {
       const { data: att } = await supabase
@@ -179,6 +240,111 @@ export default function ShiftManagePage() {
     setBusy(false);
   }
 
+  // 月締め: 実績が未記録の過去日（確定分）を「予定通り」で一括記録
+  async function fillMissingAttendance() {
+    if (missingPast.length === 0) return;
+    if (
+      !window.confirm(
+        `実績が未記録の過去 ${missingPast.length} 日分を「予定通り」で記録しますか？\n（残業・早退・変更があった日は、記録後に「日別」から修正できます）`
+      )
+    )
+      return;
+    setBusy(true);
+    await supabase.from("attendance_records").upsert(
+      missingPast.map((s) => ({
+        shift_id: s.id,
+        actual_start: s.start_time,
+        actual_end: s.end_time,
+      })),
+      { onConflict: "shift_id", ignoreDuplicates: true }
+    );
+    await load();
+    setBusy(false);
+  }
+
+  // 勤務実績CSV（社労士向け・確定シフトのみ）
+  function exportAttendanceCsv() {
+    const rows: (string | number)[][] = [
+      [
+        "日付",
+        "曜日",
+        "スタッフ",
+        "店舗",
+        "予定始業",
+        "予定終業",
+        "実績始業",
+        "実績終業",
+        "実働時間(h)",
+        "予定との差異理由",
+        "本人確認",
+      ],
+    ];
+    const att = buildAttMap(attendance);
+    const confirmed = [...(shifts ?? [])]
+      .filter((s) => s.status === "confirmed")
+      .sort((a, b) =>
+        a.date === b.date ? a.staff_id - b.staff_id : a.date < b.date ? -1 : 1
+      );
+    for (const s of confirmed) {
+      const st = staffList.find((x) => x.id === s.staff_id);
+      const a = att.get(s.id);
+      const minutes = a
+        ? timeToMinutes(a.actual_end) - timeToMinutes(a.actual_start)
+        : timeToMinutes(s.end_time) - timeToMinutes(s.start_time);
+      const w = new Date(`${s.date}T12:00:00+09:00`).getUTCDay();
+      rows.push([
+        s.date,
+        WEEKDAYS_JA[w],
+        st?.name ?? "",
+        storeName(s.store_id),
+        s.start_time.slice(0, 5),
+        s.end_time.slice(0, 5),
+        a ? a.actual_start.slice(0, 5) : "",
+        a ? a.actual_end.slice(0, 5) : "",
+        Math.round((minutes / 60) * 100) / 100,
+        a?.diff_reason ?? "",
+        s.acknowledged_at ? "済" : "",
+      ]);
+    }
+    downloadCsv(`勤務実績_${month.slice(0, 7)}.csv`, rows);
+  }
+
+  // 報酬・交通費CSV（税理士向け・確定シフトのみ）
+  function exportPayCsv() {
+    const rows: (string | number)[][] = [
+      [
+        "スタッフ",
+        "稼働日数",
+        "稼働時間(h)",
+        "時間給(円)",
+        "交通費(円)",
+        "報酬(税抜・円)",
+        "消費税(円)",
+        "報酬(税込・円)",
+      ],
+    ];
+    const att = buildAttMap(attendance);
+    const cost = buildCostMap(transportCosts);
+    for (const st of staffList) {
+      const own = (shifts ?? []).filter(
+        (s) => s.staff_id === st.id && s.status === "confirmed"
+      );
+      if (own.length === 0) continue;
+      const r = calcPayFor(st, own, att, cost, paySettings.get(st.id)?.hourly_wage ?? null);
+      rows.push([
+        st.name,
+        r.days,
+        Math.round((r.minutes / 60) * 100) / 100,
+        r.hourlyWage ?? "",
+        r.transport,
+        r.reward ?? "",
+        r.reward === null || r.rewardTaxed === null ? "" : r.rewardTaxed - r.reward,
+        r.rewardTaxed ?? "",
+      ]);
+    }
+    downloadCsv(`報酬交通費_${month.slice(0, 7)}.csv`, rows);
+  }
+
   const draftCount = (shifts ?? []).filter((s) => s.status === "draft").length;
   const unacknowledged = useMemo(() => {
     const map = new Map<number, number>();
@@ -190,26 +356,64 @@ export default function ShiftManagePage() {
     return map;
   }, [shifts]);
 
-  // 予定 vs 実績（分単位で集計）
+  // 予定 vs 実績（分単位で集計）＋ 実績の記録状況
   const planVsActual = useMemo(() => {
-    const att = new Map(attendance.map((a) => [a.shift_id, a]));
+    const att = buildAttMap(attendance);
     return staffList.map((st) => {
       let planned = 0;
       let actual = 0;
+      let recorded = 0;
+      let total = 0;
       const reasons: { date: string; reason: string }[] = [];
       for (const s of (shifts ?? []).filter(
         (s) => s.staff_id === st.id && s.status === "confirmed"
       )) {
+        total++;
         planned += timeToMinutes(s.end_time) - timeToMinutes(s.start_time);
         const a = att.get(s.id);
         if (a) {
+          recorded++;
           actual += timeToMinutes(a.actual_end) - timeToMinutes(a.actual_start);
           if (a.diff_reason) reasons.push({ date: s.date, reason: a.diff_reason });
         }
       }
-      return { staff: st, planned, actual, reasons };
+      return { staff: st, planned, actual, recorded, total, reasons };
     });
   }, [staffList, shifts, attendance]);
+
+  // 画面のサマリーはドラフト・確定の全シフト対象（調整中も金額が見えるように）
+  const payRows = useMemo(() => {
+    const att = buildAttMap(attendance);
+    const cost = buildCostMap(transportCosts);
+    return staffList
+      .map((st) =>
+        calcPayFor(
+          st,
+          (shifts ?? []).filter((s) => s.staff_id === st.id),
+          att,
+          cost,
+          paySettings.get(st.id)?.hourly_wage ?? null
+        )
+      )
+      .filter((r) => r.days > 0);
+  }, [staffList, shifts, attendance, transportCosts, paySettings]);
+
+  // 実績が未記録の過去日（確定分）。月締めの一括記録・CSV出力前の警告に使う
+  const today = todayJST();
+  const recordedShiftIds = new Set(attendance.map((a) => a.shift_id));
+  const missingPast = (shifts ?? []).filter(
+    (s) => s.status === "confirmed" && s.date <= today && !recordedShiftIds.has(s.id)
+  );
+
+  const transportWarnings = useMemo(
+    () =>
+      payRows.flatMap((r) =>
+        r.missingStores.map(
+          (id) => `${staffLabel(r.staff)}: ${storeName(id)}の交通費が未設定です（0円で計算中）`
+        )
+      ),
+    [payRows, storeName]
+  );
 
   const fmtH = (min: number) => `${(min / 60).toFixed(1)}h`;
 
@@ -408,22 +612,135 @@ export default function ShiftManagePage() {
             )}
           </Card>
 
-          {/* 予定 vs 実績 */}
+          {/* 報酬・交通費の自動計算 */}
           <Card className="p-4 space-y-3">
-            <SectionTitle>予定 vs 実績（{monthLabelJa(month)}）</SectionTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <SectionTitle className="flex-1">
+                報酬・交通費（{monthLabelJa(month)}・自動計算）
+              </SectionTitle>
+              <Button
+                variant="secondary"
+                onClick={() => setShowPaySettings(!showPaySettings)}
+              >
+                {showPaySettings ? "設定を閉じる" : "時間給・交通費を設定"}
+              </Button>
+            </div>
+
+            {payRows.length === 0 ? (
+              <p className="text-sm text-muted">
+                シフトを作成すると、時間給と店舗別交通費から報酬を自動計算します
+              </p>
+            ) : (
+              <div className="overflow-x-auto -mx-4 px-4">
+                <table className="w-full min-w-[680px] text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted border-b border-hairline">
+                      <th className="text-left py-2 font-semibold">スタッフ</th>
+                      <th className="text-right font-semibold">稼働日数</th>
+                      <th className="text-right font-semibold">稼働時間</th>
+                      <th className="text-right font-semibold">時間給</th>
+                      <th className="text-right font-semibold">交通費</th>
+                      <th className="text-right font-semibold">報酬（税抜）</th>
+                      <th className="text-right font-semibold">報酬（税込）</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline">
+                    {payRows.map((r) => (
+                      <tr key={r.staff.id}>
+                        <td className="py-2 text-ink whitespace-nowrap">
+                          {staffLabel(r.staff)}
+                        </td>
+                        <td className="text-right tnum">{r.days}日</td>
+                        <td className="text-right tnum">{fmtH(r.minutes)}</td>
+                        <td className="text-right tnum">
+                          {r.hourlyWage === null ? (
+                            <Badge color="warn">未設定</Badge>
+                          ) : (
+                            yen(r.hourlyWage)
+                          )}
+                        </td>
+                        <td className="text-right tnum">{yen(r.transport)}</td>
+                        <td className="text-right tnum font-semibold text-ink">
+                          {r.reward === null ? "—" : yen(r.reward)}
+                        </td>
+                        <td className="text-right tnum">
+                          {r.rewardTaxed === null ? "—" : yen(r.rewardTaxed)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {transportWarnings.length > 0 && (
+              <div className="space-y-1">
+                {transportWarnings.map((w) => (
+                  <p key={w} className="text-xs text-warn">
+                    ⚠ {w}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            <p className="text-[11px] text-muted">
+              稼働時間はドラフト・確定の全シフトが対象（実績が記録された日は実績時間）。
+              交通費＝勤務店舗ごとの往復額 × 出勤日数。
+              報酬（税抜）＝時間給 × 稼働時間 ＋ 交通費 ／
+              報酬（税込）＝時間給 × 稼働時間 × {(1 + PAY_TAX_RATE).toFixed(1)} ＋
+              交通費（交通費は実費のため非課税扱い）
+            </p>
+
+            {showPaySettings && (
+              <div className="rounded-xl border border-gold/40 bg-gold-soft/30 p-3 space-y-3 fade-in">
+                <p className="text-xs text-muted">
+                  時間給と、店舗ごとの交通費（往復/日）を設定します。
+                  空欄＝未設定（計算時に警告）。交通費がかからない店舗は「0」を入力してください。
+                  この設定は管理者だけが閲覧・変更できます。
+                </p>
+                {staffList.map((st) => (
+                  <PaySettingsRow
+                    key={st.id}
+                    staff={st}
+                    stores={stores}
+                    paySetting={paySettings.get(st.id)}
+                    costs={transportCosts.filter((c) => c.staff_id === st.id)}
+                    onSaved={load}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* 予定 vs 実績（月締め） */}
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <SectionTitle className="flex-1">
+                予定 vs 実績・月締め（{monthLabelJa(month)}）
+              </SectionTitle>
+              <Button
+                variant="secondary"
+                disabled={busy || missingPast.length === 0}
+                onClick={fillMissingAttendance}
+              >
+                未記録の過去日（{missingPast.length}日分）を予定通りで一括記録
+              </Button>
+            </div>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full min-w-[520px] text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="text-xs text-muted border-b border-hairline">
                     <th className="text-left py-2 font-semibold">スタッフ</th>
                     <th className="text-right font-semibold">予定</th>
                     <th className="text-right font-semibold">実績</th>
                     <th className="text-right font-semibold">差分</th>
+                    <th className="text-right font-semibold">記録</th>
                     <th className="text-left pl-4 font-semibold">理由付き記録</th>
+                    <th className="text-right font-semibold"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline">
-                  {planVsActual.map(({ staff, planned, actual, reasons }) => (
+                  {planVsActual.map(({ staff, planned, actual, recorded, total, reasons }) => (
                     <tr key={staff.id}>
                       <td className="py-2 text-ink whitespace-nowrap">
                         {staffLabel(staff)}
@@ -441,6 +758,13 @@ export default function ShiftManagePage() {
                       >
                         {actual ? `${actual - planned >= 0 ? "+" : ""}${fmtH(actual - planned)}` : "—"}
                       </td>
+                      <td
+                        className={`text-right tnum ${
+                          total > 0 && recorded < total ? "text-warn font-semibold" : "text-muted"
+                        }`}
+                      >
+                        {total === 0 ? "—" : `${recorded}/${total}日`}
+                      </td>
                       <td className="pl-4 text-xs text-muted">
                         {reasons.length === 0
                           ? "—"
@@ -450,17 +774,351 @@ export default function ShiftManagePage() {
                               </p>
                             ))}
                       </td>
+                      <td className="text-right">
+                        {total > 0 && (
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              setDetailStaffId(detailStaffId === staff.id ? null : staff.id)
+                            }
+                          >
+                            {detailStaffId === staff.id ? "閉じる" : "日別"}
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* 日別実績（管理者が変更・残業をその場で修正できる） */}
+            {detailStaffId !== null && (
+              <div className="rounded-xl border border-hairline bg-base p-3 fade-in">
+                <p className="text-sm font-semibold text-ink mb-1">
+                  {staffLabel(staffList.find((s) => s.id === detailStaffId))} の日別実績（確定シフト）
+                </p>
+                <ul className="divide-y divide-hairline">
+                  {(shifts ?? [])
+                    .filter((s) => s.staff_id === detailStaffId && s.status === "confirmed")
+                    .map((s) => (
+                      <AdminAttendanceRow
+                        key={s.id}
+                        shift={s}
+                        attendance={attendance.find((a) => a.shift_id === s.id)}
+                        storeName={storeName}
+                        busy={busy}
+                        setBusy={setBusy}
+                        onSaved={load}
+                      />
+                    ))}
+                </ul>
+              </div>
+            )}
+
             <p className="text-[11px] text-muted">
-              実績はスタッフ本人が「マイシフト」から記録します（将来: 社労士提出用CSV出力に対応予定）
+              実績はスタッフ本人が「マイシフト」から記録できるほか、管理者もここ（日別）から記録・修正できます。
+              残業・早退・変更があった日は、実際の時間と理由を入れてください（報酬の自動計算にも反映されます）。
+              月末は「一括記録」→ 変更のあった日だけ修正 → 下のCSV出力、の流れが最短です
+            </p>
+          </Card>
+
+          {/* 社労士・税理士への連携（CSV出力） */}
+          <Card className="p-4 space-y-3">
+            <SectionTitle>社労士・税理士への連携（{monthLabelJa(month)}）</SectionTitle>
+            <p className="text-sm text-muted">
+              CSVをダウンロードして、そのままメール・LINE・チャットに添付できます
+              （Excel・Googleスプレッドシートで文字化けせずに開けます）
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                disabled={(shifts ?? []).every((s) => s.status !== "confirmed")}
+                onClick={exportAttendanceCsv}
+              >
+                勤務実績CSV（社労士向け）
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={(shifts ?? []).every((s) => s.status !== "confirmed")}
+                onClick={exportPayCsv}
+              >
+                報酬・交通費CSV（税理士向け）
+              </Button>
+            </div>
+            {draftCount > 0 && (
+              <p className="text-xs text-warn">
+                ⚠ ドラフトが {draftCount} 件あります。CSVには確定シフトのみ出力されます
+              </p>
+            )}
+            {missingPast.length > 0 && (
+              <p className="text-xs text-warn">
+                ⚠ 実績が未記録の過去日が {missingPast.length} 日分あります
+                （実績欄が空欄のまま出力されます。上の「一括記録」をご利用ください）
+              </p>
+            )}
+            <p className="text-[11px] text-muted">
+              勤務実績CSV: 日付・スタッフ・店舗・予定/実績の始業終業・実働時間・差異理由・本人確認 ／
+              報酬・交通費CSV: 稼働日数・稼働時間・時間給・交通費・報酬（税抜/消費税/税込）
             </p>
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+/* ================= 日別実績1行（管理者による記録・修正） ================= */
+function AdminAttendanceRow({
+  shift,
+  attendance,
+  storeName,
+  busy,
+  setBusy,
+  onSaved,
+}: {
+  shift: Shift;
+  attendance?: AttendanceRecord;
+  storeName: (id: number | null | undefined) => string;
+  busy: boolean;
+  setBusy: (b: boolean) => void;
+  onSaved: () => Promise<void>;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [editing, setEditing] = useState(false);
+  const [actual, setActual] = useState({
+    start: attendance?.actual_start?.slice(0, 5) ?? shift.start_time.slice(0, 5),
+    end: attendance?.actual_end?.slice(0, 5) ?? shift.end_time.slice(0, 5),
+    reason: attendance?.diff_reason ?? "",
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const w = new Date(`${shift.date}T12:00:00+09:00`).getUTCDay();
+  const dateLabel = `${Number(shift.date.slice(5, 7))}/${Number(shift.date.slice(8))}(${WEEKDAYS_JA[w]})`;
+
+  async function save() {
+    // 予定とずれているのに理由が空ならガード（マイシフト側と同じルール）
+    const diff =
+      timeToMinutes(actual.start) !== timeToMinutes(shift.start_time) ||
+      timeToMinutes(actual.end) !== timeToMinutes(shift.end_time);
+    if (diff && !actual.reason.trim()) {
+      setError("予定と実働がずれている場合は理由を入力してください（残業・早退・変更など）");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    await supabase.from("attendance_records").upsert(
+      {
+        shift_id: shift.id,
+        actual_start: actual.start,
+        actual_end: actual.end,
+        diff_reason: actual.reason.trim() || null,
+      },
+      { onConflict: "shift_id" }
+    );
+    setEditing(false);
+    await onSaved();
+    setBusy(false);
+  }
+
+  return (
+    <li className="py-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span
+          className={`w-16 shrink-0 text-sm tnum ${
+            w === 0 ? "text-rose" : w === 6 ? "text-gold-dk" : "text-ink"
+          }`}
+        >
+          {dateLabel}
+        </span>
+        <span className="text-sm text-ink tnum">
+          {timeShort(shift.start_time)}〜{timeShort(shift.end_time)}
+        </span>
+        <span className="text-xs text-muted">{storeName(shift.store_id)}</span>
+        <span className="flex-1" />
+        {attendance ? (
+          <Badge color={attendance.diff_reason ? "warn" : "ok"}>
+            実績 {timeShort(attendance.actual_start)}〜{timeShort(attendance.actual_end)}
+          </Badge>
+        ) : (
+          <Badge color="rose">未記録</Badge>
+        )}
+        <Button variant="ghost" disabled={busy} onClick={() => setEditing(!editing)}>
+          {attendance ? "修正" : "記録"}
+        </Button>
+      </div>
+      {attendance?.diff_reason && (
+        <p className="text-xs text-warn mt-1 pl-16">理由: {attendance.diff_reason}</p>
+      )}
+      {editing && (
+        <div className="mt-2 rounded-xl border border-hairline bg-surface p-3 space-y-2 fade-in">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="time"
+              value={actual.start}
+              onChange={(e) => setActual({ ...actual, start: e.target.value })}
+              className="min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              aria-label="実開始"
+            />
+            <span className="text-muted">〜</span>
+            <input
+              type="time"
+              value={actual.end}
+              onChange={(e) => setActual({ ...actual, end: e.target.value })}
+              className="min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              aria-label="実終了"
+            />
+            <input
+              type="text"
+              value={actual.reason}
+              onChange={(e) => setActual({ ...actual, reason: e.target.value })}
+              placeholder="ずれた場合の理由（残業・早退・変更など）"
+              className="flex-1 min-w-40 min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              aria-label="理由"
+            />
+            <Button disabled={busy} onClick={save}>
+              保存
+            </Button>
+          </div>
+          {error && <p className="text-xs text-caution">{error}</p>}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/* ================= 時間給・交通費の設定（スタッフ1人分） ================= */
+function PaySettingsRow({
+  staff,
+  stores,
+  paySetting,
+  costs,
+  onSaved,
+}: {
+  staff: Staff;
+  stores: Store[];
+  paySetting?: StaffPaySettings;
+  costs: StaffTransportCost[];
+  onSaved: () => Promise<void>;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [wage, setWage] = useState(paySetting ? String(paySetting.hourly_wage) : "");
+  const [costDraft, setCostDraft] = useState<Record<number, string>>(() => {
+    const init: Record<number, string> = {};
+    for (const s of stores) {
+      const c = costs.find((x) => x.store_id === s.id);
+      init[s.id] = c ? String(c.round_trip_cost) : "";
+    }
+    return init;
+  });
+
+  const inputCls =
+    "w-28 min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm text-right tnum outline-none focus:border-gold";
+
+  async function save() {
+    setError(null);
+    const wageTrim = wage.trim();
+    if (wageTrim !== "" && !/^\d+$/.test(wageTrim)) {
+      setError("時間給は0以上の整数（円）で入力してください");
+      return;
+    }
+    for (const s of stores) {
+      const v = (costDraft[s.id] ?? "").trim();
+      if (v !== "" && !/^\d+$/.test(v)) {
+        setError(`${s.name}の交通費は0以上の整数（円）で入力してください`);
+        return;
+      }
+    }
+
+    setBusy(true);
+    // 時間給: 空欄は行削除（未設定に戻す）
+    const wageRes =
+      wageTrim === ""
+        ? await supabase.from("staff_pay_settings").delete().eq("staff_id", staff.id)
+        : await supabase
+            .from("staff_pay_settings")
+            .upsert(
+              { staff_id: staff.id, hourly_wage: Number(wageTrim) },
+              { onConflict: "staff_id" }
+            );
+
+    // 交通費: 店舗ごとに upsert（空欄は行削除で未設定に戻す）
+    let err = wageRes.error;
+    for (const s of stores) {
+      if (err) break;
+      const v = (costDraft[s.id] ?? "").trim();
+      const res =
+        v === ""
+          ? await supabase
+              .from("staff_transport_costs")
+              .delete()
+              .eq("staff_id", staff.id)
+              .eq("store_id", s.id)
+          : await supabase
+              .from("staff_transport_costs")
+              .upsert(
+                { staff_id: staff.id, store_id: s.id, round_trip_cost: Number(v) },
+                { onConflict: "staff_id,store_id" }
+              );
+      err = res.error;
+    }
+
+    if (err) {
+      console.error(err);
+      setError("保存に失敗しました（管理者権限が必要です）");
+      setBusy(false);
+      return;
+    }
+    await onSaved();
+    setSaved(true);
+    setBusy(false);
+  }
+
+  return (
+    <div className="rounded-lg border border-hairline bg-surface p-3 space-y-2">
+      <p className="text-sm font-semibold text-ink">{staffLabel(staff)}</p>
+      <div className="flex items-end gap-3 flex-wrap">
+        <label className="block">
+          <span className="block text-xs font-semibold text-muted mb-1">時間給（円）</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={wage}
+            placeholder="未設定"
+            onChange={(e) => {
+              setWage(e.target.value);
+              setSaved(false);
+            }}
+            className={inputCls}
+          />
+        </label>
+        {stores.map((s) => (
+          <label key={s.id} className="block">
+            <span className="block text-xs font-semibold text-muted mb-1">
+              {s.name} 交通費（往復/日）
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={costDraft[s.id] ?? ""}
+              placeholder="未設定"
+              onChange={(e) => {
+                setCostDraft({ ...costDraft, [s.id]: e.target.value });
+                setSaved(false);
+              }}
+              className={inputCls}
+            />
+          </label>
+        ))}
+        <Button disabled={busy} onClick={save}>
+          保存
+        </Button>
+        {saved && <Badge color="ok">保存しました</Badge>}
+      </div>
+      {error && <p className="text-xs text-caution">{error}</p>}
     </div>
   );
 }

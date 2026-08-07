@@ -197,6 +197,24 @@ export interface AttendanceRecord {
   diff_reason: string | null;
 }
 
+// 時間給（管理者専用テーブル。行がない = 未設定）
+export interface StaffPaySettings {
+  staff_id: number;
+  hourly_wage: number;
+}
+
+// 交通費 往復/日（スタッフ × 店舗。管理者専用テーブル。行がない = 未設定）
+export interface StaffTransportCost {
+  id: number;
+  staff_id: number;
+  store_id: number;
+  round_trip_cost: number;
+}
+
+// 業務委託報酬にかかる消費税率。交通費は実費弁償のため課税対象外として扱う
+// （報酬税込 = 時間給×稼働時間×(1+税率) + 交通費）
+export const PAY_TAX_RATE = 0.1;
+
 export interface CalendarEvent {
   id: number;
   store_id: number | null;
