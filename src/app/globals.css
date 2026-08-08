@@ -59,6 +59,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 入力文字をはっきり濃く（iOS Safari等で薄く見える問題の対策） */
+input,
+textarea,
+select {
+  color: var(--noble-text);
+  -webkit-text-fill-color: var(--noble-text);
+  caret-color: var(--noble-gold);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--noble-muted);
+  -webkit-text-fill-color: var(--noble-muted);
+  opacity: 1;
+}
+
 /* 数値の桁揃え（金額・残回数・KPI） */
 .tnum {
   font-variant-numeric: tabular-nums;
