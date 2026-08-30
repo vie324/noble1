@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  -webkit-text-size-adjust: 100%;
+  background: #faf8f4;
+  color: #2a2520;
+}
+
+/* iPad でのタップ操作を快適にする最小限の調整 */
+button,
+a {
+  touch-action: manipulation;
+}
