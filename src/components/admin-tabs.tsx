@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 // 経営（管理者専用）エリアのサブナビゲーション
 const tabs = [
   { href: "/admin/dashboard", label: "経営サマリー" },
+  { href: "/admin/targets", label: "目標設定" },
   { href: "/admin/sales", label: "実績入力" },
   { href: "/admin/analytics", label: "売上・媒体" },
   { href: "/admin/menus", label: "メニュー・部位" },
