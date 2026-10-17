@@ -396,6 +396,26 @@ export interface StockCount {
   diff_reason: string | null;
 }
 
+/* ---------------- 店舗別 月次目標・実績（経営 > 目標設定） ---------------- */
+
+// 店舗 × 月 の目標（管理者専用テーブル。行がない／0 = 未設定）
+export interface StoreMonthlyTarget {
+  id: number;
+  store_id: number;
+  month: string; // 月初日 "YYYY-MM-01"
+  target_sales: number; // 円
+  target_new_customers: number; // 件
+}
+
+// 店舗 × 月 の実績（ビュー store_monthly_actuals。行がない = 実績なし）
+export interface StoreMonthlyActual {
+  store_id: number;
+  month: string;
+  cash_in: number; // 都度払い + 回数券販売 + 物販（入金ベース）
+  accounting_sales: number; // 都度払い + 回数券消化 + 物販（会計上）
+  new_customers: number; // 初回来店日がその月の顧客数
+}
+
 // 1回あたりの単価（購入金額 ÷ 総回数）
 export function ticketUnitPrice(t: Pick<CustomerTicket, "price" | "total_count">): number {
   return t.price / t.total_count;

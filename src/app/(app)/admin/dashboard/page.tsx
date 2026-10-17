@@ -15,9 +15,17 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Card, CountUp, ListSkeleton, SectionTitle } from "@/components/ui";
 import { AdminTabs, MonthNav } from "@/components/admin-tabs";
-import { addMonths, daysUntil, monthLabelJa, thisMonthJST, yen } from "@/lib/format";
+import { TargetProgress, type SalesBasis } from "@/components/target-progress";
+import {
+  addMonths,
+  daysUntil,
+  fiscalYearStart,
+  monthLabelJa,
+  thisMonthJST,
+  yen,
+} from "@/lib/format";
 import { ticketUnusedAmount } from "@/lib/types";
-import type { CustomerTicket } from "@/lib/types";
+import type { CustomerTicket, StoreMonthlyActual, StoreMonthlyTarget } from "@/lib/types";
 
 interface DailySale {
   id: number;
@@ -49,7 +57,7 @@ const CHART_COLORS = {
 };
 
 export default function AdminDashboardPage() {
-  const { storeFilter, storeName } = useApp();
+  const { stores, storeFilter, storeName } = useApp();
   const supabase = useMemo(() => createClient(), []);
   const [month, setMonth] = useState(thisMonthJST());
 
@@ -57,11 +65,17 @@ export default function AdminDashboardPage() {
   const [tickets, setTickets] = useState<CustomerTicket[]>([]);
   const [media, setMedia] = useState<MediaRow[]>([]);
   const [retention, setRetention] = useState<number | null>(null);
+  const [targets, setTargets] = useState<StoreMonthlyTarget[]>([]);
+  const [actuals, setActuals] = useState<StoreMonthlyActual[]>([]);
+  const [basis, setBasis] = useState<SalesBasis>("cash");
 
   const load = useCallback(async () => {
     setSales(null);
     const chartFrom = addMonths(month, -5);
     const monthEnd = addMonths(month, 1);
+    // 目標達成状況は選択月が属する年度（9月〜翌8月）分を取得
+    const fyStart = fiscalYearStart(month);
+    const fyEnd = addMonths(fyStart, 12);
 
     let salesQ = supabase
       .from("daily_sales")
@@ -74,7 +88,22 @@ export default function AdminDashboardPage() {
     let ticketsQ = supabase.from("customer_tickets").select("*");
     if (storeFilter !== null) ticketsQ = ticketsQ.eq("store_id", storeFilter);
 
-    const [s, t, m, st] = await Promise.all([
+    let targetsQ = supabase
+      .from("store_monthly_targets")
+      .select("*")
+      .gte("month", fyStart)
+      .lt("month", fyEnd);
+    let actualsQ = supabase
+      .from("store_monthly_actuals")
+      .select("*")
+      .gte("month", fyStart)
+      .lt("month", fyEnd);
+    if (storeFilter !== null) {
+      targetsQ = targetsQ.eq("store_id", storeFilter);
+      actualsQ = actualsQ.eq("store_id", storeFilter);
+    }
+
+    const [s, t, m, st, tg, ac] = await Promise.all([
       salesQ,
       ticketsQ,
       supabase
@@ -83,6 +112,8 @@ export default function AdminDashboardPage() {
         .eq("month", month)
         .order("new_visits", { ascending: false }),
       supabase.from("staff_monthly").select("retention_rate").eq("month", month),
+      targetsQ,
+      actualsQ,
     ]);
 
     setSales((s.data as DailySale[]) ?? []);
@@ -90,6 +121,8 @@ export default function AdminDashboardPage() {
     setMedia((m.data as unknown as MediaRow[]) ?? []);
     const rates = ((st.data as StaffMonthlyRow[]) ?? []).map((r) => Number(r.retention_rate));
     setRetention(rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : null);
+    setTargets((tg.data as StoreMonthlyTarget[]) ?? []);
+    setActuals((ac.data as StoreMonthlyActual[]) ?? []);
   }, [supabase, month, storeFilter]);
 
   useEffect(() => {
@@ -152,6 +185,16 @@ export default function AdminDashboardPage() {
         <ListSkeleton rows={4} />
       ) : (
         <>
+          {/* 目標達成状況（目標設定 × 実績） */}
+          <TargetProgress
+            month={month}
+            stores={storeFilter === null ? stores : stores.filter((s) => s.id === storeFilter)}
+            targets={targets}
+            actuals={actuals}
+            basis={basis}
+            onBasisChange={setBasis}
+          />
+
           {/* KPI */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
             <KpiCard

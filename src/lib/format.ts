@@ -78,6 +78,21 @@ export function monthLabelJa(monthFirst: string): string {
   return `${y}年${m}月`;
 }
 
+// 年度の開始月（9月始まり。店舗別の目標は9月〜翌8月で1年度）
+const FISCAL_YEAR_START_MONTH = 9;
+
+// 月初日 → その月が属する年度の開始月 例: "2027-01-01" → "2026-09-01"
+export function fiscalYearStart(monthFirst: string): string {
+  const [y, m] = monthFirst.split("-").map(Number);
+  const year = m >= FISCAL_YEAR_START_MONTH ? y : y - 1;
+  return `${year}-${String(FISCAL_YEAR_START_MONTH).padStart(2, "0")}-01`;
+}
+
+// "2026年9月〜2027年8月"
+export function fiscalYearLabel(fyStart: string): string {
+  return `${monthLabelJa(fyStart)}〜${monthLabelJa(addMonths(fyStart, 11))}`;
+}
+
 // "10:00:00"/"10:00" → "10"、"10:30:00" → "10:30"（TimeTree式チップ用の短縮表記）
 export function timeShort(t: string): string {
   const [h, m] = t.split(":");

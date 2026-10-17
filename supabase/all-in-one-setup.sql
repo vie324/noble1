@@ -3,7 +3,7 @@
 --
 -- 新規の Supabase プロジェクトで、SQL Editor にこのファイル全体を
 -- 貼り付けて1回実行するだけで、以下がすべて作成されます:
---   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜024）
+--   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜025）
 --   ・カウンセリング項目・統合同意書「施術説明書・同意書」
 --   ・施術部位15種 / 店舗3件 / オーナーアカウント marin
 --   ・店舗別 LINE Messaging API 連携テーブル（store_line_configs / line_friends）
@@ -1710,6 +1710,67 @@ create policy staff_pay_settings_admin on public.staff_pay_settings for all
 alter table public.staff_transport_costs enable row level security;
 create policy staff_transport_costs_admin on public.staff_transport_costs for all
   using (public.is_admin()) with check (public.is_admin());
+
+-- ████████ 025_store_targets.sql ████████
+
+-- ============================================================
+-- 025_store_targets.sql : 店舗別の月次目標（売上・新規件数）と実績ビュー
+--   ・store_monthly_targets : 店舗 × 月 の目標（経営 > 目標設定 で入力）
+--   ・store_monthly_actuals : 店舗 × 月 の実績（ビュー。目標との比較に使う）
+--   目標・実績は経営情報のため管理者専用（スタッフには非公開）
+-- ============================================================
+
+create table public.store_monthly_targets (
+  id                    bigint generated always as identity primary key,
+  store_id              bigint not null references public.stores (id) on delete cascade,
+  month                 date not null check (extract(day from month) = 1),  -- 例: 2026-09-01
+  target_sales          int not null default 0 check (target_sales >= 0),          -- 売上目標（円）
+  target_new_customers  int not null default 0 check (target_new_customers >= 0),  -- 新規件数目標
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now(),
+  created_by            uuid default auth.uid(),
+  updated_by            uuid default auth.uid(),
+  unique (store_id, month)
+);
+
+create trigger trg_store_monthly_targets_audit before update on public.store_monthly_targets
+  for each row execute function public.set_audit_fields();
+
+alter table public.store_monthly_targets enable row level security;
+create policy store_monthly_targets_admin on public.store_monthly_targets for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- 売上は実績入力（daily_sales）、新規数は初回来店日（customers.first_visit_on）から集計
+create view public.store_monthly_actuals
+with (security_invoker = true)
+as
+with sales as (
+  select
+    store_id,
+    date_trunc('month', date)::date                       as month,
+    sum(spot_sales + ticket_sales + product_sales)::bigint as cash_in,
+    sum(spot_sales + ticket_usage + product_sales)::bigint as accounting_sales
+  from public.daily_sales
+  group by 1, 2
+),
+new_customers as (
+  select
+    primary_store_id                         as store_id,
+    date_trunc('month', first_visit_on)::date as month,
+    count(*)::int                            as new_customers
+  from public.customers
+  where first_visit_on is not null
+    and primary_store_id is not null
+  group by 1, 2
+)
+select
+  coalesce(s.store_id, n.store_id)  as store_id,
+  coalesce(s.month, n.month)        as month,
+  coalesce(s.cash_in, 0)            as cash_in,
+  coalesce(s.accounting_sales, 0)   as accounting_sales,
+  coalesce(n.new_customers, 0)      as new_customers
+from sales s
+full join new_customers n on n.store_id = s.store_id and n.month = s.month;
 
 -- ████████ counseling-seed.sql ████████
 
