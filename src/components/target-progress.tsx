@@ -21,12 +21,13 @@ import {
   todayJST,
   yen,
 } from "@/lib/format";
+import { usesSalonOne } from "@/lib/types";
 import type { Store, StoreMonthlyActual, StoreMonthlyTarget } from "@/lib/types";
 
 // ============================================================
 // 経営サマリーの「目標達成状況」
 //   目標 = store_monthly_targets（経営 > 目標設定 で入力）
-//   実績 = store_monthly_actuals（ビュー。実績の取得元はビュー側で切り替える）
+//   実績 = store_monthly_actuals（ビュー。店舗ごとの切替月以降はサロンワン、それより前は Noble）
 // ============================================================
 
 // 売上実績の基準: 入金ベース（キャッシュイン）／会計上（役務消化込）
@@ -111,6 +112,7 @@ export function TargetProgress({
   actuals,
   basis,
   onBasisChange,
+  sync,
 }: {
   month: string; // 選択中の月（月初日）
   stores: Store[]; // 表示対象の店舗（ヘッダーの店舗切替で絞り込み済み）
@@ -118,6 +120,7 @@ export function TargetProgress({
   actuals: StoreMonthlyActual[]; // 選択月の年度分
   basis: SalesBasis;
   onBasisChange: (b: SalesBasis) => void;
+  sync?: React.ReactNode; // サロンワンの取り込みボタン
 }) {
   const fyStart = fiscalYearStart(month);
 
@@ -148,6 +151,12 @@ export function TargetProgress({
   const totalLabel = `合計（${targetStores.map((s) => s.name).join("・")}）`;
   const phase = monthPhase(month);
   const pace = currentMonthPace(month);
+  // 選択月の実績の取得元（店舗ごとの切替月で決まる）
+  const salonOneStores = targetStores.filter((s) => usesSalonOne(s, month));
+  const nobleStores = targetStores.filter((s) => !usesSalonOne(s, month));
+  const mixed = salonOneStores.length > 0 && nobleStores.length > 0;
+  const names = (list: Store[]) => list.map((s) => s.name).join("・");
+  const switchMonths = targetStores.filter((s) => s.salonone_shop_id != null && s.salonone_from);
 
   const monthRows = [
     ...(targetStores.length >= 2
@@ -183,20 +192,19 @@ export function TargetProgress({
       {/* 選択月の達成状況（店舗別） */}
       <Card className="p-4 space-y-3">
         <SectionTitle>目標達成状況（{monthLabelJa(month)}）</SectionTitle>
-        <div
-          className="flex items-center justify-end gap-2 flex-wrap"
-          role="group"
-          aria-label="売上の基準"
-        >
-          <span className="text-xs text-muted">売上の基準</span>
-          {(["cash", "accounting"] as const).map((b) => (
-            <Chip
-              key={b}
-              label={BASIS_LABEL[b]}
-              selected={basis === b}
-              onClick={() => onBasisChange(b)}
-            />
-          ))}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {sync ?? <span />}
+          <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="売上の基準">
+            <span className="text-xs text-muted">売上の基準</span>
+            {(["cash", "accounting"] as const).map((b) => (
+              <Chip
+                key={b}
+                label={BASIS_LABEL[b]}
+                selected={basis === b}
+                onClick={() => onBasisChange(b)}
+              />
+            ))}
+          </div>
         </div>
         <ul className={`grid grid-cols-1 gap-3 ${monthRows.length > 1 ? "lg:grid-cols-3" : ""}`}>
           {monthRows.map((r) => (
@@ -224,10 +232,32 @@ export function TargetProgress({
         </ul>
         <div className="text-[11px] text-muted space-y-0.5">
           {pace && <p>バーの縦線は、今日までの経過日数から見た目安です</p>}
-          <p>
-            実績は 売上＝実績入力の合計（入金ベース＝都度払い＋回数券販売＋物販 ／
-            会計上＝都度払い＋回数券消化＋物販）、新規＝初回来店日がその月の顧客数（カルテ連動）
-          </p>
+          {salonOneStores.length > 0 && (
+            <p>
+              {mixed && `${names(salonOneStores)}の`}実績はサロンワン（入金ベース＝粗売上 ／
+              会計上＝消化売上、新規＝新規来店数。いずれもサロンワンで会計した分）
+            </p>
+          )}
+          {nobleStores.length > 0 && (
+            <p>
+              {mixed && `${names(nobleStores)}の`}実績は 売上＝実績入力の合計（入金ベース＝都度払い＋
+              回数券販売＋物販 ／ 会計上＝都度払い＋回数券消化＋物販）、新規＝初回来店日がその月の
+              顧客数（カルテ連動）
+            </p>
+          )}
+          {switchMonths.length > 0 && (
+            <p>
+              サロンワン切替月:{" "}
+              {switchMonths
+                .map((s) => `${s.name} ${monthLabelJa(s.salonone_from!)}〜`)
+                .join("・")}
+              （それより前の月は Noble の実績。
+              <Link href="/admin/targets" className="text-gold-dk underline underline-offset-2">
+                目標設定
+              </Link>
+              で変更できます）
+            </p>
+          )}
           {unsetStores.length > 0 && (
             <p>
               目標未設定: {unsetStores.map((s) => s.name).join("・")}（

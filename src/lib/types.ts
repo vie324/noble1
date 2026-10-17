@@ -11,6 +11,8 @@ export interface Store {
   code: string;
   sort_order: number;
   is_active: boolean;
+  salonone_shop_id: number | null; // サロンワンの店舗ID（026）
+  salonone_from: string | null; // サロンワン切替月（月初日。この月以降の実績はサロンワン）
 }
 
 export interface Staff {
@@ -411,9 +413,17 @@ export interface StoreMonthlyTarget {
 export interface StoreMonthlyActual {
   store_id: number;
   month: string;
-  cash_in: number; // 都度払い + 回数券販売 + 物販（入金ベース）
-  accounting_sales: number; // 都度払い + 回数券消化 + 物販（会計上）
-  new_customers: number; // 初回来店日がその月の顧客数
+  // 以下の3項目は source により中身が変わる（noble: 実績入力・カルテ／salonone: サロンワン）
+  cash_in: number; // 入金ベース。noble: 都度払い + 回数券販売 + 物販／salonone: 粗売上
+  accounting_sales: number; // 会計上。noble: 都度払い + 回数券消化 + 物販／salonone: 消化売上
+  new_customers: number; // noble: 初回来店日がその月の顧客数／salonone: 新規来店数（会計済み）
+  source: "noble" | "salonone"; // 実績の取得元（切替月以降はサロンワン）
+  fetched_at: string | null; // サロンワンから取り込んだ日時
+}
+
+// この店舗のこの月の実績がサロンワンの値か（ビュー store_monthly_actuals と同じ判定）
+export function usesSalonOne(store: Store, month: string): boolean {
+  return store.salonone_shop_id != null && store.salonone_from != null && month >= store.salonone_from;
 }
 
 // 1回あたりの単価（購入金額 ÷ 総回数）
