@@ -3,7 +3,7 @@
 --
 -- 新規の Supabase プロジェクトで、SQL Editor にこのファイル全体を
 -- 貼り付けて1回実行するだけで、以下がすべて作成されます:
---   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜025）
+--   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜026）
 --   ・カウンセリング項目・統合同意書「施術説明書・同意書」
 --   ・施術部位15種 / 店舗3件 / オーナーアカウント marin
 --   ・店舗別 LINE Messaging API 連携テーブル（store_line_configs / line_friends）
@@ -1771,6 +1771,101 @@ select
   coalesce(n.new_customers, 0)      as new_customers
 from sales s
 full join new_customers n on n.store_id = s.store_id and n.month = s.month;
+
+-- ████████ 026_salonone_actuals.sql ████████
+
+-- ============================================================
+-- 026_salonone_actuals.sql : サロンワン（分析API）の売上・新規数を実績に使う
+--   ・stores.salonone_shop_id / salonone_from : サロンワンの店舗IDと切替月
+--     （経営 > 目標設定 で設定。切替月以降の実績がサロンワンの値になる）
+--   ・salonone_monthly_sales : サロンワンから取り込んだ 店舗 × 月 の数値
+--   ・store_monthly_actuals  : 切替月以降はサロンワンの値に差し替える
+-- ============================================================
+
+alter table public.stores add column salonone_shop_id bigint unique;
+alter table public.stores add column salonone_from date check (extract(day from salonone_from) = 1);
+
+create table public.salonone_monthly_sales (
+  shop_id             bigint not null,
+  month               date not null check (extract(day from month) = 1),
+  shop_name           text,
+  gross_sales         bigint not null default 0,  -- 粗売上（購入時点で計上）
+  consumed_sales      bigint not null default 0,  -- 消化売上（施術提供時点で計上）
+  digest_sales        bigint not null default 0,  -- 会計済み売上
+  digest_count        int    not null default 0,  -- 会計済みの件数
+  refund_amount       bigint not null default 0,  -- 返金高（売上に対する返金のみ）
+  new_visit_count     int    not null default 0,  -- 新規の来店数
+  repeat_visit_count  int    not null default 0,  -- 再来の来店数
+  fetched_at          timestamptz not null default now(),
+  primary key (shop_id, month)
+);
+
+-- 書き込みはサーバー（service role）の取り込み処理だけ
+alter table public.salonone_monthly_sales enable row level security;
+create policy salonone_monthly_sales_admin_read on public.salonone_monthly_sales for select
+  using (public.is_admin());
+
+create or replace view public.store_monthly_actuals
+with (security_invoker = true)
+as
+with sales as (
+  select
+    store_id,
+    date_trunc('month', date)::date                       as month,
+    sum(spot_sales + ticket_sales + product_sales)::bigint as cash_in,
+    sum(spot_sales + ticket_usage + product_sales)::bigint as accounting_sales
+  from public.daily_sales
+  group by 1, 2
+),
+new_customers as (
+  select
+    primary_store_id                         as store_id,
+    date_trunc('month', first_visit_on)::date as month,
+    count(*)::int                            as new_customers
+  from public.customers
+  where first_visit_on is not null
+    and primary_store_id is not null
+  group by 1, 2
+),
+noble as (
+  select
+    coalesce(s.store_id, n.store_id)  as store_id,
+    coalesce(s.month, n.month)        as month,
+    coalesce(s.cash_in, 0)            as cash_in,
+    coalesce(s.accounting_sales, 0)   as accounting_sales,
+    coalesce(n.new_customers, 0)      as new_customers
+  from sales s
+  full join new_customers n on n.store_id = s.store_id and n.month = s.month
+)
+select
+  n.store_id,
+  n.month,
+  n.cash_in,
+  n.accounting_sales,
+  n.new_customers,
+  'noble'::text           as source,
+  null::timestamptz       as fetched_at
+from noble n
+where not exists (
+  select 1 from public.stores st
+  where st.id = n.store_id
+    and st.salonone_shop_id is not null
+    and st.salonone_from is not null
+    and n.month >= st.salonone_from
+)
+union all
+select
+  st.id                   as store_id,
+  so.month,
+  so.gross_sales          as cash_in,
+  so.consumed_sales       as accounting_sales,
+  so.new_visit_count      as new_customers,
+  'salonone'::text        as source,
+  so.fetched_at
+from public.salonone_monthly_sales so
+join public.stores st on st.salonone_shop_id = so.shop_id
+where st.salonone_from is not null
+  and so.month >= st.salonone_from;
 
 -- ████████ counseling-seed.sql ████████
 

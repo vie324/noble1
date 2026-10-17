@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Button, Card, Chip, ListSkeleton, SectionTitle } from "@/components/ui";
@@ -13,7 +14,9 @@ import {
   thisMonthJST,
   yen,
 } from "@/lib/format";
-import type { StoreMonthlyTarget } from "@/lib/types";
+import type { Store, StoreMonthlyTarget } from "@/lib/types";
+import { getSalonOneShops } from "@/app/(app)/admin/salonone-actions";
+import type { SalonOneShop } from "@/lib/salonone";
 
 // 入力中は文字列で保持する（売上は万円。「132.5」の入力途中で値が崩れないように）
 interface TargetInput {
@@ -35,6 +38,13 @@ export default function TargetSettingsPage() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [salonOneShops, setSalonOneShops] = useState<
+    { ok: true; shops: SalonOneShop[] } | { ok: false; message: string } | null
+  >(null);
+
+  useEffect(() => {
+    getSalonOneShops().then(setSalonOneShops);
+  }, []);
 
   const load = useCallback(async () => {
     setRows(null);
@@ -235,6 +245,172 @@ export default function TargetSettingsPage() {
           </div>
         </Card>
       )}
+
+      {stores.some((s) => s.id === storeId) && (
+        <SalonOneLinkCard
+          key={storeId}
+          store={stores.find((s) => s.id === storeId)!}
+          shops={salonOneShops}
+        />
+      )}
     </div>
+  );
+}
+
+/* 実績の取得元（サロンワンの店舗との対応づけと切替月） */
+function SalonOneLinkCard({
+  store,
+  shops,
+}: {
+  store: Store;
+  shops: { ok: true; shops: SalonOneShop[] } | { ok: false; message: string } | null;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const [shopId, setShopId] = useState(store.salonone_shop_id?.toString() ?? "");
+  const [from, setFrom] = useState(store.salonone_from?.slice(0, 7) ?? ""); // "YYYY-MM"
+  const [recent, setRecent] = useState<
+    { month: string; digest_count: number; new_visit_count: number }[]
+  >([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const dirty =
+    shopId !== (store.salonone_shop_id?.toString() ?? "") ||
+    from !== (store.salonone_from?.slice(0, 7) ?? "");
+
+  // 取り込み済みの直近3ヶ月（サロンワンで会計が始まっているかの確認用）
+  useEffect(() => {
+    if (!shopId) return;
+    supabase
+      .from("salonone_monthly_sales")
+      .select("month, digest_count, new_visit_count")
+      .eq("shop_id", Number(shopId))
+      .lte("month", thisMonthJST())
+      .order("month", { ascending: false })
+      .limit(3)
+      .then(({ data }) => setRecent(data ?? []));
+  }, [supabase, shopId]);
+
+  async function save() {
+    if (from && !shopId) {
+      setMessage("切替月を設定するには、サロンワンの店舗を選んでください");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("stores")
+      .update({
+        salonone_shop_id: shopId ? Number(shopId) : null,
+        salonone_from: from ? `${from}-01` : null,
+      })
+      .eq("id", store.id);
+    setSaving(false);
+    if (error) {
+      setMessage(
+        error.code === "23505"
+          ? "そのサロンワンの店舗は、ほかの店舗に対応づけ済みです"
+          : "保存に失敗しました"
+      );
+      return;
+    }
+    setMessage("保存しました");
+    router.refresh(); // ヘッダー・経営サマリーが参照する店舗情報を更新
+  }
+
+  const shopOptions = shops?.ok ? shops.shops : [];
+  const knownShop = !shopId || shopOptions.some((s) => String(s.id) === shopId);
+  const selectClass =
+    "min-h-11 rounded-lg border border-hairline bg-surface px-2 text-sm text-ink outline-none focus:border-gold";
+
+  return (
+    <Card className="p-4 space-y-3">
+      <SectionTitle>実績の取得元（サロンワン連携）</SectionTitle>
+      <p className="text-sm text-ink leading-relaxed">
+        切替月から先の実績は、サロンワンの売上（入金ベース＝粗売上 ／ 会計上＝消化売上）と
+        新規来店数を使います。それより前の月と、切替月が空欄の間は Noble の実績入力・カルテを使います。
+        <strong>サロンワンで会計を始めた月</strong>を設定してください。
+      </p>
+
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="block">
+          <span className="block text-xs font-semibold text-muted mb-1">サロンワンの店舗</span>
+          <select
+            value={shopId}
+            onChange={(e) => {
+              setShopId(e.target.value);
+              setRecent([]);
+              setMessage(null);
+            }}
+            className={selectClass}
+          >
+            <option value="">対応づけない</option>
+            {!knownShop && <option value={shopId}>店舗ID {shopId}</option>}
+            {shopOptions.map((s) => (
+              <option key={s.id} value={String(s.id)}>
+                {s.name}
+                {s.deleted_at ? "（削除済み）" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-xs font-semibold text-muted mb-1">サロンワン切替月</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setMessage(null);
+              }}
+              className={selectClass}
+            />
+            {from && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFrom("");
+                  setMessage(null);
+                }}
+              >
+                空欄に戻す
+              </Button>
+            )}
+          </div>
+        </label>
+      </div>
+
+      {shops && !shops.ok && (
+        <p className="text-xs text-caution">サロンワンの店舗一覧を取得できませんでした: {shops.message}</p>
+      )}
+      {shopId && recent.length > 0 && (
+        <p className="text-xs text-muted tnum">
+          サロンワンでの会計状況:{" "}
+          {recent
+            .map(
+              (r) =>
+                `${monthLabelJa(r.month)} 会計 ${r.digest_count}件・新規来店 ${r.new_visit_count}件`
+            )
+            .join(" ／ ")}
+          （最後に取り込んだ時点の値）
+        </p>
+      )}
+      <p className="text-[11px] text-muted">
+        {from
+          ? `${monthLabelJa(`${from}-01`)}以降の実績がサロンワンの値になります`
+          : "切替月が空欄のため、すべての月で Noble の実績を使っています"}
+      </p>
+
+      <div className="flex items-center gap-3">
+        <Button onClick={save} disabled={saving || !dirty}>
+          {saving ? "保存中…" : "取得元を保存する"}
+        </Button>
+        {message && (
+          <span className={`text-sm ${message === "保存しました" ? "text-ok" : "text-caution"}`}>
+            {message}
+          </span>
+        )}
+      </div>
+    </Card>
   );
 }

@@ -16,6 +16,7 @@ import { useApp } from "@/lib/app-context";
 import { Card, CountUp, ListSkeleton, SectionTitle } from "@/components/ui";
 import { AdminTabs, MonthNav } from "@/components/admin-tabs";
 import { TargetProgress, type SalesBasis } from "@/components/target-progress";
+import { SalonOneSync } from "@/components/salonone-sync";
 import {
   addMonths,
   daysUntil,
@@ -68,6 +69,31 @@ export default function AdminDashboardPage() {
   const [targets, setTargets] = useState<StoreMonthlyTarget[]>([]);
   const [actuals, setActuals] = useState<StoreMonthlyActual[]>([]);
   const [basis, setBasis] = useState<SalesBasis>("cash");
+  const [salonOneFetchedAt, setSalonOneFetchedAt] = useState<string | null>(null);
+
+  // 目標達成状況の実績（選択月が属する年度分）とサロンワンの最終取り込み日時。
+  // サロンワンから取り込んだ直後は、画面全体を読み直さずにここだけ更新する
+  const loadActuals = useCallback(async () => {
+    const fyStart = fiscalYearStart(month);
+    let actualsQ = supabase
+      .from("store_monthly_actuals")
+      .select("*")
+      .gte("month", fyStart)
+      .lt("month", addMonths(fyStart, 12));
+    if (storeFilter !== null) actualsQ = actualsQ.eq("store_id", storeFilter);
+
+    const [ac, so] = await Promise.all([
+      actualsQ,
+      supabase
+        .from("salonone_monthly_sales")
+        .select("fetched_at")
+        .order("fetched_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    setActuals((ac.data as StoreMonthlyActual[]) ?? []);
+    setSalonOneFetchedAt((so.data as { fetched_at: string } | null)?.fetched_at ?? null);
+  }, [supabase, month, storeFilter]);
 
   const load = useCallback(async () => {
     setSales(null);
@@ -93,17 +119,9 @@ export default function AdminDashboardPage() {
       .select("*")
       .gte("month", fyStart)
       .lt("month", fyEnd);
-    let actualsQ = supabase
-      .from("store_monthly_actuals")
-      .select("*")
-      .gte("month", fyStart)
-      .lt("month", fyEnd);
-    if (storeFilter !== null) {
-      targetsQ = targetsQ.eq("store_id", storeFilter);
-      actualsQ = actualsQ.eq("store_id", storeFilter);
-    }
+    if (storeFilter !== null) targetsQ = targetsQ.eq("store_id", storeFilter);
 
-    const [s, t, m, st, tg, ac] = await Promise.all([
+    const [s, t, m, st, tg] = await Promise.all([
       salesQ,
       ticketsQ,
       supabase
@@ -113,7 +131,7 @@ export default function AdminDashboardPage() {
         .order("new_visits", { ascending: false }),
       supabase.from("staff_monthly").select("retention_rate").eq("month", month),
       targetsQ,
-      actualsQ,
+      loadActuals(),
     ]);
 
     setSales((s.data as DailySale[]) ?? []);
@@ -122,8 +140,7 @@ export default function AdminDashboardPage() {
     const rates = ((st.data as StaffMonthlyRow[]) ?? []).map((r) => Number(r.retention_rate));
     setRetention(rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : null);
     setTargets((tg.data as StoreMonthlyTarget[]) ?? []);
-    setActuals((ac.data as StoreMonthlyActual[]) ?? []);
-  }, [supabase, month, storeFilter]);
+  }, [supabase, month, storeFilter, loadActuals]);
 
   useEffect(() => {
     load();
@@ -193,6 +210,13 @@ export default function AdminDashboardPage() {
             actuals={actuals}
             basis={basis}
             onBasisChange={setBasis}
+            sync={
+              <SalonOneSync
+                fyStart={fiscalYearStart(month)}
+                lastFetchedAt={salonOneFetchedAt}
+                onImported={loadActuals}
+              />
+            }
           />
 
           {/* KPI */}
