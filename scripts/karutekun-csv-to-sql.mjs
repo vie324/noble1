@@ -23,8 +23,12 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, rmSync, existsSync
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const MAX_BYTES = 600 * 1024; // 分割1ファイルの上限の目安（SQL Editor に貼れる大きさ）
-const ROWS_PER_INSERT = 100;
+// Supabase の SQL Editor には実行できるクエリの大きさに上限があり、超えると
+//   Error: Query is too large to be run via the SQL Editor
+// で1行も実行されない。上限の正確な値は公開されていないため、余裕をもって
+// 250KB（日本語で約9万文字）で切る。
+const MAX_BYTES = 250 * 1024;
+const ROWS_PER_INSERT = 50;
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRATION = join(repoRoot, "supabase/migrations/023_karutekun_import.sql");
@@ -242,18 +246,30 @@ const order = ["01_setup.sql", ...dataParts.map((p) => p.name), "99_run_import.s
 writeFileSync(
   join(outDir, "README.md"),
   `# カルテくんデータ取り込み用 SQL（自動生成）\n\n` +
-    `CSV のアップロードも Node.js も不要です。SQL を実行するだけで取り込みが終わります。\n` +
     `**このフォルダには個人情報が含まれます。コミット・共有しないでください。**\n\n` +
-    `## 方法1: まとめて1回（psql が使えるとき・おすすめ）\n\n` +
+    `> ⚠️ \`import_all.sql\` は Supabase の **SQL Editor には貼れません**。\n` +
+    `> 大きすぎて \`Query is too large to be run via the SQL Editor\` になり、\n` +
+    `> 1行も実行されません。SQL Editor を使うなら \`split/\` の方です。\n\n` +
+    `## 方法1: DBに直接つないで1回で流す（一番速い）\n\n` +
     "```bash\n" +
     `psql "<接続文字列>" -v ON_ERROR_STOP=1 -f import_all.sql\n` +
     "```\n\n" +
-    `接続文字列は Supabase → Project Settings → Database → Connection string（URI）です。\n\n` +
+    `接続文字列は Supabase → Project Settings → Database → Connection string（URI）。\n` +
+    `TablePlus / DBeaver / pgAdmin などの GUI クライアントでも、同じ接続情報で\n` +
+    `\`import_all.sql\` を開いて実行できます（ターミナル不要）。\n\n` +
     `## 方法2: SQL Editor に貼り付け（${order.length} 回）\n\n` +
     `\`split/\` の中を**番号順に**開き、中身を全選択して Supabase の SQL Editor に貼り、\n` +
-    `1ファイルずつ Run します。順番を飛ばさないでください。\n\n` +
+    `1ファイルずつ Run します。順番を飛ばさないでください。\n` +
+    `1ファイルは 250KB 以下に切ってあるので SQL Editor の上限には掛かりません。\n\n` +
     order.map((n, i) => `${i + 1}. \`split/${n}\``).join("\n") +
     `\n\n最後の \`99_run_import.sql\` が処理件数の表を返せば完了です。\n\n` +
+    `## 方法3: CSV をそのままアップロードする（SQLを貼る回数が一番少ない）\n\n` +
+    `\`split/01_setup.sql\` だけ SQL Editor で実行したあと、Supabase の Table Editor で\n` +
+    `\`import_karte\` / \`import_visits\` / \`import_visit_items\` に元の CSV を\n` +
+    `Insert → Import data from CSV でアップロードし、最後に SQL Editor で1行:\n\n` +
+    "```sql\n" +
+    `select * from public.import_karutekun();\n` +
+    "```\n\n" +
     `## 途中で失敗したら\n\n` +
     `\`01_setup.sql\` からやり直してください（取込テーブルを空にしてから入れ直します）。\n` +
     `同じファイルを二重に貼ってしまった場合も、そのまま最後まで進めて問題ありません\n` +
