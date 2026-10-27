@@ -77,6 +77,17 @@ export function Chip({
   );
 }
 
+/* ---------------- チップの並び（スマホは1行で横スクロール、PCは折り返し） ---------------- */
+export function ChipRow({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible [&>*]:shrink-0 [&>*]:whitespace-nowrap ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* ---------------- ステータス/フラグバッジ ---------------- */
 const badgeStyles: Record<FlagColorKey, string> = {
   caution: "bg-caution-soft text-caution border-caution/30",

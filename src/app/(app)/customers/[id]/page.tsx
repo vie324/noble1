@@ -43,8 +43,10 @@ interface VisitRow extends Visit {
   visit_photos: { id: number; kind: string; storage_path: string }[];
 }
 
-const quickAction =
-  "flex flex-col items-center justify-center gap-0.5 min-h-14 rounded-2xl border border-hairline bg-surface text-sm font-semibold text-ink hover:border-gold transition-colors";
+const quickActionBase =
+  "flex flex-col items-center justify-center gap-0.5 min-h-14 rounded-2xl border text-sm font-semibold transition-colors";
+const quickAction = `${quickActionBase} border-hairline bg-surface text-ink hover:border-gold`;
+const quickActionPrimary = `${quickActionBase} border-gold bg-gold text-white hover:bg-gold-dk`;
 
 export default function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -168,7 +170,7 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
           <a href="#line" className={quickAction}>
             <span aria-hidden>✉</span>LINE
           </a>
-          <Link href={`/visits/new?customer=${customer.id}&date=${todayJST()}`} className={`${quickAction} bg-gold text-white border-gold hover:bg-gold-dk`}>
+          <Link href={`/visits/new?customer=${customer.id}&date=${todayJST()}`} className={quickActionPrimary}>
             <span aria-hidden>＋</span>来店予定
           </Link>
         </div>

@@ -146,11 +146,10 @@ export function CustomerLine({
             <Badge color="ok">LINE紐付け済み</Badge>
             <span className="text-sm text-ink">{friend.display_name ?? "（名称未取得）"}</span>
             {friend.is_blocked && <Badge color="caution">ブロック中</Badge>}
-            <span className="flex-1" />
-            <Button variant="ghost" disabled={busy} onClick={() => unlink(friend.id)}>
-              紐付け解除
-            </Button>
           </div>
+          {friend.is_blocked && (
+            <p className="text-xs text-caution">お客様にブロックされているため送信できません</p>
+          )}
 
           <Button
             className="w-full"
@@ -159,13 +158,26 @@ export function CustomerLine({
           >
             ✉ LINEで送る（定型文・写真）
           </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="secondary" disabled={busy || friend.is_blocked} onClick={sendCounseling}>
-              カウンセリングを送る
-            </Button>
-            <Button variant="secondary" disabled={busy || friend.is_blocked} onClick={sendGallery}>
-              ビフォーアフターを送る
-            </Button>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-muted">ワンタップで送る</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="secondary"
+                className="whitespace-nowrap"
+                disabled={busy || friend.is_blocked}
+                onClick={sendCounseling}
+              >
+                カウンセリング
+              </Button>
+              <Button
+                variant="secondary"
+                className="whitespace-nowrap"
+                disabled={busy || friend.is_blocked}
+                onClick={sendGallery}
+              >
+                ビフォーアフター
+              </Button>
+            </div>
           </div>
 
           {logs.length > 0 && (
@@ -185,6 +197,17 @@ export function CustomerLine({
               </ul>
             </div>
           )}
+
+          <div className="text-right">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => unlink(friend.id)}
+              className="min-h-11 px-2 text-xs text-muted underline underline-offset-2 hover:text-caution"
+            >
+              LINEの紐付けを解除
+            </button>
+          </div>
 
           <LineComposeSheet
             open={composeOpen}

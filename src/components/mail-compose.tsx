@@ -43,7 +43,7 @@ export function MailComposeButtons({
         {platform === "ios" ? (
           <>
             <a href={disabled ? undefined : gmailIosAppUrl(draft)} onClick={onOpened} className={primary + off} aria-disabled={disabled}>
-              {label}（Gmailアプリ）
+              {label}
             </a>
             <a href={disabled ? undefined : mailtoUrl(draft)} onClick={onOpened} className={secondary + off} aria-disabled={disabled}>
               メールアプリで作成
@@ -86,8 +86,14 @@ export function MailComposeButtons({
           {copied ? "✓ コピーしました" : "本文をコピー"}
         </button>
       </div>
-      {disabled && (
+      {disabled ? (
         <p className="text-xs text-warn">送付先のメールアドレスが未設定です</p>
+      ) : (
+        platform === "ios" && (
+          <p className="text-[11px] text-muted">
+            Gmailアプリが開かないときは「メールアプリで作成」を使ってください
+          </p>
+        )
       )}
     </div>
   );

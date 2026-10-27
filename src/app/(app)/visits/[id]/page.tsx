@@ -13,6 +13,7 @@ import {
   Chip,
   ListSkeleton,
   SectionTitle,
+  StickyActions,
   TextArea,
 } from "@/components/ui";
 import { FlagBadges } from "@/components/flags";
@@ -520,18 +521,22 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
         />
       </Card>
 
-      {error && (
-        <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2">{error}</p>
-      )}
-
-      <div className="flex gap-3">
-        <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1">
-          {saving ? "保存中…" : visit.status === "scheduled" ? "記入を完了する" : "保存する"}
-        </Button>
-        <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving}>
-          下書き保存
-        </Button>
-      </div>
+      {/* 保存ボタンは画面下に固定（長いカルテでもスクロールせずに保存できる） */}
+      <StickyActions className="space-y-2">
+        {error && (
+          <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1">
+            {saving ? "保存中…" : visit.status === "scheduled" ? "記入を完了する" : "保存する"}
+          </Button>
+          <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
+            下書き保存
+          </Button>
+        </div>
+      </StickyActions>
     </div>
   );
 }

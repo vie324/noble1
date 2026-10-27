@@ -3,8 +3,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { customerSearchFilter } from "@/lib/search";
 import { useApp } from "@/lib/app-context";
-import { Button, Card, Chip, SectionTitle, TextField } from "@/components/ui";
+import { Button, Card, Chip, SectionTitle, StickyActions, TextField } from "@/components/ui";
 import { dateLabelJa, jstToISO, todayJST, staffLabel } from "@/lib/format";
 import type { Customer, Menu, Staff } from "@/lib/types";
 
@@ -89,11 +90,16 @@ function NewVisitForm() {
       }
       setSearching(true);
       searchTimer.current = setTimeout(async () => {
-        const like = `%${q.trim()}%`;
+        const filter = customerSearchFilter(q);
+        if (!filter) {
+          setResults([]);
+          setSearching(false);
+          return;
+        }
         const { data } = await supabase
           .from("customers")
           .select("*")
-          .or(`name.ilike.${like},kana.ilike.${like},phone.ilike.${like}`)
+          .or(filter)
           .order("kana")
           .limit(8);
         setResults((data as Customer[]) ?? []);
@@ -319,18 +325,21 @@ function NewVisitForm() {
         </div>
       </Card>
 
-      {error && (
-        <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2">{error}</p>
-      )}
-
-      <div className="flex gap-3">
-        <Button onClick={handleSubmit} disabled={saving} className="flex-1">
-          {saving ? "作成中…" : "この内容で箱を作る"}
-        </Button>
-        <Button variant="ghost" onClick={() => router.back()}>
-          キャンセル
-        </Button>
-      </div>
+      <StickyActions className="space-y-2">
+        {error && (
+          <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <Button onClick={handleSubmit} disabled={saving} className="flex-1">
+            {saving ? "作成中…" : "この内容で箱を作る"}
+          </Button>
+          <Button variant="ghost" onClick={() => router.back()}>
+            キャンセル
+          </Button>
+        </div>
+      </StickyActions>
     </div>
   );
 }

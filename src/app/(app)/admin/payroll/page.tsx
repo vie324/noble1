@@ -17,6 +17,7 @@ import {
   hoursLabel,
   monthLabelJa,
   staffLabel,
+  todayJST,
   yen,
 } from "@/lib/format";
 import {
@@ -161,6 +162,10 @@ function Payroll() {
   async function closeMonth() {
     if (!month) return;
     const notes = [
+      // 月の途中で締めると、残りの日の勤務実績を記録できなくなる
+      todayJST() < addMonths(month, 1)
+        ? `・${monthLabelJa(month)}はまだ終わっていません（締めると、これからの日の実績を記録できなくなります）`
+        : "",
       drafts.length > 0 ? `・確定していないシフトが ${drafts.length} 件あります（集計されません）` : "",
       missing.length > 0 ? `・実績が未記録の日が ${missing.length} 日あります（予定時間で計算されます）` : "",
     ].filter(Boolean);
@@ -459,7 +464,7 @@ function Payroll() {
               <Button variant="secondary" disabled={payRows.length === 0} onClick={exportPay}>
                 報酬・交通費CSVを保存
               </Button>
-              <MailComposeButtons draft={accountantDraft} label="税理士へのメールを作成" />
+              <MailComposeButtons draft={accountantDraft} />
             </div>
             <div className="space-y-2 rounded-xl border border-hairline bg-base p-3">
               <p className="text-sm font-semibold text-ink">
@@ -469,7 +474,7 @@ function Payroll() {
               <Button variant="secondary" disabled={payRows.length === 0} onClick={exportAttendance}>
                 勤務実績CSVを保存
               </Button>
-              <MailComposeButtons draft={laborDraft} label="社労士へのメールを作成" />
+              <MailComposeButtons draft={laborDraft} />
             </div>
             <p className="text-[11px] text-muted">
               CSVは Excel・Googleスプレッドシートで文字化けせずに開けます。送付先のメールアドレスは下の「送付先の設定」で登録します

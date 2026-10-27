@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { customerSearchFilter } from "@/lib/search";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, EmptyState, ListSkeleton, SectionTitle } from "@/components/ui";
 import { CounselingAnswers } from "@/components/counseling-answers";
@@ -144,11 +145,15 @@ function IntakeCard({
       return;
     }
     timer.current = setTimeout(async () => {
-      const like = `%${q.trim()}%`;
+      const filter = customerSearchFilter(q);
+      if (!filter) {
+        setResults([]);
+        return;
+      }
       const { data } = await supabase
         .from("customers")
         .select("*")
-        .or(`name.ilike.${like},kana.ilike.${like},phone.ilike.${like}`)
+        .or(filter)
         .order("kana")
         .limit(8);
       setResults((data as Customer[]) ?? []);

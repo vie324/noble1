@@ -3,16 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
-import {
-  Badge,
-  Button,
-  Card,
-  Chip,
-  EmptyState,
-  ListSkeleton,
-  TextArea,
-  TextField,
-} from "@/components/ui";
+import { Badge, Button, Card, Chip, ChipRow, EmptyState, ListSkeleton, TextArea, TextField } from "@/components/ui";
 import { dateSlash } from "@/lib/format";
 import { BOARD_CATEGORIES } from "@/lib/types";
 import type { BoardPost } from "@/lib/types";
@@ -82,12 +73,12 @@ export default function BoardPage() {
       </div>
 
       {/* カテゴリフィルタ */}
-      <div className="flex gap-2 flex-wrap">
+      <ChipRow>
         <Chip label="すべて" selected={category === null} onClick={() => setCategory(null)} />
         {BOARD_CATEGORIES.map((c) => (
           <Chip key={c} label={c} selected={category === c} onClick={() => setCategory(c)} />
         ))}
-      </div>
+      </ChipRow>
 
       {editing === "new" && (
         <PostForm
