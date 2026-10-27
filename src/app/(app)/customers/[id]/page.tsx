@@ -43,6 +43,9 @@ interface VisitRow extends Visit {
   visit_photos: { id: number; kind: string; storage_path: string }[];
 }
 
+const quickAction =
+  "flex flex-col items-center justify-center gap-0.5 min-h-14 rounded-2xl border border-hairline bg-surface text-sm font-semibold text-ink hover:border-gold transition-colors";
+
 export default function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const customerId = Number(id);
@@ -130,13 +133,20 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
   return (
     <div className="max-w-3xl mx-auto space-y-5 fade-in">
       {/* ヘッダー */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="space-y-3">
         <div>
           <h1 className="serif text-3xl text-ink">{customer.name} 様</h1>
           <p className="text-sm text-muted mt-1">
             {customer.kana}
-            {customer.phone && ` ・ ${customer.phone}`} ・ 主担当{" "}
-            {storeName(customer.primary_store_id)}
+            {customer.phone && (
+              <>
+                {" ・ "}
+                <a href={`tel:${customer.phone}`} className="text-gold-dk underline underline-offset-2 tnum">
+                  {customer.phone}
+                </a>
+              </>
+            )}{" "}
+            ・ 主担当 {storeName(customer.primary_store_id)}
           </p>
           <p className="text-xs text-muted mt-1 tnum">
             ご来店 {filledVisits.length} 回
@@ -144,16 +154,34 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
             {customer.first_visit_on && ` ・ 初回 ${dateSlash(customer.first_visit_on)}`}
           </p>
         </div>
-        <div className="flex gap-2">
-          {customer.line_chat_url && (
-            <a href={customer.line_chat_url} target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary">LINEを開く</Button>
+        {/* よく使う操作（スマホでも親指で届く大きさ） */}
+        <div className="grid grid-cols-3 gap-2 max-w-md">
+          {customer.phone ? (
+            <a href={`tel:${customer.phone}`} className={quickAction}>
+              <span aria-hidden>📞</span>電話
             </a>
+          ) : (
+            <span className={`${quickAction} opacity-40`}>
+              <span aria-hidden>📞</span>電話
+            </span>
           )}
-          <Link href={`/visits/new?customer=${customer.id}&date=${todayJST()}`}>
-            <Button>来店予定を作る</Button>
+          <a href="#line" className={quickAction}>
+            <span aria-hidden>✉</span>LINE
+          </a>
+          <Link href={`/visits/new?customer=${customer.id}&date=${todayJST()}`} className={`${quickAction} bg-gold text-white border-gold hover:bg-gold-dk`}>
+            <span aria-hidden>＋</span>来店予定
           </Link>
         </div>
+        {customer.line_chat_url && (
+          <a
+            href={customer.line_chat_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-sm text-gold-dk underline underline-offset-2 min-h-11 items-center"
+          >
+            LINEのトーク画面を開く ↗
+          </a>
+        )}
       </div>
 
       {/* アレルギー等の注意事項（最上部・施術前に必ず目に入る位置） */}
@@ -196,7 +224,11 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
       <CustomerGallery customerId={customerId} lineChatUrl={customer.line_chat_url} />
 
       {/* LINE送信（店舗公式アカウント・Messaging API） */}
-      <CustomerLine customerId={customerId} primaryStoreId={customer.primary_store_id} />
+      <CustomerLine
+        customerId={customerId}
+        customerName={customer.name}
+        primaryStoreId={customer.primary_store_id}
+      />
 
       {/* 来店履歴タイムライン */}
       <Card className="p-4 space-y-3">

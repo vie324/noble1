@@ -5,14 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, ListSkeleton, TextArea, TextField } from "@/components/ui";
 import { AdminTabs } from "@/components/admin-tabs";
-import type { FlagColorKey } from "@/lib/types";
+import { StaffPrivatePanel } from "@/components/staff-private-panel";
+import { EMPLOYMENT_LABEL, LINE_TEMPLATE_CATEGORIES } from "@/lib/types";
+import type { EmploymentType, FlagColorKey } from "@/lib/types";
 
 /* ============================================================
    マスタ管理（管理者専用）
    テーブルごとのフィールド定義でフォームを生成する汎用CRUD
    ============================================================ */
 
-type FieldType = "text" | "textarea" | "number" | "stores" | "color_key" | "role" | "choice";
+type FieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "stores"
+  | "color_key"
+  | "role"
+  | "choice"
+  | "employment";
 
 interface FieldDef {
   key: string;
@@ -112,6 +122,19 @@ const TABS: TabDef[] = [
     ],
   },
   {
+    key: "line_templates",
+    table: "line_templates",
+    label: "LINE定型文",
+    orderBy: "sort_order",
+    note: "顧客ページの「LINEで送る」で選べる定型文です。本文に {お客様名} {店舗名} {担当スタッフ} {次回予約} {前回来店日} を入れると、送信時にそのお客様の内容に置き換わります（送信前に編集もできます）。",
+    fields: [
+      { key: "title", label: "タイトル（スタッフが選ぶときの名前）", type: "text", required: true },
+      { key: "category", label: "分類", type: "choice", choices: [...LINE_TEMPLATE_CATEGORIES] },
+      { key: "body", label: "本文", type: "textarea", required: true },
+      { key: "sort_order", label: "表示順", type: "number" },
+    ],
+  },
+  {
     key: "products",
     table: "products",
     label: "商品・備品",
@@ -129,12 +152,13 @@ const TABS: TabDef[] = [
     table: "staff",
     label: "スタッフ",
     orderBy: "id",
-    note: "ログインアカウントの発行は Supabase の管理画面（または scripts/create-users.mjs）で行い、ここのメールアドレスと一致させてください。",
+    note: "ログインアカウントの発行は Supabase の管理画面（または scripts/create-users.mjs）で行い、ここのメールアドレスと一致させてください。住所・生年月日などは各スタッフの「個人情報」から管理者だけが登録・閲覧できます。",
     fields: [
       { key: "name", label: "名前", type: "text", required: true },
       { key: "kana", label: "カナ", type: "text" },
       { key: "email", label: "メールアドレス", type: "text", required: true },
       { key: "role", label: "ロール", type: "role" },
+      { key: "employment_type", label: "雇用区分（業務委託は請求書を作成できます）", type: "employment" },
       { key: "icon_emoji", label: "アイコン（任意・カレンダーチップ用）", type: "text" },
       { key: "theme_color", label: "テーマカラー", type: "text", hint: "#B89B5E 形式" },
     ],
@@ -183,6 +207,7 @@ function MasterTable({ tab }: { tab: TabDef }) {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
+  const [privateOpen, setPrivateOpen] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -225,7 +250,7 @@ function MasterTable({ tab }: { tab: TabDef }) {
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className={`min-w-0 ${row.is_active ? "" : "opacity-50"}`}>
                     <p className="font-medium text-ink">
                       {tab.table === "staff" && `${row.icon_emoji ?? ""} `}
@@ -245,7 +270,15 @@ function MasterTable({ tab }: { tab: TabDef }) {
                       {summaryLine(tab, row)}
                     </p>
                   </div>
-                  <div className="flex gap-1 shrink-0">
+                  <div className="flex flex-wrap gap-1 shrink-0 -ml-3 sm:ml-0">
+                    {tab.table === "staff" && (
+                      <Button
+                        variant={privateOpen === row.id ? "secondary" : "ghost"}
+                        onClick={() => setPrivateOpen(privateOpen === row.id ? null : row.id)}
+                      >
+                        {privateOpen === row.id ? "個人情報を閉じる" : "🔒 個人情報"}
+                      </Button>
+                    )}
                     <Button variant="ghost" onClick={() => setEditing(row)}>
                       編集
                     </Button>
@@ -253,6 +286,11 @@ function MasterTable({ tab }: { tab: TabDef }) {
                       {row.is_active ? "無効化" : "有効化"}
                     </Button>
                   </div>
+                </div>
+              )}
+              {tab.table === "staff" && privateOpen === row.id && editing === null && (
+                <div className="mt-3">
+                  <StaffPrivatePanel staffId={row.id} staffName={String(row.name)} />
                 </div>
               )}
             </li>
@@ -294,7 +332,14 @@ function summaryLine(tab: TabDef, row: Row): string {
     case "flag_types":
       return `色: ${COLOR_KEYS.find((c) => c.key === row.color_key)?.label ?? row.color_key}`;
     case "staff":
-      return `${row.email ?? ""}`;
+      return [
+        row.employment_type ? EMPLOYMENT_LABEL[row.employment_type as EmploymentType] : null,
+        row.email,
+      ]
+        .filter(Boolean)
+        .join(" ・ ");
+    case "line_templates":
+      return `${row.category} ・ ${String(row.body ?? "").replace(/\s+/g, " ").slice(0, 40)}…`;
     case "counseling_questions":
       return `形式: ${row.field_type}${row.options ? ` ・ 選択肢: ${row.options}` : ""}`;
     case "consent_templates":
@@ -334,7 +379,9 @@ function MasterForm({
               ? "warn"
               : f.type === "role"
                 ? "staff"
-                : f.type === "choice"
+                : f.type === "employment"
+                  ? "employee"
+                  : f.type === "choice"
                   ? (f.choices?.[0] ?? "")
                   : "");
     }
@@ -356,7 +403,11 @@ function MasterForm({
       : await supabase.from(tab.table).insert(payload);
     if (err) {
       console.error(err);
-      setError("保存に失敗しました");
+      setError(
+        /column|schema cache/i.test(err.message)
+          ? "保存に失敗しました（データベースの更新SQLが未実行の可能性があります。README の手順を確認してください）"
+          : "保存に失敗しました"
+      );
       setBusy(false);
       return;
     }
@@ -438,6 +489,23 @@ function MasterForm({
                   value={String(form[f.key] ?? "")}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                 />
+              </div>
+            );
+          }
+          if (f.type === "employment") {
+            return (
+              <div key={f.key} className="sm:col-span-2">
+                <p className="text-xs font-semibold text-muted mb-1">{f.label}</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(Object.keys(EMPLOYMENT_LABEL) as EmploymentType[]).map((k) => (
+                    <Chip
+                      key={k}
+                      label={EMPLOYMENT_LABEL[k]}
+                      selected={form[f.key] === k}
+                      onClick={() => setForm({ ...form, [f.key]: k })}
+                    />
+                  ))}
+                </div>
               </div>
             );
           }

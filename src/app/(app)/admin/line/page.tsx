@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
+import { useOrigin } from "@/lib/client-env";
+import { LineMediaLibrary } from "@/components/line-media-library";
 import { Badge, Button, Card, ListSkeleton, SectionTitle, TextField } from "@/components/ui";
 import { AdminTabs } from "@/components/admin-tabs";
 import {
@@ -15,10 +17,7 @@ import {
 export default function AdminLinePage() {
   const { stores } = useApp();
   const [views, setViews] = useState<LineConfigView[] | null>(null);
-  const origin = useMemo(
-    () => (typeof window !== "undefined" ? window.location.origin : ""),
-    []
-  );
+  const origin = useOrigin();
 
   async function load() {
     setViews(await getLineConfigViews());
@@ -36,6 +35,8 @@ export default function AdminLinePage() {
           店舗ごとの LINE公式アカウントと Messaging API で連携します
         </p>
       </div>
+
+      <LineMediaLibrary />
 
       <Card className="p-4 space-y-2">
         <SectionTitle>設定手順</SectionTitle>

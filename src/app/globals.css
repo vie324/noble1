@@ -52,6 +52,40 @@ html {
   background: var(--noble-base);
 }
 
+/* ============================================================
+   スマホのレイアウト基準（ボトムナビの高さ・セーフエリア）
+   ============================================================ */
+:root {
+  --nav-h: 0px; /* ボトムナビの高さ（md 未満のみ） */
+}
+@media (max-width: 767px) {
+  :root {
+    --nav-h: 4rem;
+  }
+}
+
+/* ボトムナビのすぐ上に固定（保存ボタン・トーストなど） */
+.above-nav {
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+}
+.pb-nav {
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 1.5rem);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* 横スクロールのチップ列（スクロールバーを隠す） */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   background: var(--noble-base);
   color: var(--noble-text);
@@ -150,6 +184,34 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ボトムシート・トースト */
+@media (prefers-reduced-motion: no-preference) {
+  .sheet-backdrop {
+    animation: noble-fade-in 180ms ease-out both;
+  }
+  .sheet-panel {
+    animation: noble-sheet-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .toast-in {
+    animation: noble-rise-in 200ms ease-out both;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+  .sheet-panel {
+    animation: noble-pop-in 200ms ease-out both;
+  }
+}
+
+@keyframes noble-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes noble-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* スケルトンローディング */
 .skeleton {
   background: linear-gradient(
@@ -169,4 +231,40 @@ body {
 @keyframes noble-shimmer {
   from { background-position: 120% 0; }
   to   { background-position: -80% 0; }
+}
+
+/* キーボード操作時のフォーカス表示（ゴールドで統一） */
+:focus-visible {
+  outline: 2px solid var(--noble-gold);
+  outline-offset: 2px;
+}
+
+/* 印刷（請求書など）: アプリの枠を外して A4 に収める */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .print-sheet {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* iPhone はフォーカス時に 16px 未満の入力欄を拡大してしまうため、スマホでは 16px に揃える */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

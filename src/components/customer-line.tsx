@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Badge, Button, Card, SectionTitle, TextArea } from "@/components/ui";
-import {
-  linkLineFriend,
-  sendLineGallery,
-  sendLineLink,
-  sendLineText,
-} from "@/app/(app)/customers/line-actions";
+import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { LineComposeSheet } from "@/components/line-compose";
+import { useToast } from "@/components/toast";
+import { dateTimeLabel, staffLabel } from "@/lib/format";
+import { linkLineFriend, sendLineGallery, sendLineLink } from "@/app/(app)/customers/line-actions";
 
 interface Friend {
   id: number;
@@ -18,27 +16,54 @@ interface Friend {
   customer_id: number | null;
 }
 
+interface LogRow {
+  id: number;
+  kind: string;
+  body: string | null;
+  image_count: number;
+  created_at: string;
+  sender: { name: string; icon_emoji: string | null } | null;
+}
+
+const KIND_LABEL: Record<string, string> = {
+  message: "メッセージ",
+  counseling: "カウンセリング",
+  gallery: "ビフォーアフター",
+};
+
 // 顧客ページ: 店舗のLINE公式アカウントから、この顧客へ直接メッセージ送信
 export function CustomerLine({
   customerId,
+  customerName,
   primaryStoreId,
 }: {
   customerId: number;
+  customerName: string;
   primaryStoreId: number | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const notify = useToast();
   const [linked, setLinked] = useState<Friend[]>([]);
   const [candidates, setCandidates] = useState<Friend[]>([]);
-  const [text, setText] = useState("");
+  const [logs, setLogs] = useState<LogRow[]>([]);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const { data: mine } = await supabase
-      .from("line_friends")
-      .select("id, store_id, display_name, is_blocked, customer_id")
-      .eq("customer_id", customerId);
+    const [{ data: mine }, { data: history }] = await Promise.all([
+      supabase
+        .from("line_friends")
+        .select("id, store_id, display_name, is_blocked, customer_id")
+        .eq("customer_id", customerId),
+      supabase
+        .from("line_message_logs")
+        .select("id, kind, body, image_count, created_at, sender:sent_by (name, icon_emoji)")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
     setLinked((mine as Friend[]) ?? []);
+    setLogs((history as unknown as LogRow[]) ?? []);
 
     // この顧客の主担当店舗の「未紐付け」友だち（紐付け候補）
     if (primaryStoreId) {
@@ -57,31 +82,21 @@ export function CustomerLine({
     load();
   }, [load]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
   const friend = linked[0];
 
   async function doLink(friendId: number) {
     setBusy(true);
-    setMessage(null);
     const res = await linkLineFriend(friendId, customerId);
-    if (!res.ok) setMessage(res.message ?? "紐付けに失敗しました");
+    if (!res.ok) notify(res.message ?? "紐付けに失敗しました", "error");
+    else notify("LINEを紐付けました");
     await load();
     setBusy(false);
   }
   async function unlink(friendId: number) {
+    if (!window.confirm("このお客様とLINEの紐付けを解除しますか？")) return;
     setBusy(true);
     await linkLineFriend(friendId, null);
     await load();
-    setBusy(false);
-  }
-
-  async function sendText() {
-    if (!friend) return;
-    setBusy(true);
-    setMessage(null);
-    const res = await sendLineText(friend.id, text);
-    setMessage(res.ok ? "送信しました" : res.message ?? "送信に失敗しました");
-    if (res.ok) setText("");
     setBusy(false);
   }
 
@@ -89,23 +104,24 @@ export function CustomerLine({
   async function sendCounseling() {
     if (!friend) return;
     setBusy(true);
-    setMessage(null);
     const { data, error } = await supabase
       .from("counseling_sheets")
       .insert({ customer_id: customerId })
       .select("token")
       .single();
     if (error || !data) {
-      setMessage("カウンセリング発行に失敗しました");
+      notify("カウンセリング発行に失敗しました", "error");
       setBusy(false);
       return;
     }
     const res = await sendLineLink(
       friend.id,
       "【ご来店前のお願い】カウンセリングシートのご記入をお願いいたします。",
-      `${origin}/f/c/${data.token}`
+      `${window.location.origin}/f/c/${data.token}`,
+      customerId
     );
-    setMessage(res.ok ? "カウンセリングURLを送信しました" : res.message ?? "送信に失敗しました");
+    notify(res.ok ? "カウンセリングURLを送信しました" : res.message ?? "送信に失敗しました", res.ok ? "ok" : "error");
+    await load();
     setBusy(false);
   }
 
@@ -113,14 +129,15 @@ export function CustomerLine({
   async function sendGallery() {
     if (!friend) return;
     setBusy(true);
-    setMessage(null);
     const res = await sendLineGallery(friend.id, customerId);
-    setMessage(res.ok ? "ビフォーアフターを送信しました" : res.message ?? "送信に失敗しました");
+    notify(res.ok ? "ビフォーアフターを送信しました" : res.message ?? "送信に失敗しました", res.ok ? "ok" : "error");
+    await load();
     setBusy(false);
   }
 
   return (
     <Card className="p-4 space-y-3">
+      <div id="line" className="scroll-mt-24" />
       <SectionTitle>LINE送信（店舗公式アカウント）</SectionTitle>
 
       {friend ? (
@@ -135,25 +152,47 @@ export function CustomerLine({
             </Button>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="secondary" disabled={busy} onClick={sendCounseling}>
+          <Button
+            className="w-full"
+            disabled={busy || friend.is_blocked}
+            onClick={() => setComposeOpen(true)}
+          >
+            ✉ LINEで送る（定型文・写真）
+          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" disabled={busy || friend.is_blocked} onClick={sendCounseling}>
               カウンセリングを送る
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={sendGallery}>
+            <Button variant="secondary" disabled={busy || friend.is_blocked} onClick={sendGallery}>
               ビフォーアフターを送る
             </Button>
           </div>
 
-          <TextArea
-            label="自由メッセージ"
-            rows={2}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="本日はありがとうございました。…"
+          {logs.length > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <p className="text-xs font-semibold text-muted">最近の送信</p>
+              <ul className="divide-y divide-hairline">
+                {logs.map((l) => (
+                  <li key={l.id} className="py-2">
+                    <p className="text-xs text-muted tnum">
+                      {dateTimeLabel(l.created_at)} ・ {KIND_LABEL[l.kind] ?? l.kind}
+                      {l.sender && ` ・ ${staffLabel(l.sender)}`}
+                      {l.image_count > 0 && ` ・ 画像${l.image_count}枚`}
+                    </p>
+                    {l.body && <p className="text-sm text-ink line-clamp-2 whitespace-pre-wrap">{l.body}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <LineComposeSheet
+            open={composeOpen}
+            onClose={() => setComposeOpen(false)}
+            onSent={load}
+            friend={friend}
+            customer={{ id: customerId, name: customerName }}
           />
-          <Button disabled={busy || !text.trim()} onClick={sendText}>
-            {busy ? "送信中…" : "メッセージを送信"}
-          </Button>
         </>
       ) : (
         <>
@@ -180,18 +219,6 @@ export function CustomerLine({
             </p>
           )}
         </>
-      )}
-
-      {message && (
-        <p
-          className={`text-sm rounded-lg px-3 py-2 ${
-            message.includes("失敗") || message.includes("ください") || message.includes("権限")
-              ? "text-caution bg-caution-soft"
-              : "text-ok bg-ok-soft"
-          }`}
-        >
-          {message}
-        </p>
       )}
     </Card>
   );

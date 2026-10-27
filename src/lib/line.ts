@@ -8,6 +8,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // クライアントには一切渡さない。
 // ============================================================
 
+// LINE Messaging API のベースURL（ローカル検証でモックに向けるときだけ LINE_API_BASE_URL を設定）
+const LINE_API = process.env.LINE_API_BASE_URL ?? "https://api.line.me";
+
 export interface StoreLineConfig {
   store_id: number;
   channel_access_token: string | null;
@@ -43,7 +46,7 @@ export async function linePush(
   to: string,
   messages: Record<string, unknown>[]
 ): Promise<{ ok: boolean; status: number; body?: string }> {
-  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+  const res = await fetch(`${LINE_API}/v2/bot/message/push`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -60,7 +63,7 @@ export async function lineGetProfile(
   token: string,
   userId: string
 ): Promise<{ displayName?: string; pictureUrl?: string } | null> {
-  const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+  const res = await fetch(`${LINE_API}/v2/bot/profile/${userId}`, {
     headers: { authorization: `Bearer ${token}` },
   });
   if (!res.ok) return null;
@@ -71,7 +74,7 @@ export async function lineGetProfile(
 export async function lineGetBotInfo(
   token: string
 ): Promise<{ ok: boolean; status: number; basicId?: string; displayName?: string }> {
-  const res = await fetch("https://api.line.me/v2/bot/info", {
+  const res = await fetch(`${LINE_API}/v2/bot/info`, {
     headers: { authorization: `Bearer ${token}` },
   });
   if (!res.ok) return { ok: false, status: res.status };

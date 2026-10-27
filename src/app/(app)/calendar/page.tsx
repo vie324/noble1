@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOrigin } from "@/lib/client-env";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Button, Card, Chip, ListSkeleton, SectionTitle, TextField } from "@/components/ui";
@@ -178,7 +179,7 @@ export default function CalendarPage() {
 
 // Googleカレンダー購読（iCal）の案内
 function GoogleSyncCard() {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = useOrigin();
   const url = `${origin}/api/ics?key=（設定したシークレット）`;
   return (
     <Card className="p-4 space-y-2">
