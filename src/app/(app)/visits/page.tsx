@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
-import { Badge, Button, Card, Chip, EmptyState, ListSkeleton } from "@/components/ui";
+import { Badge, Button, Card, Chip, ChipRow, EmptyState, ListSkeleton } from "@/components/ui";
 import { addDays, dateSlash, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type { Customer, Staff, Visit } from "@/lib/types";
 
@@ -96,7 +96,7 @@ export default function VisitListPage() {
 
       {/* 絞り込み */}
       <Card className="p-4 space-y-3">
-        <div className="flex gap-2 flex-wrap">
+        <ChipRow>
           {periods.map((p) => (
             <Chip
               key={p.key}
@@ -110,8 +110,8 @@ export default function VisitListPage() {
             selected={unfilledOnly}
             onClick={() => setUnfilledOnly(!unfilledOnly)}
           />
-        </div>
-        <div className="flex gap-2 flex-wrap">
+        </ChipRow>
+        <ChipRow>
           <Chip label="担当: 全員" selected={staffId === null} onClick={() => setStaffId(null)} />
           {staffList.map((s) => (
             <Chip
@@ -121,7 +121,7 @@ export default function VisitListPage() {
               onClick={() => setStaffId(s.id)}
             />
           ))}
-        </div>
+        </ChipRow>
       </Card>
 
       {rows === null ? (

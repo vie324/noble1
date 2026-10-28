@@ -135,3 +135,21 @@ export function daysUntil(isoDate: string): number {
   const target = new Date(`${isoDate}T00:00:00+09:00`).getTime();
   return Math.round((target - today) / 86400000);
 }
+
+// ファイルサイズ "350 KB" / "1.2 MB"
+export function fileSize(bytes: number | null | undefined): string {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// 分 → "172.5時間"（小数1桁。整数なら小数なし）
+export function hoursLabel(minutes: number): string {
+  const h = Math.round((minutes / 60) * 10) / 10;
+  return `${Number.isInteger(h) ? h : h.toFixed(1)}時間`;
+}
+
+// ISO日時 → 東京時間の日付 "YYYY-MM-DD"
+export function jstDate(iso: string | Date): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ }).format(typeof iso === "string" ? new Date(iso) : iso);
+}

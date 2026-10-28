@@ -33,7 +33,7 @@ export function SectionTitle({
       <span className="text-[8px] leading-none select-none" aria-hidden>
         ◆
       </span>
-      <h2 className="serif text-base font-semibold tracking-wide text-ink whitespace-nowrap">
+      <h2 className="serif text-base font-semibold tracking-wide text-ink min-w-0 text-center text-balance">
         {children}
       </h2>
       <span className="text-[8px] leading-none select-none" aria-hidden>
@@ -74,6 +74,17 @@ export function Chip({
       )}
       {label}
     </button>
+  );
+}
+
+/* ---------------- チップの並び（スマホは1行で横スクロール、PCは折り返し） ---------------- */
+export function ChipRow({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible [&>*]:shrink-0 [&>*]:whitespace-nowrap ${className}`}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -225,5 +236,72 @@ export function Button({
       {...props}
       className={`inline-flex items-center justify-center gap-1.5 min-h-11 rounded-full px-5 text-sm font-semibold transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none ${styles[variant]} ${className}`}
     />
+  );
+}
+
+/* ---------------- 画面下の固定ボタン列（長いフォームの保存ボタン） ----------------
+   スマホはボトムナビのすぐ上に固定され、スクロールしなくても保存できる */
+export function StickyActions({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`sticky z-20 above-nav md:bottom-4 -mx-4 px-4 py-3 bg-base/95 backdrop-blur border-t border-hairline md:mx-0 md:rounded-2xl md:border md:shadow-[0_4px_20px_rgba(61,53,46,0.08)] print:hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ---------------- セレクト ---------------- */
+export function SelectField({
+  label,
+  children,
+  ...props
+}: { label: string; children: React.ReactNode } & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-semibold text-muted mb-1">{label}</span>
+      <select
+        {...props}
+        className={`w-full min-h-11 rounded-lg border border-hairline bg-surface px-3 text-base text-ink outline-none transition-colors focus:border-gold ${props.className ?? ""}`}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+/* ---------------- ステップ見出し（月締めなどの手順） ---------------- */
+export function StepHeader({
+  no,
+  title,
+  done = false,
+  children,
+}: {
+  no: number;
+  title: string;
+  done?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold tnum ${
+          done ? "bg-ok text-white" : "bg-gold-soft text-gold-dk border border-gold/50"
+        }`}
+        aria-hidden
+      >
+        {done ? "✓" : no}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-base font-semibold text-ink leading-8">{title}</h2>
+        {children}
+      </div>
+    </div>
   );
 }

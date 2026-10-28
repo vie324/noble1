@@ -15,6 +15,14 @@ export interface Store {
   salonone_from: string | null; // サロンワン切替月（月初日。この月以降の実績はサロンワン）
 }
 
+export type EmploymentType = "employee" | "part_time" | "contractor";
+
+export const EMPLOYMENT_LABEL: Record<EmploymentType, string> = {
+  employee: "正社員",
+  part_time: "パート・アルバイト",
+  contractor: "業務委託",
+};
+
 export interface Staff {
   id: number;
   auth_user_id: string | null;
@@ -26,6 +34,7 @@ export interface Staff {
   icon_emoji: string;
   theme_color: string;
   is_active: boolean;
+  employment_type?: EmploymentType; // 027 未適用の環境では undefined
 }
 
 export interface Menu {
@@ -436,4 +445,155 @@ export function ticketUnusedAmount(
   t: Pick<CustomerTicket, "price" | "total_count" | "remaining_count">
 ): number {
   return Math.round(t.remaining_count * ticketUnitPrice(t));
+}
+
+/* ---------------- スタッフの個人情報（管理者のみ） ---------------- */
+export interface StaffPrivate {
+  staff_id: number;
+  birth_date: string | null;
+  postal_code: string | null;
+  address: string | null;
+  nearest_station: string | null;
+  commute_route: string | null;
+  personal_phone: string | null;
+  personal_email: string | null;
+  emergency_name: string | null;
+  emergency_relation: string | null;
+  emergency_phone: string | null;
+  joined_on: string | null;
+  bank_name: string | null;
+  bank_branch: string | null;
+  bank_account_type: string | null;
+  bank_account_number: string | null;
+  bank_account_holder: string | null;
+  memo: string | null;
+}
+
+/* ---------------- スタッフ向け書類（給与明細など） ---------------- */
+export const STAFF_DOCUMENT_CATEGORIES = [
+  "給与明細",
+  "源泉徴収票",
+  "支払調書",
+  "契約書・雇用条件",
+  "その他",
+] as const;
+export type StaffDocumentCategory = (typeof STAFF_DOCUMENT_CATEGORIES)[number];
+
+export interface StaffDocument {
+  id: number;
+  staff_id: number;
+  category: StaffDocumentCategory;
+  title: string;
+  month: string | null;
+  storage_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  note: string | null;
+  viewed_at: string | null;
+  created_at: string;
+}
+
+/* ---------------- 月締め・請求書 ---------------- */
+export interface PayrollClosing {
+  month: string;
+  closed_at: string;
+  closed_by: string | null;
+  note: string | null;
+}
+
+export interface BusinessSettings {
+  id: number;
+  company_name: string | null;
+  invoice_to_email: string | null;
+  invoice_cc_email: string | null;
+  payment_terms: string;
+  payment_due_day: number | null;
+  accountant_name: string | null;
+  accountant_email: string | null;
+  labor_consultant_name: string | null;
+  labor_consultant_email: string | null;
+}
+
+export interface ContractorProfile {
+  staff_id: number;
+  issuer_name: string;
+  postal_code: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  registration_number: string | null;
+  bank_name: string | null;
+  bank_branch: string | null;
+  bank_account_type: string | null;
+  bank_account_number: string | null;
+  bank_account_holder: string | null;
+}
+
+export interface InvoiceLine {
+  store_name: string;
+  days: number;
+  minutes: number;
+  transport: number;
+}
+
+export interface ContractorInvoice {
+  id: number;
+  staff_id: number;
+  month: string;
+  invoice_number: string;
+  issue_date: string;
+  due_date: string;
+  lines: InvoiceLine[];
+  hourly_wage: number;
+  work_days: number;
+  work_minutes: number;
+  subtotal: number;
+  tax: number;
+  transport: number;
+  total: number;
+  issuer: Omit<ContractorProfile, "staff_id">;
+  recipient: { company_name: string | null; email: string | null; cc: string | null; payment_terms: string | null };
+  note: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ---------------- LINE 送信（定型文・画像・履歴） ---------------- */
+export const LINE_TEMPLATE_CATEGORIES = [
+  "お礼",
+  "ご予約",
+  "リマインド",
+  "アフターケア",
+  "キャンペーン",
+  "その他",
+] as const;
+
+export interface LineTemplate {
+  id: number;
+  title: string;
+  category: (typeof LINE_TEMPLATE_CATEGORIES)[number];
+  body: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface LineMedia {
+  id: number;
+  title: string;
+  storage_path: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface LineMessageLog {
+  id: number;
+  customer_id: number | null;
+  sent_by: number | null;
+  template_id: number | null;
+  kind: string;
+  body: string | null;
+  image_count: number;
+  created_at: string;
 }

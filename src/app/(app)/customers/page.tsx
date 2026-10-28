@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { customerSearchFilter } from "@/lib/search";
 import { useApp } from "@/lib/app-context";
 import { Card, EmptyState, ListSkeleton, TextField } from "@/components/ui";
 import { FlagBadges, TicketAlertBadges } from "@/components/flags";
@@ -32,10 +33,8 @@ export default function CustomerListPage() {
         .limit(PAGE_SIZE);
 
       if (storeFilter !== null) query = query.eq("primary_store_id", storeFilter);
-      if (q.trim()) {
-        const like = `%${q.trim()}%`;
-        query = query.or(`name.ilike.${like},kana.ilike.${like},phone.ilike.${like}`);
-      }
+      const filter = customerSearchFilter(q);
+      if (filter) query = query.or(filter);
       const { data } = await query;
       setRows((data as unknown as CustomerRow[]) ?? []);
     },
@@ -65,7 +64,7 @@ export default function CustomerListPage() {
 
       <TextField
         label="お名前・カナ・電話番号で検索"
-        placeholder="インクリメンタルサーチ（部分一致）"
+        placeholder="例: やまだ / ヤマダ / 090…（一部だけでもOK）"
         value={search}
         onChange={(e) => handleSearch(e.target.value)}
       />

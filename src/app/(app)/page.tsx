@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
+import { useInbox } from "@/lib/inbox";
 import { Badge, Button, Card, CountUp, EmptyState, ListSkeleton } from "@/components/ui";
 import { FlagBadges, TicketAlertBadges } from "@/components/flags";
-import { addDays, dateLabelJa, jstToISO, timeHM, todayJST, staffLabel } from "@/lib/format";
+import { addDays, dateLabelJa, jstToISO, monthLabelJa, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type {
   Customer,
   CustomerFlag,
@@ -27,6 +28,7 @@ interface BoardVisit extends Visit {
 
 export default function TodayBoardPage() {
   const { storeFilter, storeName } = useApp();
+  const inbox = useInbox();
   const [date, setDate] = useState(todayJST());
   const [visits, setVisits] = useState<BoardVisit[] | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -88,21 +90,41 @@ export default function TodayBoardPage() {
 
   return (
     <div className="space-y-5 fade-in">
-      {/* 新着カウンセリング受付バナー */}
-      {intakeCount > 0 && (
-        <Link href="/intake">
-          <Card className="p-4 flex items-center justify-between gap-3 border-gold/60 hover:shadow-[var(--shadow-card-hover)] transition-shadow">
-            <div className="flex items-center gap-3">
-              <Badge color="warn">新着 {intakeCount}件</Badge>
-              <span className="text-sm text-ink font-semibold">
-                カウンセリングが届いています
-              </span>
-            </div>
-            <span className="text-gold-dk text-sm font-semibold shrink-0" aria-hidden>
-              受付を確認 ›
-            </span>
-          </Card>
-        </Link>
+      {/* お知らせ（新着カウンセリング・自分宛ての書類・請求書） */}
+      {(intakeCount > 0 || inbox.unreadDocuments > 0 || inbox.invoiceState) && (
+        <ul className="space-y-2">
+          {intakeCount > 0 && (
+            <Notice
+              href="/intake"
+              icon="📝"
+              title="カウンセリングが届いています"
+              badge={`新着 ${intakeCount}件`}
+              action="受付を確認"
+            />
+          )}
+          {inbox.unreadDocuments > 0 && (
+            <Notice
+              href="/my/documents"
+              icon="📄"
+              title="あなた宛ての書類が届いています"
+              badge={`未読 ${inbox.unreadDocuments}件`}
+              action="開く"
+            />
+          )}
+          {inbox.invoiceState && inbox.invoiceMonth && (
+            <Notice
+              href="/my/invoices"
+              icon="🧾"
+              title={
+                inbox.invoiceState === "create"
+                  ? `${monthLabelJa(inbox.invoiceMonth)}分の請求書を作成できます`
+                  : `${monthLabelJa(inbox.invoiceMonth)}分の請求書が未送信です`
+              }
+              badge={inbox.invoiceState === "create" ? "作成待ち" : "未送信"}
+              action={inbox.invoiceState === "create" ? "作成する" : "送信する"}
+            />
+          )}
+        </ul>
       )}
 
       {/* 日付ナビゲーション */}
@@ -188,6 +210,40 @@ export default function TodayBoardPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+function Notice({
+  href,
+  icon,
+  title,
+  badge,
+  action,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  badge: string;
+  action: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="flex items-center gap-3 rounded-2xl border border-gold/50 bg-surface px-4 py-3 min-h-14 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow"
+      >
+        <span className="text-xl shrink-0" aria-hidden>
+          {icon}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-semibold text-ink">{title}</span>
+          <span className="mt-0.5 inline-block">
+            <Badge color="warn">{badge}</Badge>
+          </span>
+        </span>
+        <span className="text-gold-dk text-sm font-semibold shrink-0">{action} ›</span>
+      </Link>
+    </li>
   );
 }
 

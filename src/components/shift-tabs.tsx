@@ -12,11 +12,16 @@ export function ShiftTabs() {
   const tabs = [
     { href: "/calendar", label: "月間カレンダー", exact: true },
     { href: "/calendar/my", label: "マイシフト", exact: false },
-    ...(isAdmin ? [{ href: "/calendar/manage", label: "シフト管理", exact: false }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/calendar/manage", label: "シフト管理", exact: false },
+          { href: "/admin/payroll", label: "月締め・給与", exact: false },
+        ]
+      : []),
   ];
 
   return (
-    <nav className="-mx-4 px-4 overflow-x-auto" aria-label="予定メニュー">
+    <nav className="-mx-4 px-4 overflow-x-auto no-scrollbar print:hidden" aria-label="予定メニュー">
       <div className="flex items-center gap-1 border-b border-hairline pb-2 min-w-max">
         {tabs.map((t) => {
           const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);

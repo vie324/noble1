@@ -17,21 +17,28 @@ export default function HelpPage() {
       {/* 目次 */}
       <Card className="p-4">
         <SectionTitle>目次</SectionTitle>
-        <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
+        <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 text-sm">
           {[
             ["#flow", "1日の基本の流れ"],
             ["#counseling", "カウンセリング（LINE受付）"],
             ["#karte", "カルテの記入"],
             ["#customer", "お客様・回数券"],
-            ["#shift", "予定・シフト"],
+            ["#line-send", "お客様にLINEを送る（定型文・写真）"],
+            ["#shift", "予定・シフト・勤務実績"],
+            ["#documents", "給与明細・書類（マイ書類）"],
+            ["#invoice", "請求書（業務委託の方）"],
             ["#board", "掲示板・在庫"],
             ["#admin", "経営メニュー（管理者）"],
+            ["#payroll", "月締め・給与と税理士への共有（管理者）"],
             ["#line", "LINEリッチメニューの設定"],
             ["#pwa", "ホーム画面に追加する"],
             ["#trouble", "困ったとき"],
           ].map(([href, label]) => (
             <li key={href}>
-              <a href={href} className="text-gold-dk hover:underline underline-offset-2">
+              <a
+                href={href}
+                className="flex items-center min-h-10 rounded-lg px-1 text-gold-dk hover:bg-gold-soft/50 hover:underline underline-offset-2"
+              >
                 ◆ {label}
               </a>
             </li>
@@ -42,7 +49,8 @@ export default function HelpPage() {
       <Section id="flow" title="1日の基本の流れ">
         <ol className="list-decimal pl-5 space-y-2">
           <li>
-            朝、画面上部の<strong>「今日」</strong>を開きます。本日のご予約が時刻順に並びます。
+            朝、<strong>「今日」</strong>（スマホは画面下、PCは画面上のメニュー）を開きます。本日のご予約が時刻順に並びます。
+            自分あての書類や請求書のお知らせも、ここの一番上に表示されます。
           </li>
           <li>
             前日までにサロンボードで入った予約は、
@@ -60,6 +68,9 @@ export default function HelpPage() {
           <li>
             画面上部の<strong>店舗タブ（全店舗／新宿店／新宿南口店／恵比寿店）</strong>で、
             表示する店舗をいつでも切り替えられます。
+          </li>
+          <li>
+            スマホでは、掲示板・在庫・マイシフト・マイ書類などは画面右下の<strong>「メニュー」</strong>から開きます。
           </li>
         </ol>
       </Section>
@@ -116,7 +127,10 @@ export default function HelpPage() {
           <li>
             <strong>重要事項メモ</strong>に書いた内容は、次回来店時のカルテ上部に必ず表示されます。
           </li>
-          <li>記入が終わったら「記入を完了する」を押すとステータスが「記入済み」になります。</li>
+          <li>
+            記入が終わったら、画面下に固定された「記入を完了する」を押すとステータスが「記入済み」になります
+            （途中で中断するときは「下書き保存」）。
+          </li>
         </ul>
       </Section>
 
@@ -137,20 +151,93 @@ export default function HelpPage() {
         </ul>
       </Section>
 
-      <Section id="shift" title="予定・シフト">
+      <Section id="line-send" title="お客様にLINEを送る（定型文・写真）">
+        <p>
+          お客様ページの<strong>「✉ LINEで送る（定型文・写真）」</strong>から、店舗のLINE公式アカウントで
+          お客様へメッセージを送れます（お客様のLINEが紐付いている場合）。
+        </p>
+        <ol className="list-decimal pl-5 space-y-1.5">
+          <li>
+            <strong>定型文</strong>（ご来店のお礼・次回予約の確認・前日のリマインドなど）を選びます。
+            お客様名・店舗名・担当スタッフ・次回予約の日時は自動で入ります。本文は自由に書き換えられます。
+          </li>
+          <li>
+            必要なら<strong>画像</strong>を最大4枚まで選びます（「画像ライブラリ」のアフターケア案内など、
+            または「このお客様の写真」）。
+          </li>
+          <li>
+            「確認へ進む」でLINEの見た目のプレビューを確認し、<strong>「この内容で送信」</strong>で送信します。
+            自動では送られません。
+          </li>
+        </ol>
+        <p className="text-xs text-muted">
+          ※ 自動で入れられなかった項目は「【…を入力】」と表示されます。書き換えるまで送信できません。
+          送った内容は、お客様ページの「最近の送信」で確認できます。定型文はマスタ管理 ＞ LINE定型文、
+          画像は経営 ＞ LINE連携で管理者が登録します。
+        </p>
+      </Section>
+
+      <Section id="shift" title="予定・シフト・勤務実績">
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <Link href="/calendar" className="text-gold-dk underline underline-offset-2">
               予定
             </Link>
             は月表示の共有カレンダーです。シフト・定期タスク（ゴミ出し等）・研修・撮影などを共有します。
+            スマホでは出勤スタッフのアイコンが並び、日付をタップすると詳細が見られます。
           </li>
           <li>
             「マイシフト」で、シフト希望の提出（○／×／時間指定／いつも通り／お任せ）、
             確定シフトの確認、勤務実績の記録ができます。
           </li>
+          <li>
+            確定シフトが出たら<strong>「まとめて確認する」</strong>で一度に確認できます。
+          </li>
+          <li>
+            勤務が終わった日は<strong>「予定どおり」</strong>をタップするだけで実績が記録されます。
+            残業・早退などで時間がずれた日は「時間を入力」から、理由と一緒に記録してください（給与計算に使われます）。
+          </li>
           <li>管理者は「シフト管理」で希望を見ながらシフトを作成・確定できます。</li>
+          <li>月締めが終わった月の実績は変更できません。修正が必要なときは管理者に連絡してください。</li>
         </ul>
+      </Section>
+
+      <Section id="documents" title="給与明細・書類（マイ書類）">
+        <ul className="list-disc pl-5 space-y-1.5">
+          <li>
+            給与明細や源泉徴収票など、税理士・管理者から届いた書類は
+            <Link href="/my/documents" className="text-gold-dk underline underline-offset-2">
+              マイ書類
+            </Link>
+            （メニュー ＞ マイ書類）で見られます。新しい書類が届くと「今日」とメニューにお知らせが出ます。
+          </li>
+          <li>「開く」で表示、「保存」で端末にダウンロードできます。</li>
+          <li>書類は本人と管理者だけが見られます。ほかのスタッフには表示されません。</li>
+        </ul>
+      </Section>
+
+      <Section id="invoice" title="請求書（業務委託の方）">
+        <ol className="list-decimal pl-5 space-y-1.5">
+          <li>
+            初回だけ、
+            <Link href="/my/invoices" className="text-gold-dk underline underline-offset-2">
+              請求書
+            </Link>
+            （メニュー ＞ 請求書）で請求者情報（氏名・住所・振込先・インボイス登録番号）を登録します。
+          </li>
+          <li>
+            管理者が月締めをすると、その月の<strong>「請求書を作成」</strong>が押せるようになります。
+            金額は勤務実績から自動で計算されます（報酬＋消費税10%＋交通費）。
+          </li>
+          <li>
+            請求書の画面で<strong>「Gmailで送信」</strong>を押すと、宛先・件名・本文が入った状態で
+            Gmailが開きます。そのまま送信してください（iPhoneはGmailアプリ、PCはブラウザのGmail）。
+          </li>
+          <li>送信できたら<strong>「送信済みにする」</strong>を押すと、管理者に送信済みと表示されます。</li>
+        </ol>
+        <p className="text-xs text-muted">
+          ※ PDFが必要な場合は「PDFで保存・印刷」から保存できます（iPhoneは印刷画面の共有ボタン →「ファイルに保存」）。
+        </p>
       </Section>
 
       <Section id="board" title="掲示板・在庫">
@@ -185,10 +272,50 @@ export default function HelpPage() {
           </li>
           <li>
             <strong>マスタ管理</strong>では、メニュー・施術部位・回数券商品・
-            カウンセリング項目・同意書テンプレート・スタッフなどを編集できます。
+            カウンセリング項目・同意書テンプレート・スタッフ・LINE定型文などを編集できます。
+          </li>
+          <li>
+            <strong>スタッフの個人情報</strong>（住所・最寄り駅・生年月日・緊急連絡先・口座など）は、
+            マスタ管理 ＞ スタッフの各スタッフの「🔒 個人情報」に登録します。管理者だけが見られ、
+            スタッフ本人を含めほかの人には表示されません（マイナンバーは入力しないでください）。
           </li>
           <li>これらの経営データはスタッフには表示されません。</li>
         </ul>
+      </Section>
+
+      <Section id="payroll" title="月締め・給与と税理士への共有（管理者）">
+        <p>
+          月末の作業は
+          <Link href="/admin/payroll" className="text-gold-dk underline underline-offset-2">
+            経営 ＞ 月締め・給与
+          </Link>
+          で、上から順番に進めます。
+        </p>
+        <ol className="list-decimal pl-5 space-y-1.5">
+          <li>
+            <strong>勤務実績を確認</strong>：記録漏れがあれば「予定どおりで一括記録」、ずれた日は「日別」で修正します。
+          </li>
+          <li>
+            <strong>給与・報酬を確認</strong>：時給×勤務時間＋交通費で自動計算されます（時給・交通費はシフト管理で設定）。
+          </li>
+          <li>
+            <strong>月を締める</strong>：締めた月のシフト・勤務実績は変更できなくなります（「締めを解除」で戻せます）。
+          </li>
+          <li>
+            <strong>社労士・税理士に送る</strong>：CSVを保存 →「Gmailで作成」で宛先・件名・本文入りのメールを開き、
+            CSVを添付して送信します。送付先は同じページの「送付先の設定」に一度登録すれば次回から自動で入ります。
+          </li>
+          <li>
+            <strong>給与明細を配布</strong>：税理士から届いた給与明細（PDF）を
+            <Link href="/admin/staff-docs" className="text-gold-dk underline underline-offset-2">
+              スタッフ書類
+            </Link>
+            でまとめてアップロードします。ファイル名にスタッフ名が入っていれば自動で振り分けられます。
+          </li>
+          <li>
+            <strong>業務委託の請求書</strong>：業務委託スタッフが作成・送信した請求書の状況を確認できます。
+          </li>
+        </ol>
       </Section>
 
       <Section id="line" title="LINEリッチメニューの設定（管理者向け）">
@@ -288,6 +415,10 @@ export default function HelpPage() {
           <li>
             <strong>お客様の回答が受付に出てこない</strong>：お客様が送信を完了しているかご確認ください。
             「今日」ボードのバナー、または受付ページを再読み込みすると最新になります。
+          </li>
+          <li>
+            <strong>「Gmailで送信」を押してもGmailアプリが開かない</strong>：Gmailアプリが入っていない可能性があります。
+            「メールアプリで作成」を使うか、「本文をコピー」してメールに貼り付けてください。
           </li>
           <li>
             操作で分からないことがあれば、まず管理者にご相談ください。

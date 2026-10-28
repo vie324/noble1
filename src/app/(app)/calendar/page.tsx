@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOrigin } from "@/lib/client-env";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Button, Card, Chip, ListSkeleton, SectionTitle, TextField } from "@/components/ui";
@@ -148,6 +149,9 @@ export default function CalendarPage() {
               />
             ))}
           </div>
+          <p className="sm:hidden px-1 pt-2 text-[11px] text-muted">
+            丸アイコン＝出勤スタッフ、色の線＝共有予定。日付をタップすると詳細が見られます
+          </p>
         </Card>
       )}
 
@@ -178,7 +182,7 @@ export default function CalendarPage() {
 
 // Googleカレンダー購読（iCal）の案内
 function GoogleSyncCard() {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = useOrigin();
   const url = `${origin}/api/ics?key=（設定したシークレット）`;
   return (
     <Card className="p-4 space-y-2">
@@ -205,6 +209,15 @@ function GoogleSyncCard() {
   );
 }
 
+// スマホの月表示で使う、予定の種類ごとの色（細いバー）
+const eventBarClass: Record<string, string> = {
+  caution: "bg-caution",
+  warn: "bg-warn",
+  ok: "bg-ok",
+  rose: "bg-rose",
+  gold: "bg-gold",
+};
+
 function DayCell({
   date,
   shifts,
@@ -218,33 +231,68 @@ function DayCell({
   selected: boolean;
   onSelect: () => void;
 }) {
-  if (!date) return <div className="min-h-20 border-b border-r border-hairline/50" />;
+  if (!date) return <div className="min-h-[4.5rem] sm:min-h-24 border-b border-r border-hairline/50" />;
   const isToday = date === todayJST();
   const total = shifts.length + events.length;
   const visible = 4;
+  const label = [
+    dateLabelJa(date),
+    shifts.length > 0 && `出勤${shifts.length}名`,
+    events.length > 0 && `予定${events.length}件`,
+  ]
+    .filter(Boolean)
+    .join("・");
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      aria-label={dateLabelJa(date)}
-      className={`min-h-20 sm:min-h-24 border-b border-r border-hairline/50 p-0.5 sm:p-1 text-left align-top transition-colors ${
-        selected ? "bg-gold-soft/60" : "hover:bg-gold-soft/30"
+      aria-label={label}
+      aria-pressed={selected}
+      className={`min-h-[4.5rem] sm:min-h-24 flex flex-col items-stretch justify-start border-b border-r border-hairline/50 p-0.5 sm:p-1 text-left transition-colors ${
+        selected ? "bg-gold-soft/70 ring-2 ring-inset ring-gold" : "hover:bg-gold-soft/30"
       }`}
     >
       <span
-        className={`inline-flex items-center justify-center w-5 h-5 text-[11px] tnum rounded-full ${
+        className={`inline-flex items-center justify-center w-6 h-6 text-xs tnum rounded-full ${
           isToday ? "bg-gold text-white font-bold" : "text-ink"
         }`}
       >
         {Number(date.slice(8))}
       </span>
-      <div className="space-y-0.5 mt-0.5">
-        {/* シフトチップ: 「🐨 10-19」をスタッフカラーで */}
+
+      {/* スマホ: 出勤スタッフのアイコンと予定の色バーだけ（詳細は日付をタップ） */}
+      <div className="sm:hidden mt-0.5 space-y-0.5" aria-hidden>
+        {shifts.length > 0 && (
+          <div className="flex flex-wrap gap-px">
+            {shifts.slice(0, 6).map((s) => (
+              <span
+                key={`s${s.id}`}
+                className="w-[18px] h-[18px] rounded-full inline-flex items-center justify-center text-[12px] leading-none overflow-hidden"
+                style={{ background: `${s.staff?.theme_color ?? "#B89B5E"}2e` }}
+              >
+                {s.staff?.icon_emoji || s.staff?.name.slice(0, 1) || "・"}
+              </span>
+            ))}
+            {shifts.length > 6 && (
+              <span className="text-[11px] text-muted leading-[18px]">+{shifts.length - 6}</span>
+            )}
+          </div>
+        )}
+        {events.slice(0, 3).map((e) => (
+          <span
+            key={`e${e.id}`}
+            className={`block h-1.5 rounded-full ${eventBarClass[EVENT_TYPE_META[e.type].color]}`}
+          />
+        ))}
+      </div>
+
+      {/* PC・タブレット: 「🐨 10-19」をスタッフカラーで */}
+      <div className="hidden sm:block space-y-0.5 mt-0.5">
         {shifts.slice(0, visible).map((s) => (
           <div
             key={`s${s.id}`}
-            className="truncate rounded px-1 py-px text-[9px] sm:text-[10px] leading-tight border tnum"
+            className="truncate rounded px-1 py-px text-[10px] leading-tight border tnum"
             style={{
               background: `${s.staff?.theme_color ?? "#B89B5E"}1f`,
               borderColor: `${s.staff?.theme_color ?? "#B89B5E"}55`,
@@ -257,16 +305,14 @@ function DayCell({
         {events.slice(0, Math.max(0, visible - shifts.length)).map((e) => (
           <div
             key={`e${e.id}`}
-            className={`truncate rounded px-1 py-px text-[9px] sm:text-[10px] leading-tight border ${
+            className={`truncate rounded px-1 py-px text-[10px] leading-tight border ${
               eventChipClass[EVENT_TYPE_META[e.type].color]
             }`}
           >
             {e.title}
           </div>
         ))}
-        {total > visible && (
-          <div className="text-[9px] text-muted pl-1">＋{total - visible}件</div>
-        )}
+        {total > visible && <div className="text-[10px] text-muted pl-1">＋{total - visible}件</div>}
       </div>
     </button>
   );

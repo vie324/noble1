@@ -3,31 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
+import { compressImage } from "@/lib/image"; // 長辺1600px・JPEG品質0.82
 import type { PhotoKind, VisitPhoto } from "@/lib/types";
-
-// クライアント側で長辺1600px・JPEG品質0.82に圧縮してからアップロードする
-async function compressImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const maxEdge = 1600;
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("圧縮に失敗しました"))),
-      "image/jpeg",
-      0.82
-    );
-  });
-}
 
 interface PhotoWithUrl extends VisitPhoto {
   signedUrl: string | null;

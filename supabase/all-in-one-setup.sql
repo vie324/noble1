@@ -3,10 +3,12 @@
 --
 -- 新規の Supabase プロジェクトで、SQL Editor にこのファイル全体を
 -- 貼り付けて1回実行するだけで、以下がすべて作成されます:
---   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜026）
+--   ・全テーブル / RLS / 関数 / ストレージバケット（migrations 001〜030）
 --   ・カウンセリング項目・統合同意書「施術説明書・同意書」
 --   ・施術部位15種 / 店舗3件 / オーナーアカウント marin
 --   ・店舗別 LINE Messaging API 連携テーブル（store_line_configs / line_friends）
+--   ・スタッフ個人情報（管理者のみ）/ スタッフ書類 / 月締め・業務委託の請求書
+--   ・LINE定型文（初期5件）・画像ライブラリ・送信履歴
 --
 -- ※ 空のプロジェクト専用です。すでにテーブルがある場合は実行しないで
 --    ください（その場合は supabase/migrations/ を個別に適用）。
@@ -1866,6 +1868,680 @@ from public.salonone_monthly_sales so
 join public.stores st on st.salonone_shop_id = so.shop_id
 where st.salonone_from is not null
   and so.month >= st.salonone_from;
+
+-- ████████ 027_staff_private.sql ████████
+
+-- ============================================================
+-- 027_staff_private.sql : スタッフの個人情報（管理者＝マリンさんのみ閲覧・編集）
+--   ・staff.employment_type : 雇用区分（正社員／パート・アルバイト／業務委託）
+--       業務委託スタッフには「請求書」メニューが表示される（029 で使用）
+--   ・staff_private         : 住所・最寄り駅・生年月日・緊急連絡先・振込先など
+--       RLS は管理者のみ。スタッフ本人を含め、ほかのスタッフからは一切見えない
+--       （マイナンバーは法令上の厳格な管理が必要なため、このシステムでは扱わない）
+--
+-- ※ 何度実行しても安全です（既にある列・テーブルはスキップし、
+--    トリガー・ポリシーだけを正しい状態に貼り直します）。
+--    最後に確認結果が表で表示されます。
+--
+-- ロールバック手順:
+--   drop table if exists public.staff_private cascade;
+--   alter table public.staff drop column if exists employment_type;
+-- ============================================================
+
+-- ----------------------------------------------------------------
+-- 雇用区分（スタッフ一覧と同じく全スタッフが参照できる。個人情報ではない）
+-- ----------------------------------------------------------------
+alter table public.staff
+  add column if not exists employment_type text not null default 'employee'
+    check (employment_type in ('employee', 'part_time', 'contractor'));
+
+-- ----------------------------------------------------------------
+-- 個人情報（スタッフ 1人につき 1行。行がない = 未入力）
+-- ----------------------------------------------------------------
+create table if not exists public.staff_private (
+  staff_id             bigint primary key references public.staff (id) on delete cascade,
+  birth_date           date,
+  postal_code          text,
+  address              text,
+  nearest_station      text,
+  commute_route        text,            -- 通勤経路（交通費の根拠）
+  personal_phone       text,
+  personal_email       text,
+  emergency_name       text,            -- 緊急連絡先
+  emergency_relation   text,
+  emergency_phone      text,
+  joined_on            date,            -- 入社日・契約開始日
+  bank_name            text,            -- 給与・報酬の振込先
+  bank_branch          text,
+  bank_account_type    text check (bank_account_type is null or bank_account_type in ('普通', '当座')),
+  bank_account_number  text,
+  bank_account_holder  text,            -- 口座名義（カナ）
+  memo                 text,            -- 管理者メモ（資格・面談記録など）
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now(),
+  created_by           uuid default auth.uid(),
+  updated_by           uuid default auth.uid()
+);
+
+drop trigger if exists trg_staff_private_audit on public.staff_private;
+create trigger trg_staff_private_audit before update on public.staff_private
+  for each row execute function public.set_audit_fields();
+
+alter table public.staff_private enable row level security;
+drop policy if exists staff_private_admin on public.staff_private;
+create policy staff_private_admin on public.staff_private for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- ████████ 028_staff_documents.sql ████████
+
+-- ============================================================
+-- 028_staff_documents.sql : スタッフ向け書類（給与明細・源泉徴収票など）の配布
+--   ・staff_documents : 書類 1件 = 1行（スタッフ × ファイル）。管理者がアップロード
+--   ・ストレージ staff-docs（非公開）: パスの先頭フォルダ = スタッフID
+--   閲覧できるのは「本人」と「管理者」だけ（テーブル・ファイルの両方で RLS）
+--
+-- ※ 何度実行しても安全です（既にあるテーブル・バケットはスキップし、
+--    ポリシー・関数だけを正しい状態に貼り直します）。
+--    最後に確認結果が表で表示されます。
+--
+-- ロールバック手順:
+--   delete from storage.objects where bucket_id = 'staff-docs';
+--   delete from storage.buckets where id = 'staff-docs';
+--   drop function if exists public.mark_staff_document_viewed(bigint);
+--   drop table if exists public.staff_documents cascade;
+-- ============================================================
+
+create table if not exists public.staff_documents (
+  id            bigint generated always as identity primary key,
+  staff_id      bigint not null references public.staff (id) on delete cascade,
+  category      text not null default '給与明細' check (category in
+    ('給与明細', '源泉徴収票', '支払調書', '契約書・雇用条件', 'その他')),
+  title         text not null,
+  month         date check (month is null or extract(day from month) = 1),  -- 対象月（任意）
+  storage_path  text not null unique,     -- staff-docs バケット内のパス（{staff_id}/...）
+  file_name     text not null,            -- ダウンロード時のファイル名
+  mime_type     text,
+  size_bytes    bigint,
+  note          text,
+  viewed_at     timestamptz,              -- 本人が初めて開いた日時（既読）
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  created_by    uuid default auth.uid(),
+  updated_by    uuid default auth.uid()
+);
+
+create index if not exists idx_staff_documents_staff on public.staff_documents (staff_id, created_at desc);
+
+drop trigger if exists trg_staff_documents_audit on public.staff_documents;
+create trigger trg_staff_documents_audit before update on public.staff_documents
+  for each row execute function public.set_audit_fields();
+
+alter table public.staff_documents enable row level security;
+drop policy if exists staff_documents_select on public.staff_documents;
+create policy staff_documents_select on public.staff_documents for select
+  using (staff_id = public.current_staff_id() or public.is_admin());
+drop policy if exists staff_documents_admin_write on public.staff_documents;
+create policy staff_documents_admin_write on public.staff_documents for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- 本人が開いたら既読にする（本人の書類のみ。管理者が開いても既読にはしない）
+create or replace function public.mark_staff_document_viewed(p_id bigint)
+returns void
+language sql security definer set search_path = public
+as $$
+  update public.staff_documents
+  set viewed_at = now()
+  where id = p_id
+    and staff_id = public.current_staff_id()
+    and viewed_at is null;
+$$;
+
+-- ----------------------------------------------------------------
+-- ストレージ（非公開・署名URLで配信）。パス = {staff_id}/{ランダム}.{拡張子}
+-- ----------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'staff-docs', 'staff-docs', false, 20971520,  -- 20MB
+  array[
+    'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]
+)
+on conflict (id) do nothing;
+
+drop policy if exists staff_docs_storage_select on storage.objects;
+create policy staff_docs_storage_select on storage.objects for select
+  using (
+    bucket_id = 'staff-docs'
+    and (public.is_admin() or (storage.foldername(name))[1] = public.current_staff_id()::text)
+  );
+drop policy if exists staff_docs_storage_insert on storage.objects;
+create policy staff_docs_storage_insert on storage.objects for insert
+  with check (bucket_id = 'staff-docs' and public.is_admin());
+drop policy if exists staff_docs_storage_delete on storage.objects;
+create policy staff_docs_storage_delete on storage.objects for delete
+  using (bucket_id = 'staff-docs' and public.is_admin());
+
+-- ████████ 029_payroll_close_invoices.sql ████████
+
+-- ============================================================
+-- 029_payroll_close_invoices.sql : 月締め（ロック）と業務委託スタッフの請求書
+--   ・payroll_closings      : 締めた月（行がある月 = 締め済み）
+--       締め済みの月は、シフト・勤務実績を変更できない（金額を確定させるため）
+--       締めの解除は管理者が「月締め・給与」画面から行う
+--   ・business_settings     : 請求書の宛先・送付先、税理士・社労士の連絡先（1行だけ）
+--   ・contractor_profiles   : 業務委託スタッフ本人が登録する請求者情報（住所・振込先など）
+--   ・contractor_invoices   : 請求書（スタッフ × 月で1件）。金額は締め済みの勤務実績と
+--       時間単価からサーバー側で計算する（本人も金額は書き換えられない）
+--
+-- 前提: 024_staff_pay.sql・027_staff_private.sql を実行済みであること
+--
+-- ※ 何度実行しても安全です（既にあるテーブルはスキップし、トリガー・ポリシー・
+--    関数だけを正しい状態に貼り直します）。最後に確認結果が表で表示されます。
+--
+-- ロールバック手順:
+--   drop function if exists public.mark_contractor_invoice_sent(bigint);
+--   drop function if exists public.issue_contractor_invoice(date, text);
+--   drop function if exists public.contractor_work_summary(bigint, date);
+--   drop table if exists public.contractor_invoices cascade;
+--   drop table if exists public.contractor_profiles cascade;
+--   drop table if exists public.business_settings cascade;
+--   drop trigger if exists trg_shifts_closed_month on public.shifts;
+--   drop trigger if exists trg_attendance_closed_month on public.attendance_records;
+--   drop function if exists public.guard_closed_month_shifts();
+--   drop function if exists public.guard_closed_month_attendance();
+--   drop function if exists public.is_month_closed(date);
+--   drop table if exists public.payroll_closings cascade;
+-- ============================================================
+
+-- ----------------------------------------------------------------
+-- 月締め
+-- ----------------------------------------------------------------
+create table if not exists public.payroll_closings (
+  month      date primary key check (extract(day from month) = 1),  -- 例: 2026-10-01
+  closed_at  timestamptz not null default now(),
+  closed_by  uuid default auth.uid(),
+  note       text
+);
+
+alter table public.payroll_closings enable row level security;
+drop policy if exists payroll_closings_select on public.payroll_closings;
+create policy payroll_closings_select on public.payroll_closings for select
+  using (public.is_active_staff());
+drop policy if exists payroll_closings_admin_write on public.payroll_closings;
+create policy payroll_closings_admin_write on public.payroll_closings for all
+  using (public.is_admin()) with check (public.is_admin());
+
+create or replace function public.is_month_closed(p_date date)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.payroll_closings
+    where month = date_trunc('month', p_date)::date
+  );
+$$;
+
+-- 締め済みの月のシフトは変更不可（本人の「確認済み」チェックだけは許可）
+create or replace function public.guard_closed_month_shifts()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE'
+     and (new.staff_id, new.store_id, new.date, new.start_time, new.end_time, new.status)
+         is not distinct from
+         (old.staff_id, old.store_id, old.date, old.start_time, old.end_time, old.status) then
+    return new;
+  end if;
+  if (tg_op in ('UPDATE', 'DELETE') and public.is_month_closed(old.date))
+     or (tg_op in ('INSERT', 'UPDATE') and public.is_month_closed(new.date)) then
+    raise exception '%は月締め済みのため、シフトを変更できません（「月締め・給与」で締めを解除してから変更してください）',
+      to_char(case when tg_op = 'DELETE' then old.date else new.date end, 'YYYY年FMMM月');
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_shifts_closed_month on public.shifts;
+create trigger trg_shifts_closed_month before insert or update or delete on public.shifts
+  for each row execute function public.guard_closed_month_shifts();
+
+-- 締め済みの月の勤務実績は変更不可
+create or replace function public.guard_closed_month_attendance()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_date date;
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    select date into v_date from public.shifts where id = old.shift_id;
+    if v_date is not null and public.is_month_closed(v_date) then
+      raise exception '%は月締め済みのため、勤務実績を変更できません（「月締め・給与」で締めを解除してから変更してください）',
+        to_char(v_date, 'YYYY年FMMM月');
+    end if;
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') then
+    select date into v_date from public.shifts where id = new.shift_id;
+    if v_date is not null and public.is_month_closed(v_date) then
+      raise exception '%は月締め済みのため、勤務実績を変更できません（「月締め・給与」で締めを解除してから変更してください）',
+        to_char(v_date, 'YYYY年FMMM月');
+    end if;
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_attendance_closed_month on public.attendance_records;
+create trigger trg_attendance_closed_month before insert or update or delete on public.attendance_records
+  for each row execute function public.guard_closed_month_attendance();
+
+-- ----------------------------------------------------------------
+-- 事業者設定（請求書の宛先・送付先、税理士・社労士の連絡先）。常に1行
+--   スタッフも閲覧可（請求書の宛先表示に使う。個人情報は含まない）
+-- ----------------------------------------------------------------
+create table if not exists public.business_settings (
+  id                      int primary key default 1 check (id = 1),
+  company_name            text,                       -- 請求書の宛先（例: 株式会社〇〇）
+  invoice_to_email        text,                       -- 請求書の送付先メール
+  invoice_cc_email        text,
+  payment_terms           text not null default '月末締め・翌月末払い',
+  payment_due_day         int check (payment_due_day is null or payment_due_day between 1 and 31),
+                                                      -- 支払日（翌月の何日。空欄 = 翌月末）
+  accountant_name         text,                       -- 税理士
+  accountant_email        text,
+  labor_consultant_name   text,                       -- 社労士
+  labor_consultant_email  text,
+  updated_at              timestamptz not null default now(),
+  updated_by              uuid default auth.uid()
+);
+
+insert into public.business_settings (id) values (1) on conflict (id) do nothing;
+
+drop trigger if exists trg_business_settings_audit on public.business_settings;
+create trigger trg_business_settings_audit before update on public.business_settings
+  for each row execute function public.set_audit_fields();
+
+alter table public.business_settings enable row level security;
+drop policy if exists business_settings_select on public.business_settings;
+create policy business_settings_select on public.business_settings for select
+  using (public.is_active_staff());
+drop policy if exists business_settings_admin_write on public.business_settings;
+create policy business_settings_admin_write on public.business_settings for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- ----------------------------------------------------------------
+-- 請求者情報（業務委託スタッフ本人が登録。本人と管理者だけが閲覧・編集）
+-- ----------------------------------------------------------------
+create table if not exists public.contractor_profiles (
+  staff_id             bigint primary key references public.staff (id) on delete cascade,
+  issuer_name          text not null default '',   -- 請求者名（氏名・屋号）
+  postal_code          text,
+  address              text,
+  phone                text,
+  email                text,
+  registration_number  text check (registration_number is null or registration_number = ''
+                                   or registration_number ~ '^T[0-9]{13}$'),  -- 適格請求書発行事業者の登録番号
+  bank_name            text,
+  bank_branch          text,
+  bank_account_type    text check (bank_account_type is null or bank_account_type in ('普通', '当座')),
+  bank_account_number  text,
+  bank_account_holder  text,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now(),
+  created_by           uuid default auth.uid(),
+  updated_by           uuid default auth.uid()
+);
+
+drop trigger if exists trg_contractor_profiles_audit on public.contractor_profiles;
+create trigger trg_contractor_profiles_audit before update on public.contractor_profiles
+  for each row execute function public.set_audit_fields();
+
+alter table public.contractor_profiles enable row level security;
+drop policy if exists contractor_profiles_own on public.contractor_profiles;
+create policy contractor_profiles_own on public.contractor_profiles for all
+  using (staff_id = public.current_staff_id() or public.is_admin())
+  with check (staff_id = public.current_staff_id() or public.is_admin());
+
+-- ----------------------------------------------------------------
+-- 請求書（スタッフ × 月で1件）。作成・送信済みの記録は関数経由のみ
+-- ----------------------------------------------------------------
+create table if not exists public.contractor_invoices (
+  id              bigint generated always as identity primary key,
+  staff_id        bigint not null references public.staff (id) on delete cascade,
+  month           date not null check (extract(day from month) = 1),
+  invoice_number  text not null unique,
+  issue_date      date not null,
+  due_date        date not null,
+  lines           jsonb not null default '[]',  -- 店舗別の稼働内訳 [{store_name, days, minutes, transport}]
+  hourly_wage     int not null,
+  work_days       int not null,
+  work_minutes    int not null,
+  subtotal        int not null,                 -- 報酬（税抜）
+  tax             int not null,                 -- 消費税（10%）
+  transport       int not null,                 -- 交通費（実費・非課税）
+  total           int not null,                 -- ご請求額
+  issuer          jsonb not null,               -- 作成時点の請求者情報
+  recipient       jsonb not null,               -- 作成時点の宛先
+  note            text,
+  sent_at         timestamptz,                  -- Gmail で送信した日時（本人が記録）
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  created_by      uuid default auth.uid(),
+  updated_by      uuid default auth.uid(),
+  unique (staff_id, month)
+);
+
+drop trigger if exists trg_contractor_invoices_audit on public.contractor_invoices;
+create trigger trg_contractor_invoices_audit before update on public.contractor_invoices
+  for each row execute function public.set_audit_fields();
+
+alter table public.contractor_invoices enable row level security;
+drop policy if exists contractor_invoices_select on public.contractor_invoices;
+create policy contractor_invoices_select on public.contractor_invoices for select
+  using (staff_id = public.current_staff_id() or public.is_admin());
+drop policy if exists contractor_invoices_admin_delete on public.contractor_invoices;
+create policy contractor_invoices_admin_delete on public.contractor_invoices for delete
+  using (public.is_admin());
+
+-- 指定スタッフ・指定月の稼働内訳（店舗別。確定シフトのみ、実績があれば実績時間）
+--   本人と管理者だけが取得できる。シフト管理の報酬計算と同じ考え方
+create or replace function public.contractor_work_summary(p_staff_id bigint, p_month date)
+returns table (store_id bigint, store_name text, days int, minutes int, transport int)
+language sql stable security definer set search_path = public
+as $$
+  select
+    s.store_id,
+    st.name,
+    count(*)::int,
+    sum(extract(epoch from (coalesce(a.actual_end, s.end_time) - coalesce(a.actual_start, s.start_time))) / 60)::int,
+    (count(*) * coalesce(tc.round_trip_cost, 0))::int
+  from public.shifts s
+  join public.stores st on st.id = s.store_id
+  left join public.attendance_records a on a.shift_id = s.id
+  left join public.staff_transport_costs tc on tc.staff_id = s.staff_id and tc.store_id = s.store_id
+  where s.staff_id = p_staff_id
+    and s.status = 'confirmed'
+    and s.date >= p_month
+    and s.date < (p_month + interval '1 month')::date
+    and (p_staff_id = public.current_staff_id() or public.is_admin())
+  group by s.store_id, st.name, st.sort_order, tc.round_trip_cost
+  order by st.sort_order, s.store_id;
+$$;
+
+-- 請求書を作成（送信前なら最新の内容で作り直す）。呼び出したスタッフ本人の分のみ
+create or replace function public.issue_contractor_invoice(p_month date, p_note text default null)
+returns public.contractor_invoices
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_staff     public.staff;
+  v_profile   public.contractor_profiles;
+  v_settings  public.business_settings;
+  v_existing  public.contractor_invoices;
+  v_result    public.contractor_invoices;
+  v_wage      int;
+  v_lines     jsonb;
+  v_days      int;
+  v_minutes   int;
+  v_transport int;
+  v_subtotal  int;
+  v_tax       int;
+  v_due_month date;
+  v_due       date;
+begin
+  if p_month is null or extract(day from p_month) <> 1 then
+    raise exception '対象月が正しくありません';
+  end if;
+
+  select * into v_staff from public.staff where auth_user_id = auth.uid() and is_active;
+  if not found then
+    raise exception 'スタッフとして登録されていません';
+  end if;
+  if v_staff.employment_type <> 'contractor' then
+    raise exception '請求書は業務委託のスタッフだけが作成できます';
+  end if;
+  if not public.is_month_closed(p_month) then
+    raise exception '%はまだ月締め前です。月締めが終わると請求書を作成できます', to_char(p_month, 'YYYY年FMMM月');
+  end if;
+
+  select * into v_existing from public.contractor_invoices
+  where staff_id = v_staff.id and month = p_month;
+  if found and v_existing.sent_at is not null then
+    raise exception 'この月の請求書は送信済みです（作り直す場合は管理者に削除を依頼してください）';
+  end if;
+
+  select * into v_profile from public.contractor_profiles where staff_id = v_staff.id;
+  if not found
+     or coalesce(trim(v_profile.issuer_name), '') = ''
+     or coalesce(trim(v_profile.address), '') = ''
+     or coalesce(trim(v_profile.bank_account_number), '') = '' then
+    raise exception '先に請求者情報（氏名・住所・振込先）を登録してください';
+  end if;
+
+  select hourly_wage into v_wage from public.staff_pay_settings where staff_id = v_staff.id;
+  if coalesce(v_wage, 0) <= 0 then
+    raise exception '時間単価が未設定です。管理者に設定を依頼してください';
+  end if;
+
+  select
+    coalesce(jsonb_agg(jsonb_build_object(
+      'store_name', w.store_name, 'days', w.days, 'minutes', w.minutes, 'transport', w.transport
+    ) order by w.store_id), '[]'::jsonb),
+    coalesce(sum(w.days), 0),
+    coalesce(sum(w.minutes), 0),
+    coalesce(sum(w.transport), 0)
+  into v_lines, v_days, v_minutes, v_transport
+  from public.contractor_work_summary(v_staff.id, p_month) w;
+
+  if v_days = 0 then
+    raise exception '%の確定シフトがありません', to_char(p_month, 'YYYY年FMMM月');
+  end if;
+
+  -- シフト管理の報酬計算と同じ: 報酬（税抜）= 時間単価 × 稼働時間、消費税 10%、交通費は非課税
+  v_subtotal := round(v_wage * v_minutes / 60.0);
+  v_tax := round(v_subtotal * 0.1);
+
+  select * into v_settings from public.business_settings where id = 1;
+  v_due_month := (p_month + interval '1 month')::date;
+  v_due := case
+    when v_settings.payment_due_day is null
+      then ((v_due_month + interval '1 month')::date - 1)
+    else make_date(
+      extract(year from v_due_month)::int,
+      extract(month from v_due_month)::int,
+      least(v_settings.payment_due_day, extract(day from ((v_due_month + interval '1 month')::date - 1))::int)
+    )
+  end;
+
+  insert into public.contractor_invoices (
+    staff_id, month, invoice_number, issue_date, due_date, lines,
+    hourly_wage, work_days, work_minutes, subtotal, tax, transport, total,
+    issuer, recipient, note
+  ) values (
+    v_staff.id, p_month, to_char(p_month, 'YYYYMM') || '-' || lpad(v_staff.id::text, 3, '0'),
+    (now() at time zone 'Asia/Tokyo')::date, v_due, v_lines,
+    v_wage, v_days, v_minutes, v_subtotal, v_tax, v_transport, v_subtotal + v_tax + v_transport,
+    to_jsonb(v_profile) - 'staff_id' - 'created_at' - 'updated_at' - 'created_by' - 'updated_by',
+    jsonb_build_object(
+      'company_name', v_settings.company_name,
+      'email', v_settings.invoice_to_email,
+      'cc', v_settings.invoice_cc_email,
+      'payment_terms', v_settings.payment_terms
+    ),
+    nullif(trim(coalesce(p_note, '')), '')
+  )
+  on conflict (staff_id, month) do update set
+    issue_date   = excluded.issue_date,
+    due_date     = excluded.due_date,
+    lines        = excluded.lines,
+    hourly_wage  = excluded.hourly_wage,
+    work_days    = excluded.work_days,
+    work_minutes = excluded.work_minutes,
+    subtotal     = excluded.subtotal,
+    tax          = excluded.tax,
+    transport    = excluded.transport,
+    total        = excluded.total,
+    issuer       = excluded.issuer,
+    recipient    = excluded.recipient,
+    note         = excluded.note
+  returning * into v_result;
+
+  return v_result;
+end;
+$$;
+
+-- Gmail で送信したことを記録（本人の請求書のみ）
+create or replace function public.mark_contractor_invoice_sent(p_id bigint)
+returns void
+language sql security definer set search_path = public
+as $$
+  update public.contractor_invoices
+  set sent_at = now()
+  where id = p_id
+    and staff_id = public.current_staff_id()
+    and sent_at is null;
+$$;
+
+-- ████████ 030_line_messaging.sql ████████
+
+-- ============================================================
+-- 030_line_messaging.sql : お客様へのLINE送信を楽にする（定型文・画像・送信履歴）
+--   ・line_templates     : 定型文。{お客様名} などの差し込み項目つき（管理者が編集）
+--   ・line_media         : 送信用の画像ライブラリ（アフターケア案内・キャンペーン画像など）
+--       ストレージ line-media は「公開」バケット。LINE のサーバーが画像を取得するため。
+--       お客様の個人情報（施術写真など）は置かないこと（施術写真は非公開の visit-photos から送る）
+--   ・line_message_logs  : 送信履歴（誰が・いつ・どのお客様に送ったか）。顧客ページに表示
+--
+-- ※ 何度実行しても安全です（既にあるテーブル・バケットはスキップし、
+--    ポリシーだけを正しい状態に貼り直します。定型文の初期データは空のときだけ登録）。
+--    最後に確認結果が表で表示されます。
+--
+-- ロールバック手順:
+--   drop table if exists public.line_message_logs cascade;
+--   drop table if exists public.line_media cascade;
+--   drop table if exists public.line_templates cascade;
+--   delete from storage.objects where bucket_id = 'line-media';
+--   delete from storage.buckets where id = 'line-media';
+-- ============================================================
+
+-- ----------------------------------------------------------------
+-- 定型文
+-- ----------------------------------------------------------------
+create table if not exists public.line_templates (
+  id          bigint generated always as identity primary key,
+  title       text not null,
+  category    text not null default 'その他' check (category in
+    ('お礼', 'ご予約', 'リマインド', 'アフターケア', 'キャンペーン', 'その他')),
+  body        text not null,
+  sort_order  int not null default 0,
+  is_active   boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  created_by  uuid default auth.uid(),
+  updated_by  uuid default auth.uid()
+);
+
+drop trigger if exists trg_line_templates_audit on public.line_templates;
+create trigger trg_line_templates_audit before update on public.line_templates
+  for each row execute function public.set_audit_fields();
+
+alter table public.line_templates enable row level security;
+drop policy if exists line_templates_select on public.line_templates;
+create policy line_templates_select on public.line_templates for select
+  using (public.is_active_staff());
+drop policy if exists line_templates_admin_write on public.line_templates;
+create policy line_templates_admin_write on public.line_templates for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- 初期データ（定型文が1件もないときだけ）。内容は「マスタ管理 > LINE定型文」で編集できます
+insert into public.line_templates (title, category, body, sort_order)
+select v.title, v.category, v.body, v.sort_order
+from (values
+  ('ご来店のお礼', 'お礼',
+   E'{お客様名}様\n本日は{店舗名}にご来店いただき、誠にありがとうございました。\nお肌の調子で気になることがございましたら、いつでもこちらのLINEにご連絡ください。\n{担当スタッフ}', 10),
+  ('次回ご予約の確認', 'ご予約',
+   E'{お客様名}様\n次回のご予約は {次回予約} です。\nご来店を心よりお待ちしております。\n{店舗名}', 20),
+  ('前日のリマインド', 'リマインド',
+   E'{お客様名}様\n明日 {次回予約} にご予約をいただいております。\nご都合が悪くなった場合は、このLINEにご返信ください。\nお気をつけてお越しくださいませ。\n{店舗名}', 30),
+  ('ピーリング後のアフターケア', 'アフターケア',
+   E'{お客様名}様\n本日のピーリングの後は、次の点にご注意ください。\n・当日は洗顔・メイクを控えてください\n・1週間は日焼け止めを必ずお使いください\n・皮むけは無理にはがさないでください\n気になる症状があれば、お気軽にご相談ください。\n{担当スタッフ}', 40),
+  ('しばらくご来店がない方へ', 'キャンペーン',
+   E'{お客様名}様\nその後お肌の調子はいかがでしょうか。\n前回のご来店（{前回来店日}）から少し期間が空きましたので、ご案内させていただきました。\nご予約はこのLINEからも承ります。\n{店舗名}', 50)
+) as v(title, category, body, sort_order)
+where not exists (select 1 from public.line_templates);
+
+-- ----------------------------------------------------------------
+-- 画像ライブラリ
+-- ----------------------------------------------------------------
+create table if not exists public.line_media (
+  id            bigint generated always as identity primary key,
+  title         text not null,
+  storage_path  text not null unique,     -- line-media バケット内のパス
+  sort_order    int not null default 0,
+  is_active     boolean not null default true,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  created_by    uuid default auth.uid(),
+  updated_by    uuid default auth.uid()
+);
+
+drop trigger if exists trg_line_media_audit on public.line_media;
+create trigger trg_line_media_audit before update on public.line_media
+  for each row execute function public.set_audit_fields();
+
+alter table public.line_media enable row level security;
+drop policy if exists line_media_select on public.line_media;
+create policy line_media_select on public.line_media for select
+  using (public.is_active_staff());
+drop policy if exists line_media_admin_write on public.line_media;
+create policy line_media_admin_write on public.line_media for all
+  using (public.is_admin()) with check (public.is_admin());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('line-media', 'line-media', true, 10485760, array['image/jpeg', 'image/png'])
+on conflict (id) do nothing;
+
+drop policy if exists line_media_storage_select on storage.objects;
+create policy line_media_storage_select on storage.objects for select
+  using (bucket_id = 'line-media' and public.is_active_staff());
+drop policy if exists line_media_storage_insert on storage.objects;
+create policy line_media_storage_insert on storage.objects for insert
+  with check (bucket_id = 'line-media' and public.is_admin());
+drop policy if exists line_media_storage_delete on storage.objects;
+create policy line_media_storage_delete on storage.objects for delete
+  using (bucket_id = 'line-media' and public.is_admin());
+
+-- ----------------------------------------------------------------
+-- 送信履歴（書き込みはサーバーの送信処理のみ。スタッフは閲覧のみ）
+-- ----------------------------------------------------------------
+create table if not exists public.line_message_logs (
+  id              bigint generated always as identity primary key,
+  customer_id     bigint references public.customers (id) on delete set null,
+  line_friend_id  bigint references public.line_friends (id) on delete set null,
+  store_id        bigint references public.stores (id) on delete set null,
+  sent_by         bigint references public.staff (id) on delete set null,
+  template_id     bigint references public.line_templates (id) on delete set null,
+  kind            text not null default 'message',   -- message / counseling / gallery
+  body            text,
+  image_count     int not null default 0,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists idx_line_message_logs_customer on public.line_message_logs (customer_id, created_at desc);
+
+alter table public.line_message_logs enable row level security;
+drop policy if exists line_message_logs_select on public.line_message_logs;
+create policy line_message_logs_select on public.line_message_logs for select
+  using (public.is_active_staff());
 
 -- ████████ counseling-seed.sql ████████
 

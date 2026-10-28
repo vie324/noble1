@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useOrigin } from "@/lib/client-env";
 import { Button, Card, SectionTitle } from "@/components/ui";
 import { AdminTabs } from "@/components/admin-tabs";
 import { SALONS, lineAddUrl, mapLinkUrl } from "@/lib/salons";
 
 // お客様向け店舗紹介ページ（/salons）の確認・URL配布用（管理者専用）
 export default function AdminStoresPage() {
-  const origin = useMemo(
-    () => (typeof window !== "undefined" ? window.location.origin : ""),
-    []
-  );
+  const origin = useOrigin();
 
   return (
     <div className="space-y-5 fade-in">

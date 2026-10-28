@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
-// 経営（管理者専用）エリアのサブナビゲーション
-const tabs = [
+// 経営（管理者専用）エリアのメニュー。サブナビとスマホの「メニュー」シートで共通
+export const ADMIN_LINKS = [
   { href: "/admin/dashboard", label: "経営サマリー" },
+  { href: "/admin/payroll", label: "月締め・給与" },
+  { href: "/admin/staff-docs", label: "スタッフ書類" },
   { href: "/admin/targets", label: "目標設定" },
   { href: "/admin/sales", label: "実績入力" },
   { href: "/admin/analytics", label: "売上・媒体" },
@@ -16,19 +19,28 @@ const tabs = [
   { href: "/admin/masters", label: "マスタ管理" },
   { href: "/admin/stores", label: "店舗紹介ページ" },
   { href: "/admin/line", label: "LINE連携" },
-];
+] as const;
 
 export function AdminTabs() {
   const pathname = usePathname();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  // 選択中のタブが画面外（横スクロールの先）にあるときは見える位置まで寄せる
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
+
   return (
-    <nav className="-mx-4 px-4 overflow-x-auto" aria-label="経営メニュー">
+    <nav className="-mx-4 px-4 overflow-x-auto no-scrollbar print:hidden" aria-label="経営メニュー">
       <div className="flex items-center gap-1 border-b border-hairline pb-2 min-w-max">
-        {tabs.map((t) => {
+        {ADMIN_LINKS.map((t) => {
           const active = pathname.startsWith(t.href);
           return (
             <Link
               key={t.href}
+              ref={active ? activeRef : undefined}
               href={t.href}
+              aria-current={active ? "page" : undefined}
               className={`min-h-10 inline-flex items-center px-3.5 rounded-full text-sm whitespace-nowrap transition-colors ${
                 active
                   ? "bg-gold-soft text-gold-dk font-semibold"

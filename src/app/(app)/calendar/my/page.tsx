@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, ListSkeleton, SectionTitle } from "@/components/ui";
+import { useToast } from "@/components/toast";
 import { ShiftTabs } from "@/components/shift-tabs";
 import { MonthNav } from "@/components/admin-tabs";
 import {
@@ -34,11 +35,13 @@ export default function MyShiftPage() {
   const [month, setMonth] = useState(thisMonthJST());
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [attendance, setAttendance] = useState<Map<number, AttendanceRecord>>(new Map());
+  const [closed, setClosed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const notify = useToast();
 
   const load = useCallback(async () => {
     setShifts(null);
-    const [rec, sh] = await Promise.all([
+    const [rec, sh, closing] = await Promise.all([
       supabase
         .from("shift_recruitments")
         .select("*")
@@ -54,7 +57,10 @@ export default function MyShiftPage() {
         .gte("date", month)
         .lt("date", addMonths(month, 1))
         .order("date"),
+      // 月締め済みの月は実績を変更できない（029_payroll_close_invoices.sql）
+      supabase.from("payroll_closings").select("month").eq("month", month).maybeSingle(),
     ]);
+    setClosed(!!closing.data);
 
     const recruitmentRow = (rec.data as ShiftRecruitment) ?? null;
     setRecruitment(recruitmentRow);
@@ -121,18 +127,37 @@ export default function MyShiftPage() {
         ) : shifts.length === 0 ? (
           <p className="text-sm text-muted">この月の確定シフトはありません</p>
         ) : (
-          <ul className="divide-y divide-hairline">
-            {shifts.map((s) => (
-              <ShiftRow
-                key={s.id}
-                shift={s}
-                attendance={attendance.get(s.id)}
-                busy={busy}
-                setBusy={setBusy}
-                onChanged={load}
-              />
-            ))}
-          </ul>
+          <>
+            <ShiftSummary
+              shifts={shifts}
+              attendance={attendance}
+              closed={closed}
+              busy={busy}
+              onAcknowledgeAll={async (ids) => {
+                setBusy(true);
+                const results = await Promise.all(
+                  ids.map((id) => supabase.rpc("acknowledge_shift", { p_shift_id: id }))
+                );
+                if (results.some((r) => r.error)) notify("確認できなかったシフトがあります", "error");
+                else notify(`${ids.length}件のシフトを確認しました`);
+                await load();
+                setBusy(false);
+              }}
+            />
+            <ul className="divide-y divide-hairline">
+              {shifts.map((s) => (
+                <ShiftRow
+                  key={s.id}
+                  shift={s}
+                  attendance={attendance.get(s.id)}
+                  locked={closed}
+                  busy={busy}
+                  setBusy={setBusy}
+                  onChanged={load}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </Card>
     </div>
@@ -288,22 +313,94 @@ function RequestSection({
   );
 }
 
+/* ================= 月の集計（出勤日数・未確認・実績の記録漏れ） ================= */
+function ShiftSummary({
+  shifts,
+  attendance,
+  closed,
+  busy,
+  onAcknowledgeAll,
+}: {
+  shifts: Shift[];
+  attendance: Map<number, AttendanceRecord>;
+  closed: boolean;
+  busy: boolean;
+  onAcknowledgeAll: (ids: number[]) => Promise<void>;
+}) {
+  const today = todayJST();
+  const unacked = shifts.filter((s) => !s.acknowledged_at);
+  const unrecorded = shifts.filter((s) => s.date <= today && !attendance.has(s.id));
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <SummaryTile label="出勤予定" value={`${shifts.length}日`} />
+        <SummaryTile label="未確認" value={`${unacked.length}件`} tone={unacked.length > 0 ? "warn" : "ok"} />
+        <SummaryTile
+          label="実績の記録漏れ"
+          value={`${unrecorded.length}日`}
+          tone={unrecorded.length > 0 && !closed ? "warn" : "ok"}
+        />
+      </div>
+      {closed ? (
+        <p className="rounded-xl bg-base border border-hairline px-3 py-2 text-xs text-muted">
+          🔒 この月は締め済みです。実績の修正が必要なときは管理者に連絡してください
+        </p>
+      ) : (
+        unrecorded.length > 0 && (
+          <p className="text-xs text-warn">
+            勤務が終わった日は「予定どおり」か「時間を入力」で実績を記録してください（給与計算に使われます）
+          </p>
+        )
+      )}
+      {unacked.length > 1 && (
+        <Button
+          variant="secondary"
+          className="w-full"
+          disabled={busy}
+          onClick={() => onAcknowledgeAll(unacked.map((s) => s.id))}
+        >
+          未確認の{unacked.length}件をまとめて確認する
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function SummaryTile({ label, value, tone }: { label: string; value: string; tone?: "warn" | "ok" }) {
+  return (
+    <div className="rounded-xl border border-hairline bg-base px-2 py-2">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p
+        className={`text-lg font-semibold tnum ${
+          tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : "text-ink"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 /* ================= 確定シフト1行（確認チェック＋実績入力） ================= */
 function ShiftRow({
   shift,
   attendance,
+  locked,
   busy,
   setBusy,
   onChanged,
 }: {
   shift: Shift;
   attendance?: AttendanceRecord;
+  locked: boolean;
   busy: boolean;
   setBusy: (b: boolean) => void;
   onChanged: () => Promise<void>;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const { storeName } = useApp();
+  const notify = useToast();
   const [editing, setEditing] = useState(false);
   const [actual, setActual] = useState({
     start: attendance?.actual_start?.slice(0, 5) ?? shift.start_time.slice(0, 5),
@@ -314,12 +411,42 @@ function ShiftRow({
 
   const isPast = shift.date <= todayJST();
   const planned = `${timeShort(shift.start_time)}〜${timeShort(shift.end_time)}`;
+  const canRecord = isPast && !locked;
 
   async function acknowledge() {
     setBusy(true);
-    await supabase.rpc("acknowledge_shift", { p_shift_id: shift.id });
+    const { error: err } = await supabase.rpc("acknowledge_shift", { p_shift_id: shift.id });
+    if (err) notify("確認できませんでした。もう一度お試しください", "error");
     await onChanged();
     setBusy(false);
+  }
+
+  async function upsertAttendance(start: string, end: string, reason: string | null): Promise<boolean> {
+    setBusy(true);
+    const { error: err } = await supabase.from("attendance_records").upsert(
+      { shift_id: shift.id, actual_start: start, actual_end: end, diff_reason: reason },
+      { onConflict: "shift_id" }
+    );
+    if (err) {
+      notify(
+        /closed|締め/.test(err.message)
+          ? "この月は締め済みのため変更できません。管理者に連絡してください"
+          : "実績を保存できませんでした",
+        "error"
+      );
+      setBusy(false);
+      return false;
+    }
+    await onChanged();
+    setBusy(false);
+    return true;
+  }
+
+  // 予定どおり働いた日はワンタップで記録
+  async function recordAsPlanned() {
+    if (await upsertAttendance(shift.start_time.slice(0, 5), shift.end_time.slice(0, 5), null)) {
+      notify(`${dateLabelJa(shift.date)}の実績を記録しました`);
+    }
   }
 
   async function saveAttendance() {
@@ -332,33 +459,30 @@ function ShiftRow({
       return;
     }
     setError(null);
-    setBusy(true);
-    await supabase.from("attendance_records").upsert(
-      {
-        shift_id: shift.id,
-        actual_start: actual.start,
-        actual_end: actual.end,
-        diff_reason: actual.reason.trim() || null,
-      },
-      { onConflict: "shift_id" }
-    );
-    setEditing(false);
-    await onChanged();
-    setBusy(false);
+    if (await upsertAttendance(actual.start, actual.end, actual.reason.trim() || null)) {
+      setEditing(false);
+    }
   }
 
   return (
-    <li className="py-2.5">
+    <li className="py-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="w-24 shrink-0 text-sm text-ink tnum">{dateLabelJa(shift.date)}</span>
+        <span className="w-24 shrink-0 text-sm font-semibold text-ink tnum">{dateLabelJa(shift.date)}</span>
         <span className="text-sm text-ink tnum">{planned}</span>
         <span className="text-xs text-muted">{storeName(shift.store_id)}</span>
         <span className="flex-1" />
-        {attendance && (
+        {attendance ? (
           <Badge color={attendance.diff_reason ? "warn" : "ok"}>
             実績 {timeShort(attendance.actual_start)}〜{timeShort(attendance.actual_end)}
           </Badge>
+        ) : (
+          isPast && <Badge color="warn">実績 未記録</Badge>
         )}
+      </div>
+      {attendance?.diff_reason && (
+        <p className="text-xs text-warn mt-1 pl-24">理由: {attendance.diff_reason}</p>
+      )}
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
         {shift.acknowledged_at ? (
           <Badge color="ok">確認済み</Badge>
         ) : (
@@ -366,23 +490,25 @@ function ShiftRow({
             確認しました
           </Button>
         )}
-        {isPast && (
+        {canRecord && !attendance && (
+          <Button disabled={busy} onClick={recordAsPlanned}>
+            予定どおり
+          </Button>
+        )}
+        {canRecord && (
           <Button variant="ghost" disabled={busy} onClick={() => setEditing(!editing)}>
-            {attendance ? "実績を修正" : "実績を記録"}
+            {attendance ? "実績を修正" : "時間を入力"}
           </Button>
         )}
       </div>
-      {attendance?.diff_reason && (
-        <p className="text-xs text-warn mt-1 pl-24">理由: {attendance.diff_reason}</p>
-      )}
-      {editing && (
+      {editing && canRecord && (
         <div className="mt-2 rounded-xl border border-hairline bg-base p-3 space-y-2 fade-in">
           <div className="flex items-center gap-2 flex-wrap">
             <input
               type="time"
               value={actual.start}
               onChange={(e) => setActual({ ...actual, start: e.target.value })}
-              className="min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
               aria-label="実開始"
             />
             <span className="text-muted">〜</span>
@@ -390,7 +516,7 @@ function ShiftRow({
               type="time"
               value={actual.end}
               onChange={(e) => setActual({ ...actual, end: e.target.value })}
-              className="min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
               aria-label="実終了"
             />
             <input
@@ -398,7 +524,7 @@ function ShiftRow({
               value={actual.reason}
               onChange={(e) => setActual({ ...actual, reason: e.target.value })}
               placeholder="ずれた場合の理由（残業・早退など）"
-              className="flex-1 min-w-40 min-h-10 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
+              className="flex-1 min-w-40 min-h-11 rounded-lg border border-hairline bg-surface px-2 text-sm outline-none focus:border-gold"
               aria-label="理由"
             />
             <Button disabled={busy} onClick={saveAttendance}>
