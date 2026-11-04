@@ -7,7 +7,6 @@ import { useToast } from "@/components/toast";
 import { Button, Card, Chip, ChipRow, EmptyState, ListSkeleton, SectionTitle } from "@/components/ui";
 import {
   DueText,
-  PriorityBadge,
   StatusBadge,
   TaskDetailSheet,
   TaskFormSheet,
@@ -24,7 +23,7 @@ import {
   TASKS_SETUP_MESSAGE,
 } from "@/lib/tasks";
 import { TASK_LIST_META } from "@/lib/types";
-import type { Staff, Task, TaskList } from "@/lib/types";
+import type { Staff, Task, TaskList, TaskStatus } from "@/lib/types";
 
 type Filter = "open" | "mine" | "done";
 
@@ -32,7 +31,7 @@ const NOTES_SELECT = "*, task_notes (id, task_id, staff_id, kind, body, created_
 
 // 業務リスト（施術以外のやること）。閲覧は管理者と許可されたスタッフのみ（layout と RLS で制限）
 export default function TasksPage() {
-  const { me, isAdmin, storeFilter, storeName } = useApp();
+  const { me, isAdmin, isStore, storeFilter, storeName } = useApp();
   const supabase = useMemo(() => createClient(), []);
   const staffList = useStaffList();
   const [staffOverride, setStaffOverride] = useState<Staff[] | null>(null);
@@ -90,6 +89,8 @@ export default function TasksPage() {
   );
 
   const opened = visible.find((t) => t.id === openId) ?? null;
+  // 対応開始・完了（店舗アカウントは対応者を選ぶ画面が出る）
+  const actions = useTaskActions(load, staff);
 
   return (
     <div className="space-y-5 fade-in">
@@ -100,12 +101,14 @@ export default function TasksPage() {
             施術以外のやること・{storeName(storeFilter)}。空き時間に確認して、対応できる仕事を進めてください
           </p>
         </div>
-        {isAdmin && <Button onClick={() => setEditing("new")}>＋ 業務を追加</Button>}
+        <Button onClick={() => setEditing("new")}>＋ 業務を追加</Button>
       </div>
 
       <ChipRow>
         <Chip label="未完了" selected={filter === "open"} onClick={() => changeFilter("open")} />
-        <Chip label="自分の担当・対応中" selected={filter === "mine"} onClick={() => changeFilter("mine")} />
+        {!isStore && (
+          <Chip label="自分の担当・対応中" selected={filter === "mine"} onClick={() => changeFilter("mine")} />
+        )}
         <Chip label="完了済み" selected={filter === "done"} onClick={() => changeFilter("done")} />
       </ChipRow>
 
@@ -125,13 +128,14 @@ export default function TasksPage() {
             today={today}
             filter={filter}
             onOpen={(t) => setOpenId(t.id)}
-            onChanged={load}
+            onSetStatus={actions.setStatus}
+            busyId={actions.busyId}
           />
         ))
       )}
 
       <p className="text-xs text-muted">
-        ※ 業務内容・期日・優先度・担当者は管理者が設定します。対応を始めたら「対応開始」、終わったら「完了」を押すと、
+        ※ 業務はだれでも追加できます（編集・削除は追加した本人と管理者）。対応を始めたら「対応開始」、終わったら「完了」を押すと、
         対応者と日時が記録されます。期日が来た業務はトップページの「今日のToDo」にも表示されます。
       </p>
 
@@ -142,6 +146,8 @@ export default function TasksPage() {
       <TaskDetailSheet
         task={opened}
         staff={staff}
+        busy={actions.busyId !== null}
+        onSetStatus={actions.setStatus}
         onClose={() => setOpenId(null)}
         onChanged={load}
         onEdit={(t) => {
@@ -156,6 +162,7 @@ export default function TasksPage() {
         onClose={() => setEditing(null)}
         onSaved={load}
       />
+      {actions.picker}
     </div>
   );
 }
@@ -168,7 +175,8 @@ function TaskListCard({
   today,
   filter,
   onOpen,
-  onChanged,
+  onSetStatus,
+  busyId,
 }: {
   list: TaskList;
   tasks: Task[];
@@ -176,7 +184,8 @@ function TaskListCard({
   today: string;
   filter: Filter;
   onOpen: (t: Task) => void;
-  onChanged: () => Promise<void>;
+  onSetStatus: (task: Task, status: TaskStatus) => void;
+  busyId: number | null;
 }) {
   const meta = TASK_LIST_META[list];
   return (
@@ -194,17 +203,24 @@ function TaskListCard({
       ) : (
         <>
           <div
-            className="hidden md:grid grid-cols-[minmax(0,1fr)_6.5rem_4.5rem_10rem] gap-3 px-4 py-2 bg-base border-y border-hairline text-xs font-semibold text-muted"
+            className="hidden md:grid grid-cols-[minmax(0,1fr)_6.5rem_10rem] gap-3 px-4 py-2 bg-base border-y border-hairline text-xs font-semibold text-muted"
             aria-hidden
           >
             <span>業務内容・メモ</span>
             <span className="text-center">期日</span>
-            <span className="text-center">優先度</span>
             <span className="text-center">状況</span>
           </div>
           <ul className="divide-y divide-hairline max-md:border-t max-md:border-hairline">
             {tasks.map((t) => (
-              <TaskRow key={t.id} task={t} staff={staff} today={today} onOpen={() => onOpen(t)} onChanged={onChanged} />
+              <TaskRow
+                key={t.id}
+                task={t}
+                staff={staff}
+                today={today}
+                onOpen={() => onOpen(t)}
+                onSetStatus={onSetStatus}
+                busy={busyId === t.id}
+              />
             ))}
           </ul>
         </>
@@ -218,21 +234,21 @@ function TaskRow({
   staff,
   today,
   onOpen,
-  onChanged,
+  onSetStatus: setStatus,
+  busy,
 }: {
   task: Task;
   staff: Staff[] | null;
   today: string;
   onOpen: () => void;
-  onChanged: () => Promise<void>;
+  onSetStatus: (task: Task, status: TaskStatus) => void;
+  busy: boolean;
 }) {
   const { storeName } = useApp();
-  const { setStatus, busyId } = useTaskActions(onChanged);
   const memo = latestMemo(task);
-  const busy = busyId === task.id;
 
   return (
-    <li className="px-4 py-3 md:grid md:grid-cols-[minmax(0,1fr)_6.5rem_4.5rem_10rem] md:gap-3 md:items-center">
+    <li className="px-4 py-3 md:grid md:grid-cols-[minmax(0,1fr)_6.5rem_10rem] md:gap-3 md:items-center">
       <button type="button" onClick={onOpen} className="block w-full text-left min-w-0 group">
         <span className="block font-semibold text-ink group-hover:text-gold-dk transition-colors">{task.title}</span>
         <span className={`block text-xs truncate mt-0.5 ${memo ? "text-muted" : "text-gold-dk"}`}>
@@ -252,9 +268,6 @@ function TaskRow({
         <span className="text-sm md:text-center">
           <span className="md:hidden text-xs text-muted mr-1">期日</span>
           <DueText task={task} today={today} />
-        </span>
-        <span className="md:flex md:justify-center">
-          <PriorityBadge priority={task.priority} />
         </span>
         <div className="ml-auto md:ml-0 flex items-center gap-2 md:flex-col md:gap-1 md:text-center">
           <StatusBadge status={task.status} />
@@ -320,7 +333,7 @@ function PermissionCard({ staff, onUpdated }: { staff: Staff[]; onUpdated: (next
     <Card className="p-4 space-y-3">
       <SectionTitle>業務リストの閲覧権限</SectionTitle>
       <p className="text-sm text-muted">
-        許可したスタッフだけが「業務」タブとトップページの「今日のToDo」を見られます。
+        許可したスタッフ・店舗アカウントだけが「業務」タブとトップページの「今日のToDo」を見られます。
         許可していないスタッフは URL を直接開いても表示されません。
         管理者（{admins.map((a) => a.name).join("・") || "—"}）は常に閲覧できます。
       </p>
@@ -332,7 +345,14 @@ function PermissionCard({ staff, onUpdated }: { staff: Staff[]; onUpdated: (next
             const on = s.can_view_tasks === true;
             return (
               <li key={s.id} className="flex items-center gap-3 py-2">
-                <span className="flex-1 min-w-0 text-sm text-ink truncate">{staffLabel(s)}</span>
+                <span className="flex-1 min-w-0 text-sm text-ink truncate">
+                  {staffLabel(s)}
+                  {s.role === "store" && (
+                    <span className="ml-2 rounded-full border border-hairline bg-base px-2 py-px text-[11px] text-muted">
+                      店舗iPad
+                    </span>
+                  )}
+                </span>
                 <span className={`text-xs ${on ? "text-ok font-semibold" : "text-muted"}`}>
                   {on ? "閲覧できる" : "閲覧不可"}
                 </span>

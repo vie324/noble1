@@ -42,6 +42,7 @@ export default function VisitListPage() {
         .from("staff")
         .select("*")
         .eq("is_active", true)
+        .neq("role", "store")
         .order("id");
       setStaffList((data as Staff[]) ?? []);
     })();

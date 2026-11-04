@@ -75,7 +75,7 @@ export default function ShiftManagePage() {
   const load = useCallback(async () => {
     setShifts(null);
     const [st, sh, rq, rc, ps, tc, cl] = await Promise.all([
-      supabase.from("staff").select("*").eq("is_active", true).order("id"),
+      supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
       supabase
         .from("shifts")
         .select("*")

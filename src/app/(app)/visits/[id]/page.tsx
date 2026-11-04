@@ -107,7 +107,7 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
             .maybeSingle(),
           supabase.from("menus").select("*").eq("is_active", true).order("sort_order"),
           supabase.from("body_parts").select("*").eq("is_active", true).order("sort_order"),
-          supabase.from("staff").select("*").eq("is_active", true).order("id"),
+          supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
           supabase.from("visit_menus").select("menu_id").eq("visit_id", visitId),
           supabase.from("visit_body_parts").select("body_part_id").eq("visit_id", visitId),
         ]);

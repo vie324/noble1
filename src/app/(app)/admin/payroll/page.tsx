@@ -84,7 +84,7 @@ function Payroll() {
     if (!month) return;
     const monthEnd = addMonths(month, 1);
     const [st, sh, ps, tc, bs, dc, iv] = await Promise.all([
-      supabase.from("staff").select("*").eq("is_active", true).order("id"),
+      supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
       supabase.from("shifts").select("*").gte("date", month).lt("date", monthEnd).order("date"),
       supabase.from("staff_pay_settings").select("*"),
       supabase.from("staff_transport_costs").select("*"),

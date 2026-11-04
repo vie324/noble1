@@ -7,6 +7,7 @@ interface AppContextValue {
   me: Staff;
   stores: Store[];
   isAdmin: boolean;
+  isStore: boolean; // 店舗の iPad 用アカウント
   // null = 全店舗合算
   storeFilter: number | null;
   setStoreFilter: (id: number | null) => void;
@@ -26,7 +27,10 @@ export function AppProvider({
   stores: Store[];
   children: React.ReactNode;
 }) {
-  const [storeFilter, setStoreFilterState] = useState<number | null>(null);
+  // 店舗アカウント（iPad）は、最初はその店舗を表示する
+  const [storeFilter, setStoreFilterState] = useState<number | null>(
+    me.role === "store" ? me.store_id : null
+  );
 
   useEffect(() => {
     const saved = window.localStorage.getItem(FILTER_KEY);
@@ -41,6 +45,7 @@ export function AppProvider({
       me,
       stores,
       isAdmin: me.role === "admin",
+      isStore: me.role === "store",
       storeFilter,
       setStoreFilter: (id) => {
         setStoreFilterState(id);

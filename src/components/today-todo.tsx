@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, ListSkeleton } from "@/components/ui";
 import {
-  PriorityBadge,
   TaskDetailSheet,
   TaskFormSheet,
   staffNameOf,
@@ -59,7 +58,7 @@ export function TodayTodo() {
     };
   }, [fetchTasks, apply]);
 
-  const { setStatus, busyId } = useTaskActions(load);
+  const { setStatus, busyId, picker } = useTaskActions(load, staff);
 
   const visible = useMemo(
     () =>
@@ -87,7 +86,7 @@ export function TodayTodo() {
           今日のToDo
           <span className="ml-3 font-sans text-sm sm:text-base text-muted tnum">{dateLabelJa(today)}</span>
         </h2>
-        {isAdmin && <Button onClick={() => setEditing("new")}>＋ ToDo追加</Button>}
+        <Button onClick={() => setEditing("new")}>＋ ToDo追加</Button>
       </div>
 
       <p className="flex items-center gap-2 rounded-xl border border-warn/25 bg-warn-soft/60 px-3 py-2 text-sm text-ink">
@@ -152,7 +151,6 @@ export function TodayTodo() {
                       <span className="flex items-center gap-2 flex-wrap">
                         <span className={done ? "text-muted line-through" : "text-ink font-medium"}>{t.title}</span>
                         {carried && <Badge color="caution">前日から持ち越し</Badge>}
-                        {!done && t.priority === "high" && <PriorityBadge priority="high" />}
                       </span>
                       {/* スマホ: 期限・対応者は本文の下に */}
                       <span className="md:hidden block text-xs mt-0.5">
@@ -181,6 +179,8 @@ export function TodayTodo() {
       <TaskDetailSheet
         task={opened}
         staff={staff}
+        busy={busyId !== null}
+        onSetStatus={setStatus}
         onClose={() => setOpenId(null)}
         onChanged={load}
         onEdit={(t) => {
@@ -191,11 +191,12 @@ export function TodayTodo() {
       <TaskFormSheet
         open={editing !== null}
         initial={editing === "new" ? null : editing}
-        defaults={{ list: "short", due_date: today, priority: "mid" }}
+        defaults={{ list: "short", due_date: today }}
         staff={staff}
         onClose={() => setEditing(null)}
         onSaved={load}
       />
+      {picker}
     </section>
   );
 }

@@ -15,8 +15,8 @@ import {
   monthDayTime,
   TASKS_SETUP_MESSAGE,
 } from "@/lib/tasks";
-import { TASK_LIST_META, TASK_PRIORITY_META, TASK_STATUS_META } from "@/lib/types";
-import type { Staff, Task, TaskList, TaskPriority, TaskStatus } from "@/lib/types";
+import { isPerson, TASK_LIST_META, TASK_STATUS_META } from "@/lib/types";
+import type { Staff, Task, TaskList, TaskStatus } from "@/lib/types";
 
 /* ---------------- スタッフ一覧（担当者・対応者の表示用） ---------------- */
 export function useStaffList(): Staff[] | null {
@@ -40,22 +40,13 @@ export function staffNameOf(staff: Staff[] | null, id: number | null | undefined
   return s ? staffLabel(s) : "（退職したスタッフ）";
 }
 
+// 業務を編集・削除できるか（管理者と、その業務を追加した本人）
+export function canEditTask(task: Task, me: Staff): boolean {
+  return me.role === "admin" || (task.created_by !== null && task.created_by === me.auth_user_id);
+}
+
 /* ---------------- バッジ ---------------- */
 const pill = "inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap";
-
-const priorityClass: Record<TaskPriority, string> = {
-  high: "bg-caution-soft text-caution border-caution/30",
-  mid: "bg-warn-soft text-warn border-warn/30",
-  low: "bg-base text-muted border-hairline",
-};
-
-export function PriorityBadge({ priority }: { priority: TaskPriority }) {
-  return (
-    <span className={`${pill} min-w-10 ${priorityClass[priority]}`} title="優先度">
-      {TASK_PRIORITY_META[priority].label}
-    </span>
-  );
-}
 
 const statusClass: Record<TaskStatus, string> = {
   todo: "bg-base text-muted border-hairline",
@@ -80,15 +71,24 @@ export function DueText({ task, today }: { task: Task; today: string }) {
   return <span className={`tnum ${cls}`}>{d.label}</span>;
 }
 
-/* ---------------- 対応状況の変更（スタッフ・管理者） ---------------- */
-export function useTaskActions(onChanged: () => Promise<void> | void) {
+/* ---------------- 対応状況の変更 ----------------
+   スタッフ・管理者は本人として記録。店舗アカウント（iPad）は「誰が対応したか」を選んでから記録する。
+   picker は呼び出し側で1回だけ描画する */
+export function useTaskActions(onChanged: () => Promise<void> | void, staff: Staff[] | null) {
+  const { isStore } = useApp();
   const supabase = useMemo(() => createClient(), []);
   const notify = useToast();
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [pending, setPending] = useState<{ task: Task; status: TaskStatus } | null>(null);
 
-  async function setStatus(task: Task, status: TaskStatus) {
+  async function run(task: Task, status: TaskStatus, staffId: number | null) {
     setBusyId(task.id);
-    const { error } = await supabase.rpc("set_task_status", { p_task_id: task.id, p_status: status });
+    const { error } = await supabase.rpc(
+      "set_task_status",
+      staffId === null
+        ? { p_task_id: task.id, p_status: status }
+        : { p_task_id: task.id, p_status: status, p_staff_id: staffId }
+    );
     if (error) {
       notify(isMissingTableError(error) ? TASKS_SETUP_MESSAGE : `更新できませんでした（${error.message}）`, "error");
     } else {
@@ -104,10 +104,50 @@ export function useTaskActions(onChanged: () => Promise<void> | void) {
     setBusyId(null);
   }
 
-  return { setStatus, busyId };
+  function setStatus(task: Task, status: TaskStatus) {
+    // 未着手に戻すときは対応者を記録しないので、選ばなくてよい
+    if (isStore && status !== "todo") setPending({ task, status });
+    else run(task, status, null);
+  }
+
+  const people = (staff ?? []).filter(isPerson);
+  const picker = (
+    <Sheet
+      open={pending !== null}
+      onClose={() => setPending(null)}
+      title={pending?.status === "done" ? "誰が完了しましたか？" : "誰が対応しますか？"}
+    >
+      {pending && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            「{pending.task.title}」の対応者として記録します。自分の名前をタップしてください。
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {people.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                disabled={busyId !== null}
+                onClick={() => {
+                  const p = pending;
+                  setPending(null);
+                  run(p.task, p.status, s.id);
+                }}
+                className="min-h-14 rounded-xl border border-hairline bg-surface px-3 text-left text-ink hover:border-gold hover:bg-gold-soft/40 transition-colors disabled:opacity-40"
+              >
+                {staffLabel(s)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+
+  return { setStatus, busyId, picker };
 }
 
-/* ---------------- 業務の追加・編集（管理者） ---------------- */
+/* ---------------- 業務の追加・編集（閲覧権限のある人なら誰でも追加できる） ---------------- */
 export function TaskFormSheet({
   open,
   initial,
@@ -118,7 +158,7 @@ export function TaskFormSheet({
 }: {
   open: boolean;
   initial: Task | null;
-  defaults?: Partial<Pick<Task, "list" | "due_date" | "priority">>;
+  defaults?: Partial<Pick<Task, "list" | "due_date">>;
   staff: Staff[] | null;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
@@ -144,7 +184,7 @@ function TaskFormInner({
   onSaved,
 }: {
   initial: Task | null;
-  defaults?: Partial<Pick<Task, "list" | "due_date" | "priority">>;
+  defaults?: Partial<Pick<Task, "list" | "due_date">>;
   staff: Staff[] | null;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
@@ -156,14 +196,13 @@ function TaskFormInner({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [list, setList] = useState<TaskList>(initial?.list ?? defaults?.list ?? "short");
   const [due, setDue] = useState<string>(initial ? initial.due_date ?? "" : defaults?.due_date ?? "");
-  const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? defaults?.priority ?? "mid");
   const [assigneeId, setAssigneeId] = useState<number | null>(initial?.assignee_id ?? null);
   const [storeId, setStoreId] = useState<number | null>(initial?.store_id ?? null);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [busy, setBusy] = useState(false);
 
-  // 担当にできるのは業務リストを閲覧できる人だけ（見えない業務を割り当てないため）
-  const assignable = (staff ?? []).filter((s) => canViewTasks(s));
+  // 担当にできるのは業務リストを閲覧できる人だけ（見えない業務を割り当てないため。店舗アカウントは除く）
+  const assignable = (staff ?? []).filter((s) => canViewTasks(s) && isPerson(s));
   const quickDue: [string, string][] = [
     ["今日", today],
     ["明日", addDays(today, 1)],
@@ -177,7 +216,6 @@ function TaskFormInner({
       title: title.trim(),
       list,
       due_date: due || null,
-      priority,
       assignee_id: assigneeId,
       store_id: storeId,
       description: description.trim() || null,
@@ -187,7 +225,14 @@ function TaskFormInner({
       : await supabase.from("tasks").insert(payload);
     setBusy(false);
     if (error) {
-      notify(isMissingTableError(error) ? TASKS_SETUP_MESSAGE : `保存できませんでした（${error.message}）`, "error");
+      notify(
+        isMissingTableError(error)
+          ? TASKS_SETUP_MESSAGE
+          : /row-level security/i.test(error.message)
+            ? "保存できませんでした。スタッフが業務を追加するには、033 の SQL の実行が必要です"
+            : `保存できませんでした（${error.message}）`,
+        "error"
+      );
       return;
     }
     notify(initial ? "業務を更新しました" : "業務を追加しました");
@@ -251,15 +296,6 @@ function TaskFormInner({
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-muted mb-1.5">優先度</p>
-          <div className="flex gap-2">
-            {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
-              <Chip key={p} label={TASK_PRIORITY_META[p].label} selected={priority === p} onClick={() => setPriority(p)} />
-            ))}
-          </div>
-        </div>
-
-        <div>
           <p className="text-xs font-semibold text-muted mb-1.5">担当者</p>
           <div className="flex gap-2 flex-wrap">
             <Chip label="指定なし（誰でも）" selected={assigneeId === null} onClick={() => setAssigneeId(null)} />
@@ -296,6 +332,8 @@ function TaskFormInner({
 export function TaskDetailSheet(props: {
   task: Task | null;
   staff: Staff[] | null;
+  busy: boolean;
+  onSetStatus: (task: Task, status: TaskStatus) => void;
   onClose: () => void;
   onChanged: () => Promise<void> | void;
   onEdit: (task: Task) => void;
@@ -308,12 +346,16 @@ export function TaskDetailSheet(props: {
 function TaskDetailInner({
   task,
   staff,
+  busy: acting,
+  onSetStatus,
   onClose,
   onChanged,
   onEdit,
 }: {
   task: Task;
   staff: Staff[] | null;
+  busy: boolean;
+  onSetStatus: (task: Task, status: TaskStatus) => void;
   onClose: () => void;
   onChanged: () => Promise<void> | void;
   onEdit: (task: Task) => void;
@@ -321,13 +363,13 @@ function TaskDetailInner({
   const { me, isAdmin, storeName } = useApp();
   const supabase = useMemo(() => createClient(), []);
   const notify = useToast();
-  const { setStatus, busyId } = useTaskActions(onChanged);
   const [memo, setMemo] = useState("");
   const [busy, setBusy] = useState(false);
   const today = todayJST();
 
   const notes = [...(task.task_notes ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const acting = busyId === task.id || busy;
+  const disabled = acting || busy;
+  const editable = canEditTask(task, me);
 
   async function addMemo() {
     if (!memo.trim()) return;
@@ -369,24 +411,24 @@ function TaskDetailInner({
   const actions =
     task.status === "todo" ? (
       <>
-        <Button variant="secondary" disabled={acting} onClick={() => setStatus(task, "doing")} className="flex-1">
+        <Button variant="secondary" disabled={disabled} onClick={() => onSetStatus(task, "doing")} className="flex-1">
           対応開始
         </Button>
-        <Button disabled={acting} onClick={() => setStatus(task, "done")} className="flex-1">
+        <Button disabled={disabled} onClick={() => onSetStatus(task, "done")} className="flex-1">
           完了にする
         </Button>
       </>
     ) : task.status === "doing" ? (
       <>
-        <Button variant="ghost" disabled={acting} onClick={() => setStatus(task, "todo")} className="flex-1">
+        <Button variant="ghost" disabled={disabled} onClick={() => onSetStatus(task, "todo")} className="flex-1">
           未着手に戻す
         </Button>
-        <Button disabled={acting} onClick={() => setStatus(task, "done")} className="flex-[2]">
+        <Button disabled={disabled} onClick={() => onSetStatus(task, "done")} className="flex-[2]">
           完了にする
         </Button>
       </>
     ) : (
-      <Button variant="secondary" disabled={acting} onClick={() => setStatus(task, "doing")} className="flex-1">
+      <Button variant="secondary" disabled={disabled} onClick={() => onSetStatus(task, "doing")} className="flex-1">
         完了を取り消す（対応中に戻す）
       </Button>
     );
@@ -399,7 +441,6 @@ function TaskDetailInner({
           <p className="text-lg font-semibold text-ink mt-0.5">{task.title}</p>
           <div className="flex items-center gap-1.5 flex-wrap mt-2">
             <StatusBadge status={task.status} />
-            <PriorityBadge priority={task.priority} />
             {task.store_id !== null && (
               <span className={`${pill} bg-surface text-muted border-hairline`}>{storeName(task.store_id)}</span>
             )}
@@ -488,7 +529,7 @@ function TaskDetailInner({
           </div>
         </section>
 
-        {isAdmin && (
+        {editable && (
           <div className="flex gap-2 border-t border-hairline pt-3">
             <Button variant="secondary" onClick={() => onEdit(task)}>
               編集する
