@@ -35,6 +35,7 @@ export interface Staff {
   theme_color: string;
   is_active: boolean;
   employment_type?: EmploymentType; // 027 未適用の環境では undefined
+  can_view_tasks?: boolean; // 業務リストの閲覧権限（032。未適用の環境では undefined）
 }
 
 export interface Menu {
@@ -234,6 +235,16 @@ export interface CalendarEvent {
   title: string;
   repeat_weekday: number | null;
   repeat_until: string | null;
+  created_by: string | null;
+  staff_ids?: number[]; // 関係するスタッフ（031。未適用の環境では undefined）
+  all_staff?: boolean; // 「全スタッフ」に関係する予定（031）
+  calendar_event_photos?: CalendarEventPhoto[];
+}
+
+export interface CalendarEventPhoto {
+  id: number;
+  event_id: number;
+  storage_path: string;
   created_by: string | null;
 }
 
@@ -597,3 +608,52 @@ export interface LineMessageLog {
   image_count: number;
   created_at: string;
 }
+
+/* ---------------- 業務リスト・今日のToDo（032） ---------------- */
+export type TaskList = "short" | "long";
+export type TaskPriority = "high" | "mid" | "low";
+export type TaskStatus = "todo" | "doing" | "done";
+
+export interface TaskNote {
+  id: number;
+  task_id: number;
+  staff_id: number | null;
+  kind: "memo" | "status";
+  body: string;
+  created_at: string;
+}
+
+export interface Task {
+  id: number;
+  list: TaskList;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  assignee_id: number | null;
+  store_id: number | null;
+  started_by: number | null;
+  started_at: string | null;
+  completed_by: number | null;
+  completed_at: string | null;
+  created_at: string;
+  task_notes?: TaskNote[];
+}
+
+export const TASK_LIST_META: Record<TaskList, { label: string; note: string }> = {
+  short: { label: "日々・週単位の業務", note: "毎日・数日以内・今週中などに行う仕事" },
+  long: { label: "長期的に進める業務", note: "商品開発・テスト、スタッフのOJT、制服制作など" },
+};
+
+export const TASK_PRIORITY_META: Record<TaskPriority, { label: string; rank: number }> = {
+  high: { label: "高", rank: 0 },
+  mid: { label: "中", rank: 1 },
+  low: { label: "低", rank: 2 },
+};
+
+export const TASK_STATUS_META: Record<TaskStatus, { label: string }> = {
+  todo: { label: "未着手" },
+  doing: { label: "対応中" },
+  done: { label: "完了" },
+};

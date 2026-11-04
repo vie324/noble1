@@ -20,6 +20,8 @@
   --noble-warn-soft: #F8EEDF;
   --noble-ok:      #6F8F6B;
   --noble-ok-soft: #EBF1EA;
+  --noble-info:    #4F6F8F; /* 業務の「対応中」 */
+  --noble-info-soft: #E9EFF5;
 }
 
 @theme inline {
@@ -39,6 +41,8 @@
   --color-warn-soft: var(--noble-warn-soft);
   --color-ok:      var(--noble-ok);
   --color-ok-soft: var(--noble-ok-soft);
+  --color-info:    var(--noble-info);
+  --color-info-soft: var(--noble-info-soft);
 
   --font-serif: var(--font-cormorant), var(--font-shippori), serif;
   --font-sans: var(--font-noto-sans), sans-serif;

@@ -7,6 +7,8 @@ import { useApp } from "@/lib/app-context";
 import { useInbox } from "@/lib/inbox";
 import { Badge, Button, Card, CountUp, EmptyState, ListSkeleton } from "@/components/ui";
 import { FlagBadges, TicketAlertBadges } from "@/components/flags";
+import { TodayTodo } from "@/components/today-todo";
+import { canViewTasks } from "@/lib/tasks";
 import { addDays, dateLabelJa, jstToISO, monthLabelJa, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type {
   Customer,
@@ -27,7 +29,7 @@ interface BoardVisit extends Visit {
 }
 
 export default function TodayBoardPage() {
-  const { storeFilter, storeName } = useApp();
+  const { me, storeFilter, storeName } = useApp();
   const inbox = useInbox();
   const [date, setDate] = useState(todayJST());
   const [visits, setVisits] = useState<BoardVisit[] | null>(null);
@@ -125,6 +127,14 @@ export default function TodayBoardPage() {
             />
           )}
         </ul>
+      )}
+
+      {/* 今日のToDo（業務リストの閲覧権限がある人だけ） */}
+      {canViewTasks(me) && (
+        <>
+          <TodayTodo />
+          <hr className="border-hairline" />
+        </>
       )}
 
       {/* 日付ナビゲーション */}

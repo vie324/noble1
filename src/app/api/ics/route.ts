@@ -81,7 +81,15 @@ export async function GET(request: Request) {
     for (const e of events ?? []) {
       const meta = EVENT_TYPE_META[e.type as EventType];
       const where = e.store_id ? storeName.get(e.store_id) ?? "" : "";
-      const summary = `${e.title}${meta ? `（${meta.label}）` : ""}`;
+      // 関係するスタッフ（031）。タイトル省略の予定はスタッフ名をタイトル代わりにする
+      const who: string = e.all_staff
+        ? "全スタッフ"
+        : ((e.staff_ids as number[] | null | undefined) ?? [])
+            .map((id) => staffName.get(id))
+            .filter(Boolean)
+            .join("・");
+      const head = [String(e.title ?? "").trim(), who].filter(Boolean).join(" ") || meta?.label || "予定";
+      const summary = `${head}${meta ? `（${meta.label}）` : ""}`;
       const base = [
         "BEGIN:VEVENT",
         `UID:event-${e.id}@noble`,
