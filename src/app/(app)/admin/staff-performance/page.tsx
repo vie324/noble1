@@ -38,7 +38,7 @@ export default function StaffPerformancePage() {
     setRows(null);
     setDirty(false);
     const [st, pf] = await Promise.all([
-      supabase.from("staff").select("*").eq("is_active", true).order("id"),
+      supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
       supabase.from("staff_monthly").select("*").eq("month", month),
     ]);
     const staff = (st.data as Staff[]) ?? [];

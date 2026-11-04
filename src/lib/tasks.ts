@@ -1,7 +1,6 @@
 // 業務リスト・今日のToDo の共通処理（並び順・期日の表示・対応者の表示）
 
 import { addDays } from "@/lib/format";
-import { TASK_PRIORITY_META } from "@/lib/types";
 import type { Staff, Task, TaskNote } from "@/lib/types";
 
 // 業務リストを閲覧できるか（管理者は常に可）
@@ -47,7 +46,7 @@ export function dueInfo(task: Pick<Task, "due_date" | "status">, today: string):
   return { label: monthDay(task.due_date), tone: "normal" };
 }
 
-// 未完了: 期日の近い順（期日なしは最後）→ 優先度 → 登録順 / 完了: 完了日時の新しい順
+// 未完了: 期日の近い順（期日なしは最後）→ 登録順 / 完了: 完了日時の新しい順
 export function compareTasks(a: Task, b: Task): number {
   const aDone = a.status === "done";
   const bDone = b.status === "done";
@@ -58,8 +57,6 @@ export function compareTasks(a: Task, b: Task): number {
     if (!b.due_date) return -1;
     return a.due_date < b.due_date ? -1 : 1;
   }
-  const pr = TASK_PRIORITY_META[a.priority].rank - TASK_PRIORITY_META[b.priority].rank;
-  if (pr !== 0) return pr;
   return a.created_at.localeCompare(b.created_at);
 }
 

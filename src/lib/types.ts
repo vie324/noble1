@@ -1,6 +1,16 @@
 // ドメイン型定義（DBスキーマと対応）
 
-export type Role = "admin" | "staff";
+// admin = 管理者 / staff = スタッフ / store = 店舗（店舗の iPad で使う共用アカウント。033）
+export type Role = "admin" | "staff" | "store";
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "管理者",
+  staff: "スタッフ",
+  store: "店舗（iPad）",
+};
+
+// ログインパスワードの最低文字数（管理者が設定する）
+export const PASSWORD_MIN = 8;
 export type VisitStatus = "scheduled" | "filled";
 export type PhotoKind = "before" | "after";
 export type FlagColorKey = "caution" | "warn" | "ok" | "rose" | "gold";
@@ -36,6 +46,11 @@ export interface Staff {
   is_active: boolean;
   employment_type?: EmploymentType; // 027 未適用の環境では undefined
   can_view_tasks?: boolean; // 業務リストの閲覧権限（032。未適用の環境では undefined）
+}
+
+// 人として扱うアカウント（担当者・出勤・対応者の一覧に出す）。店舗アカウントは除く
+export function isPerson(s: Pick<Staff, "role">): boolean {
+  return s.role !== "store";
 }
 
 export interface Menu {
@@ -611,7 +626,6 @@ export interface LineMessageLog {
 
 /* ---------------- 業務リスト・今日のToDo（032） ---------------- */
 export type TaskList = "short" | "long";
-export type TaskPriority = "high" | "mid" | "low";
 export type TaskStatus = "todo" | "doing" | "done";
 
 export interface TaskNote {
@@ -629,7 +643,6 @@ export interface Task {
   title: string;
   description: string | null;
   due_date: string | null;
-  priority: TaskPriority;
   status: TaskStatus;
   assignee_id: number | null;
   store_id: number | null;
@@ -638,18 +651,13 @@ export interface Task {
   completed_by: number | null;
   completed_at: string | null;
   created_at: string;
+  created_by: string | null;
   task_notes?: TaskNote[];
 }
 
 export const TASK_LIST_META: Record<TaskList, { label: string; note: string }> = {
   short: { label: "日々・週単位の業務", note: "毎日・数日以内・今週中などに行う仕事" },
   long: { label: "長期的に進める業務", note: "商品開発・テスト、スタッフのOJT、制服制作など" },
-};
-
-export const TASK_PRIORITY_META: Record<TaskPriority, { label: string; rank: number }> = {
-  high: { label: "高", rank: 0 },
-  mid: { label: "中", rank: 1 },
-  low: { label: "低", rank: 2 },
 };
 
 export const TASK_STATUS_META: Record<TaskStatus, { label: string }> = {

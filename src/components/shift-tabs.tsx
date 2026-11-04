@@ -7,11 +7,11 @@ import { useApp } from "@/lib/app-context";
 // 予定（シフト・カレンダー）エリアのサブナビゲーション
 export function ShiftTabs() {
   const pathname = usePathname();
-  const { isAdmin } = useApp();
+  const { isAdmin, isStore } = useApp();
 
   const tabs = [
     { href: "/calendar", label: "月間カレンダー", exact: true },
-    { href: "/calendar/my", label: "マイシフト", exact: false },
+    ...(isStore ? [] : [{ href: "/calendar/my", label: "マイシフト", exact: false }]),
     ...(isAdmin
       ? [
           { href: "/calendar/manage", label: "シフト管理", exact: false },

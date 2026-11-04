@@ -127,12 +127,12 @@ export function LineComposeSheet({
     setValues({
       お客様名: customer.name,
       店舗名: storeName(friend.store_id),
-      担当スタッフ: me.name,
+      担当スタッフ: me.role === "store" ? null : me.name,
       次回予約: nextAt ? `${dateLabelJa(jstDate(nextAt))} ${timeHM(nextAt)}` : null,
       前回来店日: lastAt ? dateLabelJa(jstDate(lastAt)) : null,
     });
     setLoaded(true);
-  }, [supabase, customer.id, customer.name, friend.store_id, me.name, storeName]);
+  }, [supabase, customer.id, customer.name, friend.store_id, me.name, me.role, storeName]);
 
   useEffect(() => {
     if (open && !loaded) load();

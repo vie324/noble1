@@ -68,7 +68,7 @@ function StaffDocsAdmin() {
 
   const load = useCallback(async () => {
     const [st, dc] = await Promise.all([
-      supabase.from("staff").select("*").eq("is_active", true).order("id"),
+      supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
       supabase.from("staff_documents").select("*").order("created_at", { ascending: false }).limit(300),
     ]);
     const staffRows = (st.data as Staff[]) ?? [];

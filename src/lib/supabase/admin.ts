@@ -2,7 +2,8 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 // service role クライアント（RLSをバイパスする。サーバー専用）
-// お客様向け公開フォーム（/f/...）のトークン検証付き読み書きにのみ使用する。
+// お客様向け公開フォーム（/f/...）のトークン検証付き読み書きや、
+// 管理者によるスタッフのログイン作成・パスワード変更など、サーバー側の処理だけで使用する。
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
