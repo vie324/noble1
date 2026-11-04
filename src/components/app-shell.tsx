@@ -13,6 +13,7 @@ import { ADMIN_LINKS } from "@/components/admin-tabs";
 import { Sheet } from "@/components/sheet";
 import { ToastProvider } from "@/components/toast";
 import { EMPLOYMENT_LABEL } from "@/lib/types";
+import { canViewTasks } from "@/lib/tasks";
 
 /* ナビゲーション定義
    スマホのボトムナビは毎日使う4つ＋「メニュー」。PC はヘッダーに並べる */
@@ -53,6 +54,8 @@ function ShellFrame({ children }: { children: React.ReactNode }) {
 
   const desktopItems = [
     ...primaryItems,
+    // 業務リストは閲覧を許可された人だけに表示（URL 直打ちも layout・RLS で遮断）
+    ...(canViewTasks(me) ? [{ href: "/tasks", label: "業務", icon: IconTask, exact: false }] : []),
     ...secondaryItems,
     ...(isAdmin
       ? [{ href: "/admin/dashboard", label: "経営", icon: IconChart, exact: false, match: "/admin" }]
@@ -262,6 +265,9 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
         )}
 
         <MenuGroup title="スタッフ">
+          {canViewTasks(me) && (
+            <MenuLink href="/tasks" icon={IconTask} label="業務リスト" note="施術以外のやること・対応状況" />
+          )}
           <MenuLink href="/my/documents" icon={IconFile} label="マイ書類" note="給与明細・書類の確認" count={inbox.unreadDocuments} />
           {isContractor && (
             <MenuLink
@@ -470,6 +476,15 @@ function IconCalendar(p: IconProps) {
     <Svg {...p}>
       <rect x="3" y="5" width="18" height="16" rx="2.5" />
       <path d="M8 3v4m8-4v4M3 10h18" />
+    </Svg>
+  );
+}
+
+function IconTask(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="4" y="3" width="16" height="18" rx="2.5" />
+      <path d="M8 9l1.5 1.5L12 8M8 15l1.5 1.5L12 14M14 9.5h2.5M14 15.5h2.5" />
     </Svg>
   );
 }
