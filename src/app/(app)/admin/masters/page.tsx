@@ -6,8 +6,9 @@ import { useApp } from "@/lib/app-context";
 import { Badge, Button, Card, Chip, ListSkeleton, TextArea, TextField } from "@/components/ui";
 import { AdminTabs } from "@/components/admin-tabs";
 import { StaffPrivatePanel } from "@/components/staff-private-panel";
-import { EMPLOYMENT_LABEL, LINE_TEMPLATE_CATEGORIES } from "@/lib/types";
-import type { EmploymentType, FlagColorKey } from "@/lib/types";
+import { StaffPasswordPanel } from "@/components/staff-password-panel";
+import { EMPLOYMENT_LABEL, LINE_TEMPLATE_CATEGORIES, ROLE_LABEL } from "@/lib/types";
+import type { EmploymentType, FlagColorKey, Role } from "@/lib/types";
 
 /* ============================================================
    マスタ管理（管理者専用）
@@ -21,6 +22,7 @@ type FieldType =
   | "stores"
   | "color_key"
   | "role"
+  | "store"
   | "choice"
   | "employment";
 
@@ -152,12 +154,13 @@ const TABS: TabDef[] = [
     table: "staff",
     label: "スタッフ",
     orderBy: "id",
-    note: "ログインアカウントの発行は Supabase の管理画面（または scripts/create-users.mjs）で行い、ここのメールアドレスと一致させてください。住所・生年月日などは各スタッフの「個人情報」から管理者だけが登録・閲覧できます。",
+    note: "ログインは各行の「🔑 パスワード」から作成・変更できます（ログインIDはメールアドレス）。店舗の iPad 用には、ロール「店舗（iPad）」で店舗ごとに1件作成してください。住所・生年月日などは各スタッフの「個人情報」から管理者だけが登録・閲覧できます。",
     fields: [
-      { key: "name", label: "名前", type: "text", required: true },
+      { key: "name", label: "名前（店舗アカウントは例: 新宿店 iPad）", type: "text", required: true },
       { key: "kana", label: "カナ", type: "text" },
-      { key: "email", label: "メールアドレス", type: "text", required: true },
+      { key: "email", label: "メールアドレス（ログインID）", type: "text", required: true },
       { key: "role", label: "ロール", type: "role" },
+      { key: "store_id", label: "所属店舗（店舗アカウントは必須）", type: "store" },
       { key: "employment_type", label: "雇用区分（業務委託は請求書を作成できます）", type: "employment" },
       { key: "icon_emoji", label: "アイコン（任意・カレンダーチップ用）", type: "text" },
       { key: "theme_color", label: "テーマカラー", type: "text", hint: "#B89B5E 形式" },
@@ -208,6 +211,7 @@ function MasterTable({ tab }: { tab: TabDef }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [privateOpen, setPrivateOpen] = useState<number | null>(null);
+  const [passwordOpen, setPasswordOpen] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -265,6 +269,16 @@ function MasterTable({ tab }: { tab: TabDef }) {
                           <Badge color="gold">管理者</Badge>
                         </span>
                       )}
+                      {tab.table === "staff" && row.role === "store" && (
+                        <span className="ml-2 align-middle">
+                          <Badge color="ok">店舗iPad</Badge>
+                        </span>
+                      )}
+                      {tab.table === "staff" && !row.auth_user_id && (
+                        <span className="ml-2 align-middle">
+                          <Badge color="warn">ログイン未作成</Badge>
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted mt-0.5 truncate tnum">
                       {summaryLine(tab, row)}
@@ -273,8 +287,22 @@ function MasterTable({ tab }: { tab: TabDef }) {
                   <div className="flex flex-wrap gap-1 shrink-0 -ml-3 sm:ml-0">
                     {tab.table === "staff" && (
                       <Button
+                        variant={passwordOpen === row.id ? "secondary" : "ghost"}
+                        onClick={() => {
+                          setPasswordOpen(passwordOpen === row.id ? null : row.id);
+                          setPrivateOpen(null);
+                        }}
+                      >
+                        {passwordOpen === row.id ? "パスワードを閉じる" : "🔑 パスワード"}
+                      </Button>
+                    )}
+                    {tab.table === "staff" && row.role !== "store" && (
+                      <Button
                         variant={privateOpen === row.id ? "secondary" : "ghost"}
-                        onClick={() => setPrivateOpen(privateOpen === row.id ? null : row.id)}
+                        onClick={() => {
+                          setPrivateOpen(privateOpen === row.id ? null : row.id);
+                          setPasswordOpen(null);
+                        }}
                       >
                         {privateOpen === row.id ? "個人情報を閉じる" : "🔒 個人情報"}
                       </Button>
@@ -286,6 +314,17 @@ function MasterTable({ tab }: { tab: TabDef }) {
                       {row.is_active ? "無効化" : "有効化"}
                     </Button>
                   </div>
+                </div>
+              )}
+              {tab.table === "staff" && passwordOpen === row.id && editing === null && (
+                <div className="mt-3">
+                  <StaffPasswordPanel
+                    staffId={row.id}
+                    staffName={String(row.name)}
+                    email={String(row.email ?? "")}
+                    hasLogin={Boolean(row.auth_user_id)}
+                    onDone={load}
+                  />
                 </div>
               )}
               {tab.table === "staff" && privateOpen === row.id && editing === null && (
@@ -333,7 +372,11 @@ function summaryLine(tab: TabDef, row: Row): string {
       return `色: ${COLOR_KEYS.find((c) => c.key === row.color_key)?.label ?? row.color_key}`;
     case "staff":
       return [
-        row.employment_type ? EMPLOYMENT_LABEL[row.employment_type as EmploymentType] : null,
+        row.role === "store"
+          ? "店舗アカウント"
+          : row.employment_type
+            ? EMPLOYMENT_LABEL[row.employment_type as EmploymentType]
+            : null,
         row.email,
       ]
         .filter(Boolean)
@@ -379,6 +422,8 @@ function MasterForm({
               ? "warn"
               : f.type === "role"
                 ? "staff"
+                : f.type === "store"
+                  ? null
                 : f.type === "employment"
                   ? "employee"
                   : f.type === "choice"
@@ -396,6 +441,10 @@ function MasterForm({
         return;
       }
     }
+    if (tab.table === "staff" && form.role === "store" && form.store_id == null) {
+      setError("店舗アカウントは「所属店舗」を選んでください");
+      return;
+    }
     setBusy(true);
     const payload = { ...form };
     const { error: err } = initial
@@ -404,7 +453,9 @@ function MasterForm({
     if (err) {
       console.error(err);
       setError(
-        /column|schema cache/i.test(err.message)
+        /staff_role_check/.test(err.message)
+          ? "保存に失敗しました（店舗アカウントを使うには 033 の SQL の実行が必要です）"
+          : /column|schema cache/i.test(err.message)
           ? "保存に失敗しました（データベースの更新SQLが未実行の可能性があります。README の手順を確認してください）"
           : "保存に失敗しました"
       );
@@ -418,6 +469,8 @@ function MasterForm({
     <div className="rounded-xl border border-gold/40 bg-gold-soft/30 p-3 space-y-3 fade-in">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {tab.fields.map((f) => {
+          // 店舗アカウントに雇用区分は不要
+          if (f.type === "employment" && form.role === "store") return null;
           if (f.type === "stores") {
             const selected = (form[f.key] as number[]) ?? [];
             return (
@@ -511,19 +564,45 @@ function MasterForm({
           }
           if (f.type === "role") {
             return (
-              <div key={f.key}>
+              <div key={f.key} className="sm:col-span-2">
                 <p className="text-xs font-semibold text-muted mb-1">{f.label}</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {(["staff", "admin", "store"] as Role[]).map((r) => (
+                    <Chip
+                      key={r}
+                      label={ROLE_LABEL[r]}
+                      selected={form[f.key] === r}
+                      onClick={() => setForm({ ...form, [f.key]: r })}
+                    />
+                  ))}
+                </div>
+                {form[f.key] === "store" && (
+                  <p className="text-[11px] text-muted mt-1">
+                    店舗の iPad で共用するアカウントです。カルテ・お客様・予定などは使えますが、マイシフト・マイ書類・経営メニューは表示されず、
+                    担当者や出勤スタッフの一覧にも出ません。業務の対応開始・完了では「誰が対応したか」を選んで記録します。
+                  </p>
+                )}
+              </div>
+            );
+          }
+          if (f.type === "store") {
+            return (
+              <div key={f.key} className="sm:col-span-2">
+                <p className="text-xs font-semibold text-muted mb-1">{f.label}</p>
+                <div className="flex gap-2 flex-wrap">
                   <Chip
-                    label="スタッフ"
-                    selected={form[f.key] === "staff"}
-                    onClick={() => setForm({ ...form, [f.key]: "staff" })}
+                    label="未設定"
+                    selected={form[f.key] == null}
+                    onClick={() => setForm({ ...form, [f.key]: null })}
                   />
-                  <Chip
-                    label="管理者"
-                    selected={form[f.key] === "admin"}
-                    onClick={() => setForm({ ...form, [f.key]: "admin" })}
-                  />
+                  {stores.map((st) => (
+                    <Chip
+                      key={st.id}
+                      label={st.name}
+                      selected={form[f.key] === st.id}
+                      onClick={() => setForm({ ...form, [f.key]: st.id })}
+                    />
+                  ))}
                 </div>
               </div>
             );

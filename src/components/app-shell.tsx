@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ADMIN_LINKS } from "@/components/admin-tabs";
 import { Sheet } from "@/components/sheet";
 import { ToastProvider } from "@/components/toast";
-import { EMPLOYMENT_LABEL } from "@/lib/types";
+import { EMPLOYMENT_LABEL, ROLE_LABEL } from "@/lib/types";
 import { canViewTasks } from "@/lib/tasks";
 
 /* ナビゲーション定義
@@ -199,11 +199,11 @@ function ShellFrame({ children }: { children: React.ReactNode }) {
 
 /* ---------------- メニュー（スマホはボトムシート、PC はダイアログ） ---------------- */
 function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { me, isAdmin } = useApp();
+  const { me, isAdmin, isStore } = useApp();
   const inbox = useInbox();
   const pathname = usePathname();
   const router = useRouter();
-  const isContractor = me.employment_type === "contractor";
+  const isContractor = !isStore && me.employment_type === "contractor";
 
   // 画面を移動したら閉じる
   const lastPath = useRef(pathname);
@@ -238,8 +238,8 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           <div className="min-w-0">
             <p className="font-semibold text-ink truncate">{me.name}</p>
             <p className="text-xs text-muted">
-              {isAdmin ? "管理者" : "スタッフ"}
-              {me.employment_type && ` ・ ${EMPLOYMENT_LABEL[me.employment_type]}`}
+              {ROLE_LABEL[me.role] ?? "スタッフ"}
+              {!isStore && me.employment_type && ` ・ ${EMPLOYMENT_LABEL[me.employment_type]}`}
             </p>
           </div>
         </div>
@@ -268,7 +268,10 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           {canViewTasks(me) && (
             <MenuLink href="/tasks" icon={IconTask} label="業務リスト" note="施術以外のやること・対応状況" />
           )}
-          <MenuLink href="/my/documents" icon={IconFile} label="マイ書類" note="給与明細・書類の確認" count={inbox.unreadDocuments} />
+          {/* 店舗アカウント（iPad の共用ログイン）には個人のメニューを出さない */}
+          {!isStore && (
+            <MenuLink href="/my/documents" icon={IconFile} label="マイ書類" note="給与明細・書類の確認" count={inbox.unreadDocuments} />
+          )}
           {isContractor && (
             <MenuLink
               href="/my/invoices"
@@ -278,7 +281,9 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
               count={inbox.invoiceState ? 1 : 0}
             />
           )}
-          <MenuLink href="/calendar/my" icon={IconCalendar} label="マイシフト" note="希望の提出・実績の記録" />
+          {!isStore && (
+            <MenuLink href="/calendar/my" icon={IconCalendar} label="マイシフト" note="希望の提出・実績の記録" />
+          )}
           <MenuLink href="/board" icon={IconBoard} label="掲示板" note="お知らせ・マニュアル" />
           <MenuLink href="/inventory" icon={IconBox} label="在庫" note="入庫・棚卸" />
           <MenuLink href="/intake" icon={IconInbox} label="カウンセリング受付" note="LINEから届いた回答" />

@@ -44,7 +44,8 @@ function NewVisitForm() {
   // ステップ2: 時間・店舗・担当・メニュー
   const [time, setTime] = useState("10:00");
   const [storeId, setStoreId] = useState<number>(storeFilter ?? me.store_id ?? stores[0]?.id);
-  const [staffId, setStaffId] = useState<number | null>(me.id);
+  // 店舗アカウント（iPad）は担当を選んでもらう
+  const [staffId, setStaffId] = useState<number | null>(me.role === "store" ? null : me.id);
   const [menuIds, setMenuIds] = useState<number[]>([]);
 
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -57,7 +58,7 @@ function NewVisitForm() {
   useEffect(() => {
     (async () => {
       const [{ data: staff }, { data: menuData }] = await Promise.all([
-        supabase.from("staff").select("*").eq("is_active", true).order("id"),
+        supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
         supabase.from("menus").select("*").eq("is_active", true).order("sort_order"),
       ]);
       setStaffList((staff as Staff[]) ?? []);

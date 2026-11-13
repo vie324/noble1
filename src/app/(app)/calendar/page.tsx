@@ -89,7 +89,12 @@ export default function CalendarPage() {
         .from("calendar_events")
         .select("*, calendar_event_photos (id, event_id, storage_path, created_by)")
         .or(eventRange),
-      supabase.from("staff").select("id, name, icon_emoji, theme_color").eq("is_active", true).order("id"),
+      supabase
+        .from("staff")
+        .select("id, name, icon_emoji, theme_color")
+        .eq("is_active", true)
+        .neq("role", "store")
+        .order("id"),
     ]);
     // 031 未適用（写真テーブルがない）環境では、予定だけを読み込む
     const events = e.error
