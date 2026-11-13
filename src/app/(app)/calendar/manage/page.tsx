@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
 import Link from "next/link";
-import { Badge, Button, Card, Chip, ListSkeleton, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Chip, ListSkeleton, SectionTitle, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { ShiftTabs } from "@/components/shift-tabs";
 import { MonthNav } from "@/components/admin-tabs";
@@ -23,6 +23,7 @@ import type {
   Shift,
   ShiftRecruitment,
   ShiftRequest,
+  ShiftRequestSubmission,
   Staff,
   StaffPaySettings,
   StaffTransportCost,
@@ -54,6 +55,10 @@ export default function ShiftManagePage() {
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [recruitment, setRecruitment] = useState<ShiftRecruitment | null>(null);
+  const [submissions, setSubmissions] = useState<ShiftRequestSubmission[]>([]);
+  // 受付の締切日・スタッフへの連絡（受付開始前に入力しておける）
+  const [recDeadline, setRecDeadline] = useState("");
+  const [recNote, setRecNote] = useState("");
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [paySettings, setPaySettings] = useState<Map<number, StaffPaySettings>>(new Map());
   const [transportCosts, setTransportCosts] = useState<StaffTransportCost[]>([]);
@@ -74,7 +79,7 @@ export default function ShiftManagePage() {
 
   const load = useCallback(async () => {
     setShifts(null);
-    const [st, sh, rq, rc, ps, tc, cl] = await Promise.all([
+    const [st, sh, rq, rc, ps, tc, cl, sb] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).neq("role", "store").order("id"),
       supabase
         .from("shifts")
@@ -87,7 +92,13 @@ export default function ShiftManagePage() {
       supabase.from("staff_pay_settings").select("*"),
       supabase.from("staff_transport_costs").select("*"),
       supabase.from("payroll_closings").select("*").eq("month", month).maybeSingle(),
+      // 提出記録（034 未適用の環境ではエラー → 空として扱う）
+      supabase.from("shift_request_submissions").select("*").eq("month", month),
     ]);
+    setSubmissions(sb.error ? [] : ((sb.data as ShiftRequestSubmission[]) ?? []));
+    const recRow = (rc.data as ShiftRecruitment) ?? null;
+    setRecDeadline(recRow?.deadline ?? "");
+    setRecNote(recRow?.note ?? "");
     setClosed((cl.data as PayrollClosing | null) ?? null);
     setStaffList((st.data as Staff[]) ?? []);
     const shiftRows = (sh.data as Shift[]) ?? [];
@@ -199,15 +210,58 @@ export default function ShiftManagePage() {
   }
 
   async function toggleRecruitment() {
+    if (
+      recruitment?.status === "open" &&
+      !window.confirm(`${monthLabelJa(month)}の希望受付を締め切りますか？（締め切ると、スタッフは希望を変更できなくなります）`)
+    ) {
+      return;
+    }
     setBusy(true);
+    let error: { message: string } | null = null;
     if (!recruitment) {
-      await supabase.from("shift_recruitments").insert({ month, status: "open" });
+      const details = { deadline: recDeadline || null, note: recNote.trim() || null };
+      ({ error } = await supabase.from("shift_recruitments").insert({ month, status: "open", ...details }));
+      // 034 未適用（締切の列がない）環境では、締切なしで開始する
+      if (error && /deadline/.test(error.message)) {
+        ({ error } = await supabase
+          .from("shift_recruitments")
+          .insert({ month, status: "open", note: details.note }));
+      }
     } else {
-      await supabase
+      ({ error } = await supabase
         .from("shift_recruitments")
         .update({ status: recruitment.status === "open" ? "closed" : "open" })
-        .eq("id", recruitment.id);
+        .eq("id", recruitment.id));
     }
+    if (error) notify(`変更できませんでした（${error.message}）`, "error");
+    else
+      notify(
+        !recruitment
+          ? `${monthLabelJa(month)}の希望受付を開始しました。スタッフのトップページにお知らせが出ます`
+          : recruitment.status === "open"
+            ? "受付を締め切りました"
+            : "受付を再開しました"
+      );
+    await load();
+    setBusy(false);
+  }
+
+  // 締切日・連絡の保存（受付中でも変更できる）
+  async function saveRecruitmentDetails() {
+    if (!recruitment) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("shift_recruitments")
+      .update({ deadline: recDeadline || null, note: recNote.trim() || null })
+      .eq("id", recruitment.id);
+    if (error) {
+      notify(
+        /deadline/.test(error.message)
+          ? "締切日を保存するには 034 の SQL の実行が必要です"
+          : `保存できませんでした（${error.message}）`,
+        "error"
+      );
+    } else notify("締切日・連絡を保存しました");
     await load();
     setBusy(false);
   }
@@ -297,7 +351,39 @@ export default function ShiftManagePage() {
             <Button disabled={busy || draftCount === 0} onClick={confirmAll}>
               この月を確定する
             </Button>
+            <div className="w-full grid grid-cols-1 sm:grid-cols-[11rem_minmax(0,1fr)_auto] gap-2 items-end border-t border-hairline pt-3">
+              <label className="block">
+                <span className="block text-xs font-semibold text-muted mb-1">提出締切（任意）</span>
+                <input
+                  type="date"
+                  value={recDeadline}
+                  onChange={(e) => setRecDeadline(e.target.value)}
+                  className="w-full min-h-11 rounded-lg border border-hairline bg-surface px-3 text-base text-ink outline-none focus:border-gold"
+                />
+              </label>
+              <TextField
+                label="スタッフへの連絡（任意・希望入力画面に表示）"
+                value={recNote}
+                onChange={(e) => setRecNote(e.target.value)}
+                placeholder="例: 年末は12/30まで営業です。休み希望は早めに"
+              />
+              {recruitment && (
+                <Button variant="secondary" disabled={busy} onClick={saveRecruitmentDetails}>
+                  保存
+                </Button>
+              )}
+            </div>
           </Card>
+
+          {/* 希望の提出状況（受付を始めた月） */}
+          {recruitment && (
+            <SubmissionStatus
+              staffList={staffList}
+              requests={requests}
+              submissions={submissions}
+              daysInMonth={days.length}
+            />
+          )}
 
           {/* 作成グリッド */}
           <Card className="p-4 space-y-3">
@@ -711,4 +797,83 @@ function PaySettingsRow({
       {error && <p className="text-xs text-caution">{error}</p>}
     </div>
   );
+}
+
+/* ================= 希望の提出状況（管理者） ================= */
+function SubmissionStatus({
+  staffList,
+  requests,
+  submissions,
+  daysInMonth,
+}: {
+  staffList: Staff[];
+  requests: ShiftRequest[];
+  submissions: ShiftRequestSubmission[];
+  daysInMonth: number;
+}) {
+  // 管理者はシフトを作る側なので、提出状況の対象はスタッフだけ
+  const rows = staffList.filter((st) => st.role === "staff").map((st) => {
+    const sub = submissions.find((x) => x.staff_id === st.id) ?? null;
+    const entered = requests.filter((r) => r.staff_id === st.id).length;
+    return { st, sub, entered };
+  });
+  const done = rows.filter((r) => r.sub?.submitted_at).length;
+
+  return (
+    <Card className="p-4 space-y-3">
+      <SectionTitle>
+        希望の提出状況（提出済み {done} / {rows.length}名）
+      </SectionTitle>
+      <ul className="divide-y divide-hairline">
+        {rows.map(({ st, sub, entered }) => (
+          <li key={st.id} className="py-2 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-ink min-w-28">{staffLabel(st)}</span>
+              {sub?.submitted_at ? (
+                <Badge color="ok">提出済み {submittedLabel(sub.submitted_at)}</Badge>
+              ) : entered > 0 ? (
+                <Badge color="warn">
+                  入力中 {entered}/{daysInMonth}日
+                </Badge>
+              ) : (
+                <Badge color="caution">未提出</Badge>
+              )}
+              {sub?.submitted_at && entered < daysInMonth && (
+                <span className="text-xs text-muted tnum">
+                  入力 {entered}/{daysInMonth}日
+                </span>
+              )}
+              {!st.auth_user_id && <Badge color="rose">ログイン未作成</Badge>}
+            </div>
+            {sub?.comment && (
+              <p className="text-sm text-ink whitespace-pre-wrap rounded-lg bg-base border border-hairline px-3 py-2">
+                {sub.comment}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-[11px] text-muted">
+        受付中は、まだ提出していないスタッフのトップページに「シフト希望を受付中です」と表示されます。
+        「ログイン未作成」の人は、
+        <Link href="/admin/masters" className="underline underline-offset-2">
+          マスタ管理 &gt; スタッフ
+        </Link>
+        の「🔑 パスワード」からログインを作成してください。
+      </p>
+    </Card>
+  );
+}
+
+function submittedLabel(iso: string): string {
+  const p = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return `${g("month")}/${g("day")} ${g("hour")}:${g("minute")}`;
 }

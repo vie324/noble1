@@ -191,6 +191,17 @@ export interface ShiftRecruitment {
   month: string;
   status: "open" | "closed";
   note: string | null;
+  deadline?: string | null; // 提出締切日（034。未適用の環境では undefined）
+}
+
+// スタッフ × 月 の提出記録と月全体へのコメント（034）
+export interface ShiftRequestSubmission {
+  id: number;
+  staff_id: number;
+  month: string;
+  comment: string | null;
+  submitted_at: string | null;
+  updated_at: string;
 }
 
 export interface ShiftRequest {

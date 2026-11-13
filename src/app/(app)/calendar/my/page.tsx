@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/app-context";
-import { Badge, Button, Card, Chip, ListSkeleton, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, ListSkeleton, SectionTitle, TextArea } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { ShiftTabs } from "@/components/shift-tabs";
 import { MonthNav } from "@/components/admin-tabs";
@@ -23,7 +23,9 @@ import type {
   Shift,
   ShiftRecruitment,
   ShiftRequest,
+  ShiftRequestSubmission,
 } from "@/lib/types";
+import { daysUntil, deadlineLabel } from "@/lib/shift-requests";
 
 // スタッフ本人用: 希望提出 / 確定シフト確認 / 勤務実績
 export default function MyShiftPage() {
@@ -31,7 +33,9 @@ export default function MyShiftPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [recruitment, setRecruitment] = useState<ShiftRecruitment | null>(null);
+  const [recruitmentLoaded, setRecruitmentLoaded] = useState(false);
   const [requests, setRequests] = useState<Map<string, ShiftRequest>>(new Map());
+  const [submission, setSubmission] = useState<ShiftRequestSubmission | null>(null);
   const [month, setMonth] = useState(thisMonthJST());
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [attendance, setAttendance] = useState<Map<number, AttendanceRecord>>(new Map());
@@ -63,19 +67,33 @@ export default function MyShiftPage() {
     setClosed(!!closing.data);
 
     const recruitmentRow = (rec.data as ShiftRecruitment) ?? null;
-    setRecruitment(recruitmentRow);
 
     const shiftRows = (sh.data as Shift[]) ?? [];
     setShifts(shiftRows);
 
     if (recruitmentRow) {
-      const { data: reqs } = await supabase
-        .from("shift_requests")
-        .select("*")
-        .eq("staff_id", me.id)
-        .eq("month", recruitmentRow.month);
+      const [{ data: reqs }, { data: sub }] = await Promise.all([
+        supabase
+          .from("shift_requests")
+          .select("*")
+          .eq("staff_id", me.id)
+          .eq("month", recruitmentRow.month),
+        // 034 未適用の環境ではエラーになるが、提出記録なしとして扱う
+        supabase
+          .from("shift_request_submissions")
+          .select("*")
+          .eq("staff_id", me.id)
+          .eq("month", recruitmentRow.month)
+          .maybeSingle(),
+      ]);
       setRequests(new Map(((reqs as ShiftRequest[]) ?? []).map((r) => [r.date, r])));
+      setSubmission((sub as ShiftRequestSubmission | null) ?? null);
+    } else {
+      setSubmission(null);
     }
+    // 提出記録を読み込んでから表示する（コメント欄の初期値に使うため）
+    setRecruitment(recruitmentRow);
+    setRecruitmentLoaded(true);
 
     if (shiftRows.length > 0) {
       const { data: att } = await supabase
@@ -105,15 +123,24 @@ export default function MyShiftPage() {
         </p>
       </div>
 
-      {/* 希望提出（募集中の月があるときだけ表示） */}
-      {recruitment && (
+      {/* 希望提出（募集中の月があるときだけ入力欄を表示） */}
+      {recruitment ? (
         <RequestSection
+          key={recruitment.id}
           recruitment={recruitment}
           requests={requests}
+          submission={submission}
           staffId={me.id}
           onChanged={load}
         />
-      )}
+      ) : recruitmentLoaded ? (
+        <Card className="p-4">
+          <p className="text-sm text-muted">
+            いまは受付中のシフト希望はありません。管理者が受付を始めると、ここに希望の入力欄が表示されます
+            （トップページにもお知らせが出ます）。
+          </p>
+        </Card>
+      ) : null}
 
       {/* 確定シフト */}
       <Card className="p-4 space-y-3">
@@ -168,18 +195,22 @@ export default function MyShiftPage() {
 function RequestSection({
   recruitment,
   requests,
+  submission,
   staffId,
   onChanged,
 }: {
   recruitment: ShiftRecruitment;
   requests: Map<string, ShiftRequest>;
+  submission: ShiftRequestSubmission | null;
   staffId: number;
   onChanged: () => Promise<void>;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const notify = useToast();
   const [busy, setBusy] = useState(false);
   const [timeEditDate, setTimeEditDate] = useState<string | null>(null);
   const [timeDraft, setTimeDraft] = useState({ start: "10:00", end: "19:00" });
+  const [comment, setComment] = useState(submission?.comment ?? "");
 
   const days = useMemo(() => {
     const [y, m] = recruitment.month.split("-").map(Number);
@@ -190,9 +221,26 @@ function RequestSection({
     );
   }, [recruitment.month]);
 
+  // 保存に失敗したら必ず知らせる（受付が締め切られた直後など）
+  function reportError(error: { message: string } | null): boolean {
+    if (!error) return false;
+    console.error(error);
+    notify(
+      /row-level security/i.test(error.message)
+        ? "保存できませんでした。受付が締め切られた可能性があります（画面を更新してください）"
+        : "保存できませんでした。通信状況を確認して、もう一度お試しください",
+      "error"
+    );
+    return true;
+  }
+
   async function setType(date: string, type: RequestType, start?: string, end?: string) {
+    if (type === "time" && start && end && start >= end) {
+      notify("終了時刻は開始時刻より後にしてください", "error");
+      return;
+    }
     setBusy(true);
-    await supabase.from("shift_requests").upsert(
+    const { error } = await supabase.from("shift_requests").upsert(
       {
         staff_id: staffId,
         month: recruitment.month,
@@ -203,9 +251,23 @@ function RequestSection({
       },
       { onConflict: "staff_id,date" }
     );
+    reportError(error);
     await onChanged();
     setBusy(false);
     setTimeEditDate(null);
+  }
+
+  // 時間指定を開くときは、入力済みの時間を初期値にする
+  function openTimeEditor(date: string) {
+    if (timeEditDate === date) {
+      setTimeEditDate(null);
+      return;
+    }
+    const req = requests.get(date);
+    if (req?.type === "time" && req.start_time && req.end_time) {
+      setTimeDraft({ start: timeShortHM(req.start_time), end: timeShortHM(req.end_time) });
+    }
+    setTimeEditDate(date);
   }
 
   // クイック入力: 未入力の日をすべて「いつも通り」で埋める
@@ -213,7 +275,7 @@ function RequestSection({
     setBusy(true);
     const blanks = days.filter((d) => !requests.has(d));
     if (blanks.length > 0) {
-      await supabase.from("shift_requests").upsert(
+      const { error } = await supabase.from("shift_requests").upsert(
         blanks.map((date) => ({
           staff_id: staffId,
           month: recruitment.month,
@@ -222,66 +284,134 @@ function RequestSection({
         })),
         { onConflict: "staff_id,date" }
       );
+      reportError(error);
     }
     await onChanged();
     setBusy(false);
   }
 
   const submitted = days.filter((d) => requests.has(d)).length;
+  const blanks = days.length - submitted;
+
+  // 「提出する」: 提出日時とコメントを記録（提出後も受付中は変更でき、変更はそのまま反映される）
+  async function submit() {
+    if (
+      blanks > 0 &&
+      !window.confirm(`まだ入力していない日が${blanks}日あります。このまま提出しますか？\n（入力していない日は「希望なし」として扱われます）`)
+    ) {
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("shift_request_submissions").upsert(
+      {
+        staff_id: staffId,
+        month: recruitment.month,
+        comment: comment.trim() || null,
+        submitted_at: new Date().toISOString(),
+      },
+      { onConflict: "staff_id,month" }
+    );
+    setBusy(false);
+    if (error) {
+      if (/shift_request_submissions|schema cache|does not exist/i.test(error.message)) {
+        notify("入力した希望は保存されています（提出ボタンを使うには、管理者が 034 の SQL を実行する必要があります）", "error");
+      } else {
+        reportError(error);
+      }
+      return;
+    }
+    notify(submission?.submitted_at ? "提出内容を更新しました" : `${monthLabelJa(recruitment.month)}のシフト希望を提出しました`);
+    await onChanged();
+  }
+
+  const left = recruitment.deadline ? daysUntil(recruitment.deadline) : null;
 
   return (
     <Card className="p-4 space-y-3 border-gold/50">
       <SectionTitle>
         シフト希望の提出（{monthLabelJa(recruitment.month)}・受付中）
       </SectionTitle>
-      {recruitment.note && <p className="text-sm text-warn font-medium">{recruitment.note}</p>}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {submission?.submitted_at ? (
+          <Badge color="ok">提出済み {dateTimeShort(submission.submitted_at)}</Badge>
+        ) : (
+          <Badge color="warn">未提出</Badge>
+        )}
+        {recruitment.deadline && (
+          <span className={`text-sm font-semibold ${left !== null && left <= 2 ? "text-caution" : "text-ink"}`}>
+            締切 {deadlineLabel(recruitment.deadline)}
+          </span>
+        )}
+      </div>
+      {recruitment.note && <p className="text-sm text-warn font-medium whitespace-pre-wrap">{recruitment.note}</p>}
+
+      <ol className="text-xs text-muted list-decimal pl-5 space-y-0.5">
+        <li>日ごとに ○（出勤できる）・×（休み希望）・時間指定・いつも通り・お任せ を選びます（タップするとすぐ保存されます）</li>
+        <li>伝えたいことがあれば、下の「コメント」に書きます</li>
+        <li>最後に「提出する」を押します。締切までは、提出後も変更できます</li>
+      </ol>
+
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted tnum">
           {submitted}/{days.length} 日 入力済み
         </p>
-        <Button variant="secondary" disabled={busy} onClick={fillUsual}>
+        <Button variant="secondary" disabled={busy || blanks === 0} onClick={fillUsual}>
           残りすべて「いつも通り」にする
         </Button>
       </div>
 
+      <p className="text-[11px] text-muted">
+        ○＝出勤できる　×＝休み希望　時間＝時間を指定　いつも＝いつも通り　お任せ＝お任せ
+      </p>
       <ul className="divide-y divide-hairline">
         {days.map((date) => {
           const req = requests.get(date);
           const weekday = new Date(`${date}T12:00:00+09:00`).getUTCDay();
           return (
-            <li key={date} className="py-2">
-              <div className="flex items-center gap-2 flex-wrap">
+            <li key={date} className="py-1.5">
+              <div className="flex items-center gap-2">
                 <span
-                  className={`w-16 shrink-0 text-sm tnum ${
+                  className={`w-[4.25rem] shrink-0 text-sm tnum ${
                     weekday === 0 ? "text-rose" : weekday === 6 ? "text-gold-dk" : "text-ink"
-                  }`}
+                  } ${req ? "" : "font-semibold"}`}
                 >
                   {Number(date.slice(8))}日({WEEKDAYS_JA[weekday]})
                 </span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {(Object.keys(REQUEST_TYPE_META) as RequestType[]).map((t) => (
-                    <Chip
-                      key={t}
-                      label={
-                        t === "time" && req?.type === "time" && req.start_time
-                          ? `${timeShort(req.start_time)}〜${timeShort(req.end_time ?? "")}`
-                          : REQUEST_TYPE_META[t].label
-                      }
-                      selected={req?.type === t}
-                      disabled={busy}
-                      onClick={() => {
-                        if (t === "time") {
-                          setTimeEditDate(timeEditDate === date ? null : date);
-                        } else {
-                          setType(date, t);
-                        }
-                      }}
-                    />
-                  ))}
+                <div className="grid grid-cols-5 gap-1 flex-1 max-w-md" role="group" aria-label={`${Number(date.slice(8))}日の希望`}>
+                  {(Object.keys(REQUEST_TYPE_META) as RequestType[]).map((t) => {
+                    const selected = req?.type === t;
+                    const label =
+                      t === "time" && selected && req?.start_time
+                        ? `${timeShort(req.start_time)}-${timeShort(req.end_time ?? "")}`
+                        : SHORT_LABEL[t];
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        disabled={busy}
+                        aria-pressed={selected}
+                        aria-label={REQUEST_TYPE_META[t].label}
+                        onClick={() => {
+                          if (t === "time") openTimeEditor(date);
+                          else setType(date, t);
+                        }}
+                        className={`min-h-11 rounded-lg border px-0.5 text-[13px] leading-tight tnum transition-colors disabled:opacity-50 ${
+                          selected
+                            ? t === "ng"
+                              ? "border-rose bg-rose-soft text-rose font-semibold"
+                              : "border-gold bg-gold-soft text-gold-dk font-semibold"
+                            : "border-hairline bg-surface text-ink hover:border-gold"
+                        } ${t === "time" && selected ? "text-[11px]" : ""}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               {timeEditDate === date && (
-                <div className="flex items-center gap-2 mt-2 pl-16 fade-in">
+                <div className="flex items-center gap-2 mt-2 pl-[4.75rem] fade-in flex-wrap">
                   <input
                     type="time"
                     value={timeDraft.start}
@@ -309,8 +439,51 @@ function RequestSection({
           );
         })}
       </ul>
+
+      <TextArea
+        label="コメント（任意）"
+        rows={3}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="例: 12/24 は18時まで／月4回くらいを希望／いつも通り＝火・木・土の10〜19時"
+      />
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button disabled={busy} onClick={submit}>
+          {submission?.submitted_at ? "提出内容を更新する" : "提出する"}
+        </Button>
+        {blanks > 0 && <span className="text-xs text-warn">未入力 {blanks}日</span>}
+      </div>
     </Card>
   );
+}
+
+// スマホで1行に収まる短い表記（凡例を上に表示）
+const SHORT_LABEL: Record<RequestType, string> = {
+  ok: "○",
+  ng: "×",
+  time: "時間",
+  usual: "いつも",
+  any: "お任せ",
+};
+
+// "10:00:00" → "10:00"（time 入力用）
+function timeShortHM(t: string): string {
+  return t.slice(0, 5);
+}
+
+// "11/15 10:30"
+function dateTimeShort(iso: string): string {
+  const d = new Date(iso);
+  const p = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return `${g("month")}/${g("day")} ${g("hour")}:${g("minute")}`;
 }
 
 /* ================= 月の集計（出勤日数・未確認・実績の記録漏れ） ================= */

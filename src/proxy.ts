@@ -59,7 +59,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPage) {
+  // スタッフ登録がないアカウント（(app)/layout.tsx から ?reason=no-staff で戻される）は
+  // ログイン画面に留め、画面側でサインアウトさせる（リダイレクトのループを防ぐ）
+  const keepOnLogin = request.nextUrl.searchParams.get("reason") === "no-staff";
+
+  if (user && isLoginPage && !keepOnLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

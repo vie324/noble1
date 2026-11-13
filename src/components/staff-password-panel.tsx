@@ -33,6 +33,35 @@ export function StaffPasswordPanel({
   const [done, setDone] = useState<{ email: string; password: string; created: boolean } | null>(null);
 
   const tooShort = password.length > 0 && password.length < PASSWORD_MIN;
+  const [copied, setCopied] = useState(false);
+
+  // スタッフに送る案内文（LINE などに貼り付けて送る）
+  function guideText(d: { email: string; password: string }): string {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return [
+      `${staffName}さん`,
+      "NOBLE業務システムのログイン情報です。",
+      "",
+      `URL：${origin}/login`,
+      `ログインID（メールアドレス）：${d.email}`,
+      `パスワード：${d.password}`,
+      "",
+      "ログイン後、メニュー（≡）の「パスワード変更」から自分のパスワードに変更できます。",
+      "スマホのホーム画面に追加しておくと、アプリのように開けます。",
+    ].join("\n");
+  }
+
+  async function copyGuide() {
+    if (!done) return;
+    const text = guideText(done);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt("この案内文をコピーしてください", text);
+    }
+  }
 
   async function save() {
     setError(null);
@@ -78,6 +107,11 @@ export function StaffPasswordPanel({
           <p className="text-xs text-muted">
             {staffName}さんに直接お伝えください。この表示を閉じると、パスワードは二度と表示されません。
           </p>
+          <div className="pt-1">
+            <Button variant="secondary" onClick={copyGuide}>
+              {copied ? "✓ コピーしました" : "案内文をコピー（LINEなどで送る用）"}
+            </Button>
+          </div>
         </div>
       ) : (
         <>
