@@ -288,6 +288,7 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           <MenuLink href="/inventory" icon={IconBox} label="在庫" note="入庫・棚卸" />
           <MenuLink href="/intake" icon={IconInbox} label="カウンセリング受付" note="LINEから届いた回答" />
           <MenuLink href="/help" icon={IconHelp} label="使い方ガイド" />
+          {!isStore && <MenuLink href="/my/password" icon={IconKey} label="パスワード変更" />}
         </MenuGroup>
 
 
@@ -481,6 +482,15 @@ function IconCalendar(p: IconProps) {
     <Svg {...p}>
       <rect x="3" y="5" width="18" height="16" rx="2.5" />
       <path d="M8 3v4m8-4v4M3 10h18" />
+    </Svg>
+  );
+}
+
+function IconKey(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12l9-9M17 6l3 3M15 8l2 2" />
     </Svg>
   );
 }

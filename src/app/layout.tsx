@@ -9,9 +9,12 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
 });
 
+// 日本語の明朝は1つの太さで約120ファイルあり、ビルド時に Google Fonts から取得する。
+// 画面で使っているのは 400（標準）と 600（見出しの太字）だけなので、500 は読み込まない
+// （取得するファイルが約4分の1減り、Vercel でのビルド失敗が起きにくくなる）
 const shippori = Shippori_Mincho({
   variable: "--font-shippori",
-  weight: ["400", "500", "600"],
+  weight: ["400", "600"],
   subsets: ["latin"],
   preload: false,
 });

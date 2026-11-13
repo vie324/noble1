@@ -9,6 +9,7 @@ import { Badge, Button, Card, CountUp, EmptyState, ListSkeleton } from "@/compon
 import { FlagBadges, TicketAlertBadges } from "@/components/flags";
 import { TodayTodo } from "@/components/today-todo";
 import { canViewTasks } from "@/lib/tasks";
+import { daysUntil } from "@/lib/shift-requests";
 import { addDays, dateLabelJa, jstToISO, monthLabelJa, timeHM, todayJST, staffLabel } from "@/lib/format";
 import type {
   Customer,
@@ -35,6 +36,32 @@ export default function TodayBoardPage() {
   const [visits, setVisits] = useState<BoardVisit[] | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [intakeCount, setIntakeCount] = useState(0);
+  // 受付中のシフト希望（本人がまだ提出していないとき、お知らせを出す）
+  const [shiftCall, setShiftCall] = useState<{ month: string; deadline: string | null } | null>(null);
+
+  useEffect(() => {
+    // 希望を出すのはスタッフだけ（管理者はシフトを作る側、店舗アカウント（iPad）は対象外）
+    if (me.role !== "staff") return;
+    (async () => {
+      const supabase = createClient();
+      const { data: rec } = await supabase
+        .from("shift_recruitments")
+        .select("*")
+        .eq("status", "open")
+        .order("month")
+        .limit(1)
+        .maybeSingle();
+      if (!rec) return;
+      const { data: sub } = await supabase
+        .from("shift_request_submissions")
+        .select("submitted_at")
+        .eq("staff_id", me.id)
+        .eq("month", rec.month)
+        .maybeSingle();
+      if (sub?.submitted_at) return;
+      setShiftCall({ month: rec.month, deadline: rec.deadline ?? null });
+    })();
+  }, [me.id, me.role]);
 
   // 新着カウンセリング（LINE等からの未紐付け受付）の件数
   useEffect(() => {
@@ -93,8 +120,23 @@ export default function TodayBoardPage() {
   return (
     <div className="space-y-5 fade-in">
       {/* お知らせ（新着カウンセリング・自分宛ての書類・請求書） */}
-      {(intakeCount > 0 || inbox.unreadDocuments > 0 || inbox.invoiceState) && (
+      {(shiftCall || intakeCount > 0 || inbox.unreadDocuments > 0 || inbox.invoiceState) && (
         <ul className="space-y-2">
+          {shiftCall && (
+            <Notice
+              href="/calendar/my"
+              icon="🗓"
+              title={`${monthLabelJa(shiftCall.month)}のシフト希望を受付中です`}
+              badge={
+                shiftCall.deadline
+                  ? daysUntil(shiftCall.deadline) < 0
+                    ? "締切を過ぎています"
+                    : `締切 ${Number(shiftCall.deadline.slice(5, 7))}/${Number(shiftCall.deadline.slice(8, 10))}`
+                  : "未提出"
+              }
+              action="提出する"
+            />
+          )}
           {intakeCount > 0 && (
             <Notice
               href="/intake"

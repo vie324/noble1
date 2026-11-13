@@ -34,7 +34,7 @@ export default async function AppLayout({
   // auth ユーザーはあるが staff 登録がない場合はログアウト扱い
   if (!me) {
     await supabase.auth.signOut();
-    redirect("/login");
+    redirect("/login?reason=no-staff");
   }
 
   return (

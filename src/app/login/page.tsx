@@ -1,13 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, TextField } from "@/components/ui";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  // ログインはできたがスタッフ登録がない・無効になっている場合（(app)/layout.tsx から戻される）
+  const reason = useSearchParams().get("reason");
+
+  // 残っているセッションを消しておく（別のアカウントで入り直せるように）
+  useEffect(() => {
+    if (reason === "no-staff") createClient().auth.signOut();
+  }, [reason]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +35,10 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
     if (error) {
       setError("メールアドレスまたはパスワードが正しくありません");
@@ -69,18 +88,24 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {error && (
+          {error ? (
             <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2">
               {error}
             </p>
-          )}
+          ) : reason === "no-staff" ? (
+            <p className="text-sm text-caution bg-caution-soft rounded-lg px-3 py-2">
+              このアカウントはスタッフとして登録されていないか、無効になっています。管理者に確認してください
+            </p>
+          ) : null}
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "サインイン中…" : "サインイン"}
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-muted">
+        <p className="mt-6 text-center text-xs text-muted leading-relaxed">
           1つのアカウントで全店舗をご利用いただけます
+          <br />
+          パスワードを忘れたときは、管理者に再設定を依頼してください
         </p>
       </div>
     </main>
