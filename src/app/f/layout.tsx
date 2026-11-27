@@ -7,13 +7,13 @@ export default function PublicFormLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex-1 px-4 py-8">
+    <main className="flex-1 px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-6">
           <Image src="/logo.png" alt="ESTHETIC BY NOBLE" width={140} height={132} priority className="mx-auto" />
         </div>
         {children}
-        <p className="text-center text-[11px] text-muted mt-8">
+        <p className="text-center text-[11px] tracking-wider text-muted mt-10">
           エステサロン ノーブル
         </p>
       </div>

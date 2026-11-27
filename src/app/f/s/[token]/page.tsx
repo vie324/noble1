@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ConsentSign } from "./consent-sign";
+import { FormComplete } from "@/components/public-form-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function ConsentPage({
   if (!doc) {
     return (
       <div className="noble-card gold-hairline p-6 text-center">
-        <p className="text-sm text-muted">
+        <p className="text-sm leading-relaxed text-muted">
           同意書が見つかりませんでした。
           <br />
           お手数ですが、サロンまでお問い合わせください。
@@ -56,11 +57,10 @@ export default async function ConsentPage({
 
   if (doc.status === "signed") {
     return (
-      <div className="noble-card gold-hairline p-6 text-center space-y-2">
-        <p className="text-gold text-xs" aria-hidden>◆</p>
-        <p className="serif text-xl text-ink">署名済みです</p>
-        <p className="text-sm text-muted">この同意書はすでにご署名いただいています。</p>
-      </div>
+      <FormComplete title="署名済みです">
+        <span className="inline-block">この同意書は</span>
+        <span className="inline-block">すでにご署名いただいています。</span>
+      </FormComplete>
     );
   }
 
@@ -68,7 +68,15 @@ export default async function ConsentPage({
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="serif text-2xl text-ink">{doc.title}</h1>
-        <p className="text-sm text-muted mt-1">{doc.customerName} 様</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          {doc.customerName && (
+            <>
+              <span className="font-medium text-ink">{doc.customerName} 様</span>
+              <br />
+            </>
+          )}
+          内容をご確認のうえ、下の欄にご署名をお願いいたします
+        </p>
       </div>
       <div className="noble-card gold-hairline p-5">
         <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed">

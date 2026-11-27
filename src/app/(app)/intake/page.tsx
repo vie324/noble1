@@ -211,7 +211,7 @@ function IntakeCard({
               onChange={(e) => runSearch(e.target.value)}
               placeholder="お名前・カナ・電話番号で検索"
               autoFocus
-              className="w-full min-h-11 rounded-lg border border-hairline bg-surface px-3 text-base outline-none focus:border-gold"
+              className="w-full min-h-11 rounded-lg border border-hairline bg-surface px-3 text-base text-ink outline-none focus:border-gold"
             />
             {results.length > 0 && (
               <ul className="rounded-xl border border-hairline divide-y divide-hairline overflow-hidden">
