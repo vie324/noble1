@@ -45,6 +45,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#FBF8F3",
+  // ライト配色のみ。端末のダークモードで入力欄などの既定色が変わらないようにする（globals.css と対）
+  colorScheme: "only light",
 };
 
 export default function RootLayout({

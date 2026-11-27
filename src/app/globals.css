@@ -12,7 +12,9 @@
   --noble-rose:    #C98D8D;
   --noble-rose-soft: #F7ECEC;
   --noble-text:    #3D352E;
-  --noble-muted:   #8E8276;
+  /* 補助テキスト。白でもクリーム背景でもコントラスト比 4.5:1 以上になる濃さ（旧 #8E8276 は約3.8:1） */
+  --noble-muted:   #7A6E61;
+  --noble-placeholder: #A99D91; /* 入力欄の例文。入力した文字（ink）と見分けがつく淡さ */
   --noble-line:    #E8E0D4;
   --noble-caution: #A6393F;
   --noble-caution-soft: #F6E7E8;
@@ -25,7 +27,9 @@
 }
 
 @theme inline {
-  --color-base:    var(--noble-base);
+  /* ベース（クリーム）は背景色専用。--color-base にすると Tailwind の text-base（文字サイズ16px）が
+     文字色クリームまで付けてしまい、入力した文字が白地でほとんど見えなくなる */
+  --background-color-base: var(--noble-base);
   --color-surface: var(--noble-surface);
   --color-gold:    var(--noble-gold);
   --color-gold-dk: var(--noble-gold-dk);
@@ -54,6 +58,9 @@
 
 html {
   background: var(--noble-base);
+  /* ライト配色のみのデザイン。端末のダークモードや、アプリ内ブラウザの自動ダーク化で
+     入力欄・選択肢などの既定色が変わらないようにする */
+  color-scheme: only light;
 }
 
 /* ============================================================
@@ -156,6 +163,15 @@ body {
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
+/* カードの状態（公開フォーム: 確認済み／未入力）。.noble-card はレイヤー外の指定なので、
+   Tailwind の border-* では上書きできない → data-state で切り替える */
+.noble-card[data-state="done"] {
+  border-color: rgb(184 155 94 / 0.5);
+}
+.noble-card[data-state="invalid"] {
+  border-color: rgb(166 57 63 / 0.55);
+  box-shadow: 0 0 0 3px rgb(166 57 63 / 0.08), var(--shadow-card);
+}
 
 /* ============================================================
    モーション（reduced-motion 尊重）
@@ -241,6 +257,38 @@ body {
 :focus-visible {
   outline: 2px solid var(--noble-gold);
   outline-offset: 2px;
+}
+
+/* ============================================================
+   入力欄の共通仕上げ（文字入力・選択欄）
+   base レイヤーに置くので、個別に placeholder:〜 / caret-〜 を付ければそちらが優先される
+   ============================================================ */
+@layer base {
+  :where(
+      input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+      textarea,
+      select
+    ) {
+    caret-color: var(--noble-gold-dk);
+  }
+
+  ::placeholder {
+    color: var(--noble-placeholder);
+    opacity: 1;
+  }
+}
+
+/* 文字入力はゴールドの枠線＋やわらかいリングでフォーカスを示す（枠線と外側の線の二重線にしない）。
+   上の :focus-visible（レイヤー外）より優先させるため、ここもレイヤー外に置く。
+   透明の outline は Windows のハイコントラスト表示でだけ枠として見える */
+:is(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+    textarea,
+    select
+  ):focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px rgb(184 155 94 / 0.22);
 }
 
 /* 印刷（請求書など）: アプリの枠を外して A4 に収める */

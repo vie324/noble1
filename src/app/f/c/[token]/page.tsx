@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CounselingForm } from "./counseling-form";
+import { FormComplete } from "@/components/public-form-ui";
 import type { ConsentTemplate, CounselingQuestion } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export default async function CounselingPage({
   if (!sheet) {
     return (
       <div className="noble-card gold-hairline p-6 text-center">
-        <p className="text-sm text-muted">
+        <p className="text-sm leading-relaxed text-muted">
           フォームが見つかりませんでした。
           <br />
           お手数ですが、サロンまでお問い合わせください。
@@ -59,13 +60,10 @@ export default async function CounselingPage({
 
   if (sheet.status === "submitted") {
     return (
-      <div className="noble-card gold-hairline p-6 text-center space-y-2">
-        <p className="text-gold text-xs" aria-hidden>◆</p>
-        <p className="serif text-xl text-ink">ご回答ありがとうございました</p>
-        <p className="text-sm text-muted">
-          当日はスタッフが内容を確認のうえご案内いたします。
-        </p>
-      </div>
+      <FormComplete title="ご回答ありがとうございました">
+        <span className="inline-block">当日はスタッフが内容を確認のうえ</span>
+        <span className="inline-block">ご案内いたします。</span>
+      </FormComplete>
     );
   }
 
@@ -73,8 +71,14 @@ export default async function CounselingPage({
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="serif text-2xl text-ink">カウンセリングシート</h1>
-        <p className="text-sm text-muted mt-1">
-          {sheet.customerName} 様 ・ ご来店前にご記入をお願いいたします
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          {sheet.customerName && (
+            <>
+              <span className="font-medium text-ink">{sheet.customerName} 様</span>
+              <br />
+            </>
+          )}
+          ご来店前にご記入をお願いいたします
         </p>
       </div>
       <CounselingForm

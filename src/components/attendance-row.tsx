@@ -108,7 +108,7 @@ export function AdminAttendanceRow({
               type="time"
               value={actual.start}
               onChange={(e) => setActual({ ...actual, start: e.target.value })}
-              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base outline-none focus:border-gold"
+              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base text-ink outline-none focus:border-gold"
               aria-label="実開始"
             />
             <span className="text-muted">〜</span>
@@ -116,7 +116,7 @@ export function AdminAttendanceRow({
               type="time"
               value={actual.end}
               onChange={(e) => setActual({ ...actual, end: e.target.value })}
-              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base outline-none focus:border-gold"
+              className="min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base text-ink outline-none focus:border-gold"
               aria-label="実終了"
             />
             <input
@@ -124,7 +124,7 @@ export function AdminAttendanceRow({
               value={actual.reason}
               onChange={(e) => setActual({ ...actual, reason: e.target.value })}
               placeholder="ずれた場合の理由（残業・早退・変更など）"
-              className="flex-1 min-w-40 min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base outline-none focus:border-gold"
+              className="flex-1 min-w-40 min-h-11 rounded-lg border border-hairline bg-surface px-2 text-base text-ink outline-none focus:border-gold"
               aria-label="理由"
             />
             <Button disabled={busy} onClick={save}>

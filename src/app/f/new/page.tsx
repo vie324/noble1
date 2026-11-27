@@ -40,8 +40,10 @@ export default async function IntakePage() {
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="serif text-2xl text-ink">カウンセリングシート</h1>
-        <p className="text-sm text-muted mt-1">
-          ご来店前にご記入いただくと、当日スムーズにご案内できます
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          ご来店前にご記入いただくと、
+          <br />
+          当日スムーズにご案内できます
         </p>
       </div>
       <IntakeForm questions={questions} stores={stores} consentTemplates={consentTemplates} />
